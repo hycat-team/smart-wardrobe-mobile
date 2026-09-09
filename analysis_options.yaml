@@ -1,0 +1,18 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    deprecated_member_use: ignore
+    use_super_parameters: ignore
+    prefer_const_constructors: ignore
+    prefer_const_declarations: ignore
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+
+linter:
+  rules:
+    avoid_print: false
