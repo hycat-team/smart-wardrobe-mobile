@@ -161,10 +161,15 @@ class UserModel {
 
   String get displayName => fullName;
   String get fullName {
-    if ((firstName == null || firstName!.isEmpty) && (lastName == null || lastName!.isEmpty)) {
-      return username;
-    }
-    return '${firstName ?? ''} ${lastName ?? ''}'.trim();
+    final fn = firstName?.trim() ?? '';
+    final ln = lastName?.trim() ?? '';
+    final combined = '$fn $ln'.trim();
+    if (combined.isNotEmpty) return combined;
+    final un = username.trim();
+    if (un.isNotEmpty) return un;
+    final em = email.trim();
+    if (em.isNotEmpty) return em;
+    return 'Người dùng Closy';
   }
 
   bool get isAdmin => role.toUpperCase().contains('ADMIN');

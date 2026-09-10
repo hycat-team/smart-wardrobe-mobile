@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
+import 'widgets/topup_bottom_sheet.dart';
 
 class SubscriptionUpgradeScreen extends ConsumerStatefulWidget {
   const SubscriptionUpgradeScreen({super.key});
@@ -71,6 +72,89 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
           ),
         );
       }
+    }
+  }
+
+
+  Future<void> _handlePurchaseWithWallet(SubscriptionPlanModel plan) async {
+    final walletState = ref.read(walletProvider);
+    final wallet = walletState.wallet;
+
+    if (wallet.balance < plan.price) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => const TopUpBottomSheet(),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Xác nhận thanh toán'),
+        content: Text(
+          'Bạn có chắc muốn dùng ${plan.formattedPrice} từ Ví Closy để đăng ký ${plan.name} không?\n\nSố dư ví hiện tại: ${wallet.formattedBalance}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(c, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD4AF37),
+              foregroundColor: const Color(0xFF1E242B),
+            ),
+            child: const Text('Xác nhận thanh toán', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() => _isProcessing = true);
+    final notifier = ref.read(subscriptionOverviewProvider.notifier);
+    final success = await notifier.purchaseWithWallet(plan.slug.isNotEmpty ? plan.slug : 'premium-monthly');
+
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    if (success) {
+      ref.read(walletProvider.notifier).loadWallet();
+
+      showDialog(
+        context: context,
+        builder: (c) => AlertDialog(
+          icon: const Icon(Icons.workspace_premium_rounded, size: 48, color: Color(0xFFD4AF37)),
+          title: const Text('Nâng Cấp Thành Công!'),
+          content: const Text('Tài khoản của bạn đã được nâng cấp lên Closy Premium. Tận hưởng các đặc quyền AI ngay bây giờ!'),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(c);
+                context.pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Tuyệt vời'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      final err = ref.read(subscriptionOverviewProvider).purchaseErrorMessage ?? 'Thanh toán bằng ví thất bại';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(err),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
     }
   }
 
@@ -435,37 +519,102 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
               ),
             )
           else
-            ElevatedButton(
-              onPressed: _isProcessing ? null : () => _handleUpgrade(premiumPlan),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 2,
-              ),
-              child: _isProcessing
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.flash_on_rounded, color: goldColor, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Nâng Cấp Ngay - ${premiumPlan.formattedPrice}',
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            Consumer(
+              builder: (context, ref, _) {
+                final wallet = ref.watch(walletProvider).wallet;
+                final hasEnough = wallet.balance >= premiumPlan.price;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Wallet Balance Card Info
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: (hasEnough ? goldColor : Colors.grey).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: (hasEnough ? goldColor : Colors.grey).withOpacity(0.3),
                         ),
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.account_balance_wallet_rounded,
+                                size: 18,
+                                color: hasEnough ? goldColor : AppColors.textSecondary,
+                              ),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'Số dư Ví Closy:',
+                                style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            wallet.formattedBalance,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: hasEnough ? goldColor : AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(height: 14),
+
+                    // Option 1: Purchase with Wallet
+                    ElevatedButton(
+                      onPressed: _isProcessing ? null : () => _handlePurchaseWithWallet(premiumPlan),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: hasEnough ? goldColor : const Color(0xFF2C3440),
+                        foregroundColor: hasEnough ? const Color(0xFF1E242B) : Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: hasEnough ? 2 : 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            hasEnough ? Icons.flash_on_rounded : Icons.add_circle_outline_rounded,
+                            size: 20,
+                            color: hasEnough ? const Color(0xFF1E242B) : goldColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            hasEnough
+                                ? 'Mua Bằng Ví Closy (${premiumPlan.formattedPrice})'
+                                : 'Ví Không Đủ Tiền • Nạp Thêm Ngay',
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Option 2: PayOS Direct
+                    OutlinedButton.icon(
+                      onPressed: _isProcessing ? null : () => _handleUpgrade(premiumPlan),
+                      icon: const Icon(Icons.qr_code_2_rounded, size: 20),
+                      label: const Text(
+                        'Quét VietQR Trực Tiếp (PayOS)',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary, width: 1.2),
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           const SizedBox(height: 32),
         ],
@@ -473,7 +622,7 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
     );
   }
 
-    Widget _buildComparisonHeader() {
+  Widget _buildComparisonHeader() {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(

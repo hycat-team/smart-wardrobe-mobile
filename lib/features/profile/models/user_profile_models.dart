@@ -292,3 +292,116 @@ class PaymentLinkModel {
     );
   }
 }
+
+
+class WalletModel {
+  final String userId;
+  final double balance;
+  final String currency;
+  final DateTime? updatedAt;
+
+  const WalletModel({
+    this.userId = '',
+    this.balance = 0.0,
+    this.currency = 'VND',
+    this.updatedAt,
+  });
+
+  String get formattedBalance {
+    final b = balance.toInt();
+    final formatted = b.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
+    return '$formatted đ';
+  }
+
+  factory WalletModel.fromJson(Map<String, dynamic> json) {
+    final rawBalance = json['balance'] ?? json['Balance'] ?? 0;
+    final bal = (rawBalance is num) ? rawBalance.toDouble() : double.tryParse(rawBalance.toString()) ?? 0.0;
+
+    DateTime? updated;
+    final rawUpdated = json['updatedAt'] ?? json['UpdatedAt'];
+    if (rawUpdated != null) {
+      updated = DateTime.tryParse(rawUpdated.toString());
+    }
+
+    return WalletModel(
+      userId: json['userID']?.toString() ?? json['userId']?.toString() ?? json['UserID']?.toString() ?? '',
+      balance: bal,
+      currency: json['currency']?.toString() ?? json['Currency']?.toString() ?? 'VND',
+      updatedAt: updated,
+    );
+  }
+}
+
+class WalletStatementModel {
+  final String id;
+  final double amount;
+  final String transactionType;
+  final double previousBalance;
+  final double newBalance;
+  final String description;
+  final DateTime? createdAt;
+
+  const WalletStatementModel({
+    required this.id,
+    required this.amount,
+    required this.transactionType,
+    required this.previousBalance,
+    required this.newBalance,
+    this.description = '',
+    this.createdAt,
+  });
+
+  bool get isIncome =>
+      amount > 0 ||
+      transactionType.toLowerCase().contains('topup') ||
+      transactionType.toLowerCase().contains('credit') ||
+      transactionType.toLowerCase().contains('deposit');
+
+  String get formattedAmount {
+    final absAmount = amount.abs().toInt();
+    final formatted = absAmount.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
+    final sign = isIncome ? '+' : '-';
+    return '$sign$formatted đ';
+  }
+
+  String get typeLabel {
+    final t = transactionType.toLowerCase();
+    if (t.contains('topup') || t.contains('deposit')) return 'Nạp tiền vào ví';
+    if (t.contains('purchase')) return 'Mua gói hội viên';
+    if (t.contains('refund') || t.contains('credit')) return 'Hoàn tiền vào ví';
+    return 'Giao dịch ví';
+  }
+
+  factory WalletStatementModel.fromJson(Map<String, dynamic> json) {
+    final rawAmount = json['amount'] ?? json['Amount'] ?? 0;
+    final amt = (rawAmount is num) ? rawAmount.toDouble() : double.tryParse(rawAmount.toString()) ?? 0.0;
+
+    final rawPrev = json['previousBalance'] ?? json['PreviousBalance'] ?? 0;
+    final prev = (rawPrev is num) ? rawPrev.toDouble() : double.tryParse(rawPrev.toString()) ?? 0.0;
+
+    final rawNew = json['newBalance'] ?? json['NewBalance'] ?? 0;
+    final newBal = (rawNew is num) ? rawNew.toDouble() : double.tryParse(rawNew.toString()) ?? 0.0;
+
+    DateTime? created;
+    final rawCreated = json['createdAt'] ?? json['CreatedAt'];
+    if (rawCreated != null) {
+      created = DateTime.tryParse(rawCreated.toString());
+    }
+
+    return WalletStatementModel(
+      id: json['id']?.toString() ?? json['ID']?.toString() ?? '',
+      amount: amt,
+      transactionType: json['transactionType']?.toString() ?? json['TransactionType']?.toString() ?? '',
+      previousBalance: prev,
+      newBalance: newBal,
+      description: json['description']?.toString() ?? json['Description']?.toString() ?? '',
+      createdAt: created,
+    );
+  }
+}

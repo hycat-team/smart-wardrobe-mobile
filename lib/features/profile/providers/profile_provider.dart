@@ -259,26 +259,18 @@ class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewSta
   }
 
 
-  Future<bool> simulatePayment(int orderCode) async {
+  Future<bool> purchaseWithWallet(String planSlug) async {
     try {
-      await _repository.simulatePayment(orderCode);
+      state = state.copyWith(isCreatingPurchase: true, clearPurchaseError: true);
+      await _repository.purchasePlanWithWallet(planSlug);
       await loadOverview();
+      state = state.copyWith(isCreatingPurchase: false);
       return true;
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString().replaceAll('Exception: ', ''));
-      return false;
-    }
-  }
-
-  Future<bool> verifyPayment(int orderCode) async {
-    try {
-      final verified = await _repository.verifyPayment(orderCode);
-      if (verified) {
-        await loadOverview();
-        return true;
-      }
-      return false;
-    } catch (_) {
+      state = state.copyWith(
+        isCreatingPurchase: false,
+        purchaseErrorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
       return false;
     }
   }
@@ -381,4 +373,71 @@ final bodyProfileProvider =
     StateNotifierProvider<BodyProfileNotifier, BodyProfileState>((ref) {
   final repo = ref.watch(profileRepositoryProvider);
   return BodyProfileNotifier(repo);
+});
+
+
+// ==========================================
+// Wallet State & Provider
+// ==========================================
+
+class WalletState {
+  final WalletModel wallet;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const WalletState({
+    this.wallet = const WalletModel(),
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  WalletState copyWith({
+    WalletModel? wallet,
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return WalletState(
+      wallet: wallet ?? this.wallet,
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage,
+    );
+  }
+}
+
+class WalletNotifier extends StateNotifier<WalletState> {
+  final ProfileRepository _repository;
+
+  WalletNotifier(this._repository) : super(const WalletState()) {
+    loadWallet();
+  }
+
+  Future<void> loadWallet() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final wallet = await _repository.getWallet();
+      state = state.copyWith(wallet: wallet, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<PaymentLinkModel?> topUp(double amount, {String? returnUrl, String? cancelUrl}) async {
+    try {
+      final link = await _repository.createWalletTopUp(amount, returnUrl: returnUrl, cancelUrl: cancelUrl);
+      return link;
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString().replaceAll('Exception: ', ''));
+      return null;
+    }
+  }
+}
+
+final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((ref) {
+  final repo = ref.watch(profileRepositoryProvider);
+  return WalletNotifier(repo);
+});
+
+final walletStatementsProvider = FutureProvider.autoDispose<List<WalletStatementModel>>((ref) async {
+  final repo = ref.watch(profileRepositoryProvider);
+  return await repo.getWalletStatements();
 });

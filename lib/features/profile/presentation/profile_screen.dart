@@ -5,8 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../auth/models/auth_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/user_profile_models.dart';
+import 'widgets/closy_wallet_card.dart';
 import '../providers/profile_provider.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -97,6 +99,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
+  String _getInitialLetter(UserModel? user) {
+    if (user != null) {
+      final fn = user.fullName.trim();
+      if (fn.isNotEmpty) return fn.substring(0, 1).toUpperCase();
+      final un = user.username.trim();
+      if (un.isNotEmpty) return un.substring(0, 1).toUpperCase();
+      final em = user.email.trim();
+      if (em.isNotEmpty) return em.substring(0, 1).toUpperCase();
+    }
+    return 'U';
+  }
+
+  String _getDisplayName(UserModel? user) {
+    if (user != null) {
+      final fn = user.fullName.trim();
+      if (fn.isNotEmpty) return fn;
+      final un = user.username.trim();
+      if (un.isNotEmpty) return un;
+      final em = user.email.trim();
+      if (em.isNotEmpty) return em;
+    }
+    return 'Thành viên Closy';
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -162,10 +188,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               )
                             : Center(
                                 child: Text(
-                                  (user?.fullName ?? user?.username ?? 'U')
-                                      .trim()
-                                      .substring(0, 1)
-                                      .toUpperCase(),
+                                  _getInitialLetter(user),
                                   style: GoogleFonts.playfairDisplay(
                                     fontSize: 36,
                                     fontWeight: FontWeight.w700,
@@ -220,9 +243,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        isAuth
-                            ? (user?.fullName ?? user?.username ?? 'Thành viên Closy')
-                            : 'Khách khám phá',
+                        isAuth ? _getDisplayName(user) : 'Khách khám phá',
                         style: GoogleFonts.beVietnamPro(fontSize: 18, fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -305,7 +326,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const SizedBox(height: 20),
 
-          // 2. Subscription & Daily AI Quota Card
+          // 1.5 Closy Wallet Card
+            if (isAuth) ...[
+              const ClosyWalletCard(),
+              const SizedBox(height: 20),
+            ],
+
+            // 2. Subscription & Daily AI Quota Card
           if (isAuth) ...[
             _buildSubscriptionCard(sub, quota),
             const SizedBox(height: 20),
@@ -381,7 +408,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ),
                       Text(
-                        sub.expiresAt != null && sub.expiresAt!.isNotEmpty
+                        sub.expiresAt != null && sub.expiresAt!.length >= 10
                             ? 'Hạn dùng: ${sub.expiresAt!.substring(0, 10)}'
                             : 'Gói tiêu chuẩn mặc định',
                         style: TextStyle(

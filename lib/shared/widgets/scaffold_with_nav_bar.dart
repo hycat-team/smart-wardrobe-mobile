@@ -48,16 +48,16 @@ class ScaffoldWithNavBar extends StatelessWidget {
                   activeIcon: Icons.auto_awesome,
                   label: 'Stylist',
                 ),
+                // _buildNavItem(
+                //   context,
+                //   index: 3,
+                //   icon: Icons.public_outlined,
+                //   activeIcon: Icons.public,
+                //   label: 'Curates',
+                // ),
                 _buildNavItem(
                   context,
                   index: 3,
-                  icon: Icons.public_outlined,
-                  activeIcon: Icons.public,
-                  label: 'Curates',
-                ),
-                _buildNavItem(
-                  context,
-                  index: 4,
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
                   label: 'Profile',

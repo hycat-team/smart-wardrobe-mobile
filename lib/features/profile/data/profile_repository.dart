@@ -218,34 +218,7 @@ class ProfileRepository {
     }
   }
 
-
-  // 10b. Simulate payment in test environment
-  Future<void> simulatePayment(int orderCode) async {
-    try {
-      await _apiClient.dio.post(
-        '/subscriptions/me/simulate-payment',
-        data: {'orderCode': orderCode},
-      );
-    } on DioException catch (e) {
-      final msg = e.response?.data?['message'] ?? e.message ?? 'Mô phỏng thanh toán thất bại';
-      throw Exception(msg);
-    }
-  }
-
-  // 10c. Actively verify payment with PayOS gateway
-  Future<bool> verifyPayment(int orderCode) async {
-    try {
-      final res = await _apiClient.dio.post(
-        '/subscriptions/me/verify-payment',
-        data: {'orderCode': orderCode},
-      );
-      return res.statusCode == 200;
-    } on DioException catch (_) {
-      return false;
-    }
-  }
-
-  // 11. Body Profile
+// 11. Body Profile
   Future<BodyProfileModel> getBodyProfile() async {
     try {
       final response = await _apiClient.dio.get('/me');
@@ -279,4 +252,85 @@ class ProfileRepository {
       throw Exception(message);
     }
   }
+
+  // 10d. Wallet - Get user balance
+  Future<WalletModel> getWallet() async {
+    try {
+      final response = await _apiClient.dio.get('/subscriptions/me/wallet');
+      final body = response.data;
+      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
+      return WalletModel.fromJson(data);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? e.message ?? 'Không thể tải số dư ví');
+    }
+  }
+
+  // 10e. Wallet - Get statements
+  Future<List<WalletStatementModel>> getWalletStatements({int page = 1, int pageSize = 20}) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/subscriptions/me/wallet/statements',
+        queryParameters: {'page': page, 'pageSize': pageSize},
+      );
+      final body = response.data;
+      final data = body['data'];
+      List items = [];
+      if (data is Map && data['items'] is List) {
+        items = data['items'];
+      } else if (data is List) {
+        items = data;
+      } else if (body['items'] is List) {
+        items = body['items'];
+      }
+      return items.map((item) => WalletStatementModel.fromJson(Map<String, dynamic>.from(item))).toList();
+    } on DioException catch (_) {
+      return [];
+    }
+  }
+
+  // 10f. Wallet - Create topup link
+  Future<PaymentLinkModel> createWalletTopUp(double amount, {String? returnUrl, String? cancelUrl}) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/subscriptions/me/wallet/topup',
+        data: {
+          'amount': amount,
+          if (returnUrl != null && returnUrl.isNotEmpty) 'returnUrl': returnUrl,
+          if (cancelUrl != null && cancelUrl.isNotEmpty) 'cancelUrl': cancelUrl,
+        },
+      );
+      final body = response.data;
+      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
+      return PaymentLinkModel.fromJson(data);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String message = 'Không thể tạo yêu cầu nạp tiền';
+      if (data is Map && data['message'] != null) {
+        message = data['message'].toString();
+      } else if (e.message != null) {
+        message = e.message!;
+      }
+      throw Exception(message);
+    }
+  }
+
+  // 10g. Subscription - Purchase plan with wallet
+  Future<void> purchasePlanWithWallet(String planSlug) async {
+    try {
+      await _apiClient.dio.post(
+        '/subscriptions/me/purchase-with-wallet',
+        data: {'planSlug': planSlug},
+      );
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String message = 'Thanh toán bằng ví thất bại';
+      if (data is Map && data['message'] != null) {
+        message = data['message'].toString();
+      } else if (e.message != null) {
+        message = e.message!;
+      }
+      throw Exception(message);
+    }
+  }
+
 }

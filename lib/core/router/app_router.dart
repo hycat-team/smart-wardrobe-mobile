@@ -15,8 +15,8 @@ import 'package:smart_wardrobe/features/wardrobe/models/wardrobe_models.dart';
 import 'package:smart_wardrobe/features/outfit_studio/presentation/outfit_studio_screen.dart';
 import 'package:smart_wardrobe/features/outfit_studio/presentation/outfits_list_screen.dart';
 import 'package:smart_wardrobe/features/stylist/presentation/stylist_screen.dart';
-import 'package:smart_wardrobe/features/marketplace/presentation/marketplace_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/profile_screen.dart';
+import 'package:smart_wardrobe/features/profile/presentation/wallet_detail_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/body_profile_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/profile_edit_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/change_password_screen.dart';
@@ -129,6 +129,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ChangePasswordScreen(),
       ),
       GoRoute(
+        path: '/profile/wallet',
+        builder: (context, state) => const WalletDetailScreen(),
+      ),
+      GoRoute(
         path: '/profile/subscription',
         builder: (context, state) => const SubscriptionDetailScreen(),
       ),
@@ -175,14 +179,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/curates',
-                builder: (context, state) => const MarketplaceScreen(),
-              ),
-            ],
-          ),
+          // StatefulShellBranch(
+          //   routes: [
+          //     GoRoute(
+          //       path: '/curates',
+          //       builder: (context, state) => const MarketplaceScreen(),
+          //     ),
+          //   ],
+          // ),
           StatefulShellBranch(
             routes: [
               GoRoute(

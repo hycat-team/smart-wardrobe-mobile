@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../auth/models/auth_models.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
 
@@ -155,6 +156,18 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     }
   }
 
+  String _getInitialLetter(UserModel? user) {
+    if (user != null) {
+      final fn = user.fullName.trim();
+      if (fn.isNotEmpty) return fn.substring(0, 1).toUpperCase();
+      final un = user.username.trim();
+      if (un.isNotEmpty) return un.substring(0, 1).toUpperCase();
+      final em = user.email.trim();
+      if (em.isNotEmpty) return em.substring(0, 1).toUpperCase();
+    }
+    return 'U';
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileState = ref.watch(userProfileProvider);
@@ -204,10 +217,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                                       )
                                     : Center(
                                         child: Text(
-                                          (user?.fullName ?? user?.username ?? 'U')
-                                              .trim()
-                                              .substring(0, 1)
-                                              .toUpperCase(),
+                                          _getInitialLetter(user),
                                           style: GoogleFonts.playfairDisplay(
                                             fontSize: 40,
                                             fontWeight: FontWeight.w700,

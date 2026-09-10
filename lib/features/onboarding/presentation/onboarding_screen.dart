@@ -82,17 +82,17 @@ class OnboardingScreen extends StatelessWidget {
                     child: const Text('Get Started', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: () => context.go('/curates'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white54, width: 1.2),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: const StadiumBorder(),
-                    ),
-                    child: const Text('Explore Collection', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                  ),
-                  const SizedBox(height: 12),
+                  // OutlinedButton(
+                  //   onPressed: () => context.go('/curates'),
+                  //   style: OutlinedButton.styleFrom(
+                  //     foregroundColor: Colors.white,
+                  //     side: const BorderSide(color: Colors.white54, width: 1.2),
+                  //     padding: const EdgeInsets.symmetric(vertical: 18),
+                  //     shape: const StadiumBorder(),
+                  //   ),
+                  //   child: const Text('Explore Collection', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                  // ),
+                  // const SizedBox(height: 12),
                 ],
               ),
             ),
