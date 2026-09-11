@@ -224,7 +224,6 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                         imageUrl: alt.imageUrl,
                                         fit: BoxFit.contain,
                                         memCacheWidth: 250,
-                                        memCacheHeight: 250,
                                       )
                                     : const Icon(Icons.checkroom, size: 32, color: AppColors.accentSandDark),
                               ),
@@ -701,7 +700,6 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                               imageUrl: primary.imageUrl,
                               fit: BoxFit.contain,
                               memCacheWidth: 200,
-                              memCacheHeight: 200,
                             )
                           : const Icon(Icons.checkroom, size: 28, color: AppColors.accentSandDark),
                     ),
@@ -928,7 +926,6 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                                 imageUrl: item.imageUrl,
                                                 fit: BoxFit.contain,
                                                 memCacheWidth: 450,
-                                                memCacheHeight: 450,
                                               ),
                                             ),
                                             if (isSelected)
@@ -1147,7 +1144,6 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                               imageUrl: imgUrl,
                                               fit: BoxFit.contain,
                                               memCacheWidth: 200,
-                                              memCacheHeight: 200,
                                             )
                                           : const Icon(Icons.checkroom, size: 24, color: AppColors.accentSandDark),
                                     ),

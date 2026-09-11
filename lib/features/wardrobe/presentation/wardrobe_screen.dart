@@ -450,7 +450,6 @@ class _WardrobeItemCardState extends State<WardrobeItemCard> with AutomaticKeepA
                             imageUrl: imageUrl,
                             fit: BoxFit.contain,
                             memCacheWidth: 400,
-                            memCacheHeight: 400,
                           ),
                         ),
                       ),

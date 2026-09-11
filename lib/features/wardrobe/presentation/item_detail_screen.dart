@@ -229,7 +229,6 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                                 imageUrl: item.displayImageUrl,
                                 fit: BoxFit.contain,
                                 memCacheWidth: 800,
-                                memCacheHeight: 800,
                               ),
                             ),
                           ),

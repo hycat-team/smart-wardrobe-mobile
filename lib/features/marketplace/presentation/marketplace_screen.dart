@@ -219,7 +219,6 @@ class _MarketplaceProductCardState extends State<MarketplaceProductCard> with Au
                   imageUrl: product.imageUrl,
                   fit: BoxFit.cover,
                   memCacheWidth: 400,
-                  memCacheHeight: 400,
                   errorWidget: const Center(
                     child: Icon(Icons.shopping_bag_outlined, size: 40, color: AppColors.accentSandDark),
                   ),

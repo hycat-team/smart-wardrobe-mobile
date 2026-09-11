@@ -653,7 +653,6 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
                               imageUrl: it.imageUrl ?? '',
                               fit: BoxFit.contain,
                               memCacheWidth: 200,
-                              memCacheHeight: 200,
                             ),
                           ),
                         ),

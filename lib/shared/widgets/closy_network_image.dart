@@ -6,13 +6,20 @@ import '../../core/theme/app_theme.dart';
 /// Optimized network image component tailored for Cloudinary and Flutter Web / Mobile.
 ///
 /// Features:
-/// - Automatically downsamples images during decoding (memCacheWidth/cacheWidth: 400)
+/// - Automatically downsamples images during decoding ([memCacheWidth]: 400)
 ///   reducing memory consumption from ~12.3MB down to ~640KB (95% memory drop).
-/// - On Flutter Web: Uses [Image.network] with [cacheWidth]/[cacheHeight] to prevent
+/// - Decode is constrained by WIDTH ONLY so the source aspect ratio is always
+///   preserved: passing both width and height to the decoder forces the bitmap
+///   into an exact rectangle and visibly distorts non-square photos.
+/// - On Flutter Web: Uses [Image.network] with [cacheWidth] to prevent
 ///   CanvasKit WebGL texture loss and black square artifacts.
 /// - On Mobile: Uses [CachedNetworkImage] for persistent on-disk and in-memory cache.
 /// - Graceful fallback from failed 't_bg_remove' transformations to the original raw image URL.
 /// - Graceful placeholder and fallback icon.
+///
+/// Sizing guide (decode width cap per surface):
+/// - Grid cards / small thumbs: 150-400 (card ~170-200pt wide, 400 ~= 2x retina).
+/// - Full-width detail / cover: 800.
 class ClosyNetworkImage extends StatefulWidget {
   final String imageUrl;
   final double? width;
@@ -20,8 +27,10 @@ class ClosyNetworkImage extends StatefulWidget {
   final BoxFit fit;
   final Widget? placeholder;
   final Widget? errorWidget;
+
+  /// Decode width cap in pixels. Height scales proportionally to preserve
+  /// the source aspect ratio. Never pass a fixed decode height.
   final int memCacheWidth;
-  final int memCacheHeight;
   final BorderRadius? borderRadius;
 
   const ClosyNetworkImage({
@@ -33,7 +42,6 @@ class ClosyNetworkImage extends StatefulWidget {
     this.placeholder,
     this.errorWidget,
     this.memCacheWidth = 450,
-    this.memCacheHeight = 450,
     this.borderRadius,
   });
 
@@ -81,14 +89,14 @@ class _ClosyNetworkImageState extends State<ClosyNetworkImage> {
     Widget imageContent;
 
     if (kIsWeb) {
-      // Flutter Web: Native browser caching + CanvasKit downsampling
+      // Flutter Web: Native browser caching + CanvasKit downsampling.
+      // NOTE: cacheWidth only (no cacheHeight) to preserve aspect ratio.
       imageContent = Image.network(
         _activeUrl,
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
         cacheWidth: widget.memCacheWidth,
-        cacheHeight: widget.memCacheHeight,
         filterQuality: FilterQuality.medium,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
@@ -103,14 +111,14 @@ class _ClosyNetworkImageState extends State<ClosyNetworkImage> {
         },
       );
     } else {
-      // Mobile (Android / iOS): CachedNetworkImage with local SQLite/disk cache
+      // Mobile (Android / iOS): CachedNetworkImage with local SQLite/disk cache.
+      // NOTE: memCacheWidth only (no memCacheHeight) to preserve aspect ratio.
       imageContent = CachedNetworkImage(
         imageUrl: _activeUrl,
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
         memCacheWidth: widget.memCacheWidth,
-        memCacheHeight: widget.memCacheHeight,
         maxWidthDiskCache: 600,
         maxHeightDiskCache: 600,
         filterQuality: FilterQuality.medium,
