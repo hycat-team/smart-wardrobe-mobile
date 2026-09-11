@@ -128,11 +128,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.watch(authStateProvider);
     final userProfileState = ref.watch(userProfileProvider);
     final subOverview = ref.watch(subscriptionOverviewProvider);
-    final bodyProfileState = ref.watch(bodyProfileProvider);
 
     final user = userProfileState.user ?? authState.user;
     final isAuth = authState.isAuthenticated;
-    final bodyProfile = bodyProfileState.profile;
 
     final sub = subOverview.subscription;
     final quota = subOverview.dailyQuota;
@@ -156,7 +154,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onPressed: () {
                 ref.read(userProfileProvider.notifier).loadUserProfile();
                 ref.read(subscriptionOverviewProvider.notifier).loadOverview();
-                ref.read(bodyProfileProvider.notifier).loadProfile();
               },
             ),
         ],
@@ -278,7 +275,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Quick Body Stats Pill
+                // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng hồ sơ số đo):
+                // pill hiển thị chiều cao/cân nặng/dáng người.
+                /*
                 if (isAuth && bodyProfile.heightCm > 0)
                   GestureDetector(
                     onTap: () => context.push('/profile/body'),
@@ -310,6 +309,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                     ),
                   ),
+                */
 
                 if (!isAuth) ...[
                   const SizedBox(height: 16),
@@ -572,24 +572,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Xem quyền lợi chi tiết và các gói dịch vụ nâng cấp',
           () => context.push('/profile/subscription'),
         ),
+        // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng hồ sơ số đo).
+        /*
         _buildMenuTile(
           Icons.accessibility_new_rounded,
           'Hồ sơ số đo & Dáng người',
           'Cập nhật chiều cao, cân nặng, dáng người và số đo 3 vòng',
           () => context.push('/profile/body'),
         ),
+        */
         _buildMenuTile(
           Icons.analytics_outlined,
           'Thống kê & Phân tích tủ đồ',
           'Xem giá trị tủ đồ, tỷ lệ danh mục và các món đồ ít mặc',
           () => context.push('/wardrobe/insights'),
         ),
+        // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng outfits yêu thích/đã lưu).
+        /*
         _buildMenuTile(
           Icons.favorite_outline_rounded,
           'Yêu thích & Outfits đã lưu',
           'Danh sách các set đồ thời trang yêu thích của bạn',
           () => context.push('/outfits'),
         ),
+        */
       ],
     );
   }
