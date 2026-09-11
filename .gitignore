@@ -52,3 +52,14 @@ migrate_working_dir/
 
 # env
 .env
+
+# Spec Kit + agent tooling (machine-local, reinstallable on each machine).
+# Shareable parts are committed explicitly: specs/, skills-lock.json,
+# .agents/skills/closy-mobile-flutter/. Everything else below is ignored.
+.specify/
+# NOTE: .specify/memory/constitution.md is ignored with the folder above.
+# When the constitution is finalized, share it via: git add -f .specify/memory/constitution.md
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/closy-mobile-flutter/
