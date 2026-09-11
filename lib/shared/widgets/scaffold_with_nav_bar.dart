@@ -58,6 +58,13 @@ class ScaffoldWithNavBar extends StatelessWidget {
                 _buildNavItem(
                   context,
                   index: 3,
+                  icon: Icons.style_outlined,
+                  activeIcon: Icons.style_rounded,
+                  label: 'Outfits',
+                ),
+                _buildNavItem(
+                  context,
+                  index: 4,
                   icon: Icons.person_outline_rounded,
                   activeIcon: Icons.person_rounded,
                   label: 'Profile',

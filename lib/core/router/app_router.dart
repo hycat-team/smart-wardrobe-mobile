@@ -179,6 +179,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/my-outfits',
+                builder: (context, state) => const OutfitsListScreen(showBackButton: false),
+              ),
+            ],
+          ),
           // StatefulShellBranch(
           //   routes: [
           //     GoRoute(

@@ -8,7 +8,10 @@ import '../models/outfit_models.dart';
 import '../providers/outfits_list_provider.dart';
 
 class OutfitsListScreen extends ConsumerStatefulWidget {
-  const OutfitsListScreen({super.key});
+  const OutfitsListScreen({super.key, this.showBackButton = true});
+
+  /// Ẩn nút back khi màn hình nằm trong bottom-nav tab (không có khái niệm back).
+  final bool showBackButton;
 
   @override
   ConsumerState<OutfitsListScreen> createState() => _OutfitsListScreenState();
@@ -82,7 +85,6 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
                           imageUrl: currentOutfit.coverImageUrl!,
                           fit: BoxFit.contain,
                           memCacheWidth: 400,
-                          memCacheHeight: 400,
                         ),
                       ),
                     ),
@@ -175,7 +177,6 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
                                           imageUrl: fItem.imageUrl,
                                           fit: BoxFit.contain,
                                           memCacheWidth: 150,
-                                          memCacheHeight: 150,
                                         )
                                       : const Icon(Icons.checkroom, size: 24, color: AppColors.accentSandDark),
                                 ),
@@ -326,16 +327,18 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.primary),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              context.go('/studio');
-            }
-          },
-        ),
+        leading: widget.showBackButton
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.primary),
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go('/studio');
+                  }
+                },
+              )
+            : null,
         title: Text(
           'Tủ Outfit Của Tôi',
           style: GoogleFonts.playfairDisplay(
@@ -523,7 +526,6 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
                           imageUrl: outfit.coverImageUrl!,
                           fit: BoxFit.contain,
                           memCacheWidth: 350,
-                          memCacheHeight: 350,
                         )
                       : const Center(
                           child: Icon(Icons.checkroom_rounded, size: 40, color: AppColors.accentSandDark),
