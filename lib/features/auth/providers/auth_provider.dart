@@ -1,4 +1,6 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/session/session_provider.dart';
 import '../data/auth_repository.dart';
 import '../models/auth_models.dart';
 
@@ -46,8 +48,9 @@ class AuthState {
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repository;
+  final Ref _ref;
 
-  AuthNotifier(this._repository) : super(const AuthState()) {
+  AuthNotifier(this._repository, this._ref) : super(const AuthState()) {
     checkAuthStatus();
   }
 
@@ -58,8 +61,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final user = await _repository.getCurrentUser();
         state = state.copyWith(isAuthenticated: true, user: user);
       } catch (_) {
-        await _repository.logout();
-        state = const AuthState(isAuthenticated: false, user: null);
+        // Dùng chung logout() để khi token hết hạn giữa phiên thì
+        // toàn bộ state cũ cũng bị dọn sạch, không chỉ token.
+        await logout();
       }
     } else {
       state = const AuthState(isAuthenticated: false, user: null);
@@ -198,12 +202,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Chỉ bump session khi thực sự có phiên: tránh rebuild scope thừa
+    // lúc cold-start với token invalid (khi đó scope vốn đã sạch).
+    final hadSession = state.isAuthenticated;
     await _repository.logout();
+    // Xóa cache ảnh trong RAM để avatar/ảnh của A không lóe lên ở B.
+    PaintingBinding.instance.imageCache.clear();
     state = const AuthState(isAuthenticated: false, user: null);
+    if (hadSession) {
+      _ref.read(sessionProvider.notifier).state++;
+    }
   }
 }
 
 final authStateProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final repo = ref.watch(authRepositoryProvider);
-  return AuthNotifier(repo);
+  return AuthNotifier(repo, ref);
 });
