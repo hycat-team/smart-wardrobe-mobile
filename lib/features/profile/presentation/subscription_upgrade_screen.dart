@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
+import '../utils/payment_link_opener.dart';
 import 'widgets/topup_bottom_sheet.dart';
 
 class SubscriptionUpgradeScreen extends ConsumerStatefulWidget {
@@ -42,15 +42,21 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
       setState(() => _isProcessing = false);
 
       if (link != null && link.paymentUrl.isNotEmpty) {
+        final pending = PendingPayment.purchase(
+          link: link,
+          amount: premiumPlan.price.toDouble(),
+          planLabel: '${premiumPlan.name} (${premiumPlan.durationDays} ngày)',
+        );
         // 1. Open PayOS Checkout URL
-        final uri = Uri.parse(link.paymentUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+        await openPaymentLink(
+          context,
+          paymentUrl: pending.paymentUrl,
+          orderCode: pending.orderCode,
+        );
 
         // 2. Navigate to waiting screen with live polling
         if (mounted) {
-          context.push('/profile/subscription/waiting', extra: link);
+          context.push('/profile/subscription/waiting', extra: pending);
         }
       } else {
         final err = ref.read(subscriptionOverviewProvider).purchaseErrorMessage ??

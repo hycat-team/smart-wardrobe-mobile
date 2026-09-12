@@ -143,11 +143,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/subscription/waiting',
         builder: (context, state) {
-          final link = state.extra as PaymentLinkModel?;
-          if (link == null) {
+          final pending = state.extra as PendingPayment?;
+          if (pending == null) {
             return const SubscriptionUpgradeScreen();
           }
-          return PaymentWaitingScreen(paymentLink: link);
+          return PaymentWaitingScreen(pending: pending);
         },
       ),
       StatefulShellRoute.indexedStack(

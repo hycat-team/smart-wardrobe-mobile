@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../models/user_profile_models.dart';
 import '../../providers/profile_provider.dart';
+import '../../utils/payment_link_opener.dart';
 
 class TopUpBottomSheet extends ConsumerStatefulWidget {
   const TopUpBottomSheet({super.key});
@@ -59,6 +60,8 @@ class _TopUpBottomSheetState extends ConsumerState<TopUpBottomSheet> {
 
     try {
       final notifier = ref.read(walletProvider.notifier);
+      // Snapshot số dư trước khi tạo link để waiting poll tăng trưởng tuyệt đối.
+      final baselineBalance = ref.read(walletProvider).wallet.balance;
       final returnUrl = kIsWeb
           ? '${Uri.base.origin}/profile'
           : 'smartwardrobe://wallet/topup/success';
@@ -72,15 +75,21 @@ class _TopUpBottomSheetState extends ConsumerState<TopUpBottomSheet> {
       setState(() => _isCreatingTopUp = false);
 
       if (link != null && link.paymentUrl.isNotEmpty) {
+        final pending = PendingPayment.topUp(
+          link: link,
+          amount: entered,
+          baselineBalance: baselineBalance,
+        );
         Navigator.pop(context);
 
-        final uri = Uri.parse(link.paymentUrl);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        }
+        await openPaymentLink(
+          context,
+          paymentUrl: pending.paymentUrl,
+          orderCode: pending.orderCode,
+        );
 
         if (mounted) {
-          context.push('/profile/subscription/waiting', extra: link);
+          context.push('/profile/subscription/waiting', extra: pending);
         }
       } else {
         final err = ref.read(walletProvider).errorMessage ?? 'Không thể tạo mã VietQR. Vui lòng thử lại!';
@@ -120,11 +129,12 @@ class _TopUpBottomSheetState extends ConsumerState<TopUpBottomSheet> {
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
             child: Container(
               width: 44,
               height: 4,
@@ -274,6 +284,7 @@ class _TopUpBottomSheetState extends ConsumerState<TopUpBottomSheet> {
                   ),
           ),
         ],
+        ),
       ),
     );
   }

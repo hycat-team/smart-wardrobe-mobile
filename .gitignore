@@ -1,4 +1,4 @@
-﻿# Miscellaneous
+﻿feat# Miscellaneous
 *.class
 *.log
 *.pyc
@@ -63,3 +63,4 @@ migrate_working_dir/
 !.agents/skills/
 .agents/skills/*
 !.agents/skills/closy-mobile-flutter/
+.codegraph/

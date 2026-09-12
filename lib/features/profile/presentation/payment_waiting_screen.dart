@@ -3,15 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
+import '../utils/payment_link_opener.dart';
 
+/// Màn hình chờ thanh toán PayOS dùng chung cho nạp ví và mua gói.
+///
+/// Caller BẮT BUỘC truyền [PendingPayment] với đúng số tiền / loại giao dịch
+/// (xem [PendingPayment.topUp] và [PendingPayment.purchase]).
+/// Trạng thái thật luôn lấy từ backend qua polling, không tin returnUrl.
 class PaymentWaitingScreen extends ConsumerStatefulWidget {
-  final PaymentLinkModel paymentLink;
+  final PendingPayment pending;
 
-  const PaymentWaitingScreen({super.key, required this.paymentLink});
+  const PaymentWaitingScreen({super.key, required this.pending});
 
   @override
   ConsumerState<PaymentWaitingScreen> createState() => _PaymentWaitingScreenState();
@@ -21,7 +26,12 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
   Timer? _pollingTimer;
   int _secondsElapsed = 0;
   bool _isSuccess = false;
+  bool _isExpired = false;
+  bool _isChecking = false;
   late AnimationController _pulseController;
+
+  static const int _fastPhaseSeconds = 120;
+  static const int _expirySeconds = 900;
 
   @override
   void initState() {
@@ -31,38 +41,80 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _startPolling();
+    _scheduleNext();
   }
 
-  void _startPolling() {
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+  /// Polling lùi dần: 3s trong 2 phút đầu, sau đó 10s tới tối đa 15 phút.
+  void _scheduleNext() {
+    final interval = _secondsElapsed < _fastPhaseSeconds ? 3 : 10;
+    _pollingTimer = Timer(Duration(seconds: interval), () async {
       if (!mounted) return;
-      setState(() => _secondsElapsed += 3);
+      setState(() => _secondsElapsed += interval);
 
-      final notifier = ref.read(subscriptionOverviewProvider.notifier);
-      final isPremiumNow = await notifier.checkSubscriptionStatus();
+      final done = await _checkOnce();
+      if (!mounted) return;
 
-      if (isPremiumNow && mounted) {
-        timer.cancel();
-        setState(() => _isSuccess = true);
+      if (done) {
+        _onSuccess();
+        return;
       }
-
-      // If waiting more than 15 minutes (900s), cancel timer
-      if (_secondsElapsed >= 900) {
-        timer.cancel();
+      if (_secondsElapsed >= _expirySeconds || widget.pending.isExpired) {
+        _pollingTimer?.cancel();
+        setState(() => _isExpired = true);
+        return;
       }
+      _scheduleNext();
     });
   }
 
-  Future<void> _reopenPayOS() async {
-    final uri = Uri.parse(widget.paymentLink.paymentUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(
-        uri,
-        mode: LaunchMode.platformDefault,
-        webOnlyWindowName: '_blank',
+  /// Một lượt kiểm tra trạng thái theo đúng loại giao dịch.
+  Future<bool> _checkOnce() async {
+    if (widget.pending.isTopUp) {
+      try {
+        await ref.read(walletProvider.notifier).loadWallet();
+        final current = ref.read(walletProvider).wallet.balance;
+        return current >=
+            widget.pending.baselineBalance + widget.pending.amount - 0.5;
+      } catch (_) {
+        return false;
+      }
+    }
+    return ref.read(subscriptionOverviewProvider.notifier).checkSubscriptionStatus();
+  }
+
+  void _onSuccess() {
+    _pollingTimer?.cancel();
+    ref.invalidate(walletStatementsProvider);
+    if (!widget.pending.isTopUp) {
+      ref.read(subscriptionOverviewProvider.notifier).loadOverview();
+    }
+    if (mounted) setState(() => _isSuccess = true);
+  }
+
+  /// Nút "Tôi đã thanh toán" — kiểm tra ngay thay vì đợi lượt poll tiếp theo.
+  Future<void> _checkNow() async {
+    if (_isChecking || _isSuccess || _isExpired) return;
+    setState(() => _isChecking = true);
+    final done = await _checkOnce();
+    if (!mounted) return;
+    setState(() => _isChecking = false);
+    if (done) {
+      _onSuccess();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa ghi nhận thanh toán. Nếu bạn vừa chuyển khoản, vui lòng đợi thêm ít phút rồi thử lại.'),
+        ),
       );
     }
+  }
+
+  Future<void> _reopenPayOS() async {
+    await openPaymentLink(
+      context,
+      paymentUrl: widget.pending.paymentUrl,
+      orderCode: widget.pending.orderCode,
+    );
   }
 
   @override
@@ -81,10 +133,14 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
   @override
   Widget build(BuildContext context) {
     if (_isSuccess) {
-      return _buildSuccessCelebration();
+      return _buildSuccess();
+    }
+    if (_isExpired) {
+      return _buildExpired();
     }
 
     const goldColor = Color(0xFFD4AF37);
+    final pending = widget.pending;
 
     return PopScope(
       canPop: false,
@@ -121,7 +177,7 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
         backgroundColor: AppColors.background,
         appBar: AppBar(
           title: Text(
-            'Thanh Toán PayOS',
+            pending.isTopUp ? 'Nạp Tiền PayOS' : 'Thanh Toán PayOS',
             style: GoogleFonts.playfairDisplay(
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -193,7 +249,7 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
               ),
               const SizedBox(height: 28),
 
-              // Order detail card
+              // Order detail card — số tiền / nhãn lấy từ PendingPayment, không hardcode
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -210,11 +266,14 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
                 ),
                 child: Column(
                   children: [
-                    _buildInfoRow('Mã đơn hàng', '#${widget.paymentLink.orderCode}', isBold: true),
+                    _buildInfoRow('Mã đơn hàng', '#${pending.orderCode}', isBold: true),
                     const Divider(height: 24),
-                    _buildInfoRow('Số tiền', '249.000 đ', isBold: true),
+                    _buildInfoRow('Số tiền', pending.formattedAmount, isBold: true),
                     const Divider(height: 24),
-                    _buildInfoRow('Gói đăng ký', 'Premium (30 ngày)'),
+                    if (pending.isTopUp)
+                      _buildInfoRow('Loại giao dịch', 'Nạp ví Closy Pay')
+                    else
+                      _buildInfoRow('Gói đăng ký', pending.label),
                     const Divider(height: 24),
                     _buildInfoRow('Phương thức', 'VietQR / Banking'),
                   ],
@@ -269,6 +328,32 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
               ),
               const SizedBox(height: 20),
 
+              // Button: I have paid — check immediately
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isChecking ? null : _checkNow,
+                  icon: _isChecking
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                        )
+                      : const Icon(Icons.verified_outlined, size: 18),
+                  label: Text(
+                    _isChecking ? 'Đang kiểm tra...' : 'Tôi Đã Thanh Toán',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
               // Button: Reopen PayOS
               SizedBox(
                 width: double.infinity,
@@ -290,10 +375,12 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
               const SizedBox(height: 20),
 
               // Note
-              const Text(
-                'Hệ thống tự động kiểm tra mỗi 3 giây. Ngay khi giao dịch được xác nhận, tài khoản của bạn sẽ lập tức được nâng cấp.',
+              Text(
+                pending.isTopUp
+                    ? 'Hệ thống tự động kiểm tra định kỳ. Ngay khi giao dịch được xác nhận, số dư ví của bạn sẽ được cộng ngay.'
+                    : 'Hệ thống tự động kiểm tra định kỳ. Ngay khi giao dịch được xác nhận, tài khoản của bạn sẽ lập tức được nâng cấp.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.4),
               ),
             ],
           ),
@@ -307,19 +394,115 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: isBold ? 16 : 14,
-            fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
-            color: isBold ? const Color(0xFFD4AF37) : AppColors.textPrimary,
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: isBold ? 16 : 14,
+              fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+              color: isBold ? const Color(0xFFD4AF37) : AppColors.textPrimary,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSuccessCelebration() {
+  Widget _buildSuccess() {
+    if (widget.pending.isTopUp) {
+      return _buildTopUpSuccess();
+    }
+    return _buildSubscriptionSuccess();
+  }
+
+  Widget _buildTopUpSuccess() {
+    const goldColor = Color(0xFFD4AF37);
+    final wallet = ref.watch(walletProvider).wallet;
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Spacer(),
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: goldColor.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: goldColor, width: 3),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 60,
+                    color: goldColor,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Nạp Tiền Thành Công!',
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Ví Closy Pay của bạn đã được cộng ${widget.pending.formattedAmount}.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Số dư hiện tại: ${wallet.formattedBalance}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: goldColor,
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    ref.read(walletProvider.notifier).loadWallet();
+                    ref.invalidate(walletStatementsProvider);
+                    context.go('/profile/wallet');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text(
+                    'Về Ví Closy Pay',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionSuccess() {
     const goldColor = Color(0xFFD4AF37);
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -413,6 +596,86 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
                   ),
                   child: const Text(
                     'Khám Phá Đặc Quyền Ngay',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpired() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Spacer(),
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.red.shade300, width: 3),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.timer_off_outlined,
+                    size: 60,
+                    color: Colors.red.shade400,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+              Text(
+                'Mã Thanh Toán Đã Hết Hạn',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Mã #${widget.pending.orderCode} (${widget.pending.formattedAmount}) đã quá 15 phút và không còn hiệu lực. Số dư của bạn không thay đổi.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+              const Spacer(),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => context.pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text(
+                    'Tạo Mã Mới',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                   ),
                 ),

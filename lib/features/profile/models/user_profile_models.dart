@@ -293,6 +293,102 @@ class PaymentLinkModel {
   }
 }
 
+/// Loại giao dịch PayOS mà màn hình chờ đang theo dõi.
+enum PaymentKind {
+  /// Nạp tiền vào ví — success khi số dư ví tăng đủ số tiền.
+  walletTopUp,
+
+  /// Mua gói trực tiếp — success khi subscription thành Premium.
+  directPurchase,
+}
+
+/// Gói thông tin mà caller PHẢI truyền cho PaymentWaitingScreen.
+/// Khắc phục lỗi hardcode số tiền / tên gói ở màn hình chờ cũ.
+class PendingPayment {
+  /// Mã đơn duy nhất từ backend.
+  final int orderCode;
+
+  /// Checkout URL PayOS.
+  final String paymentUrl;
+
+  /// Số tiền đúng của giao dịch (không dùng fallback).
+  final double amount;
+
+  /// Loại giao dịch — quyết định poll ví hay poll subscription.
+  final PaymentKind kind;
+
+  /// Nhãn hiển thị: topup dùng mặc định, mua gói dùng tên gói.
+  final String label;
+
+  /// Snapshot số dư ví ngay trước khi tạo link (chỉ dùng cho nạp ví).
+  final double baselineBalance;
+
+  /// Thời điểm tạo link — dùng để tính hết hạn 15 phút.
+  final DateTime createdAt;
+
+  const PendingPayment({
+    required this.orderCode,
+    required this.paymentUrl,
+    required this.amount,
+    required this.kind,
+    required this.label,
+    this.baselineBalance = 0,
+    required this.createdAt,
+  });
+
+  /// Dựng từ link nạp ví vừa tạo.
+  factory PendingPayment.topUp({
+    required PaymentLinkModel link,
+    required double amount,
+    required double baselineBalance,
+  }) {
+    return PendingPayment(
+      orderCode: link.orderCode,
+      paymentUrl: link.paymentUrl,
+      amount: amount,
+      kind: PaymentKind.walletTopUp,
+      label: 'Nạp ví Closy Pay',
+      baselineBalance: baselineBalance,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  /// Dựng từ link mua gói trực tiếp vừa tạo.
+  factory PendingPayment.purchase({
+    required PaymentLinkModel link,
+    required double amount,
+    required String planLabel,
+  }) {
+    return PendingPayment(
+      orderCode: link.orderCode,
+      paymentUrl: link.paymentUrl,
+      amount: amount,
+      kind: PaymentKind.directPurchase,
+      label: planLabel,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  bool get isTopUp => kind == PaymentKind.walletTopUp;
+
+  /// Mã PayOS hết hiệu lực sau 15 phút nếu chưa thanh toán.
+  bool get isExpired =>
+      DateTime.now().difference(createdAt).inSeconds >= 900;
+
+  String get formattedAmount {
+    final intAmt = amount.toInt();
+    final str = intAmt.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} đ';
+  }
+}
+
 
 class WalletModel {
   final String userId;

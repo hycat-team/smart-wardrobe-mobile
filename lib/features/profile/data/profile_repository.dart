@@ -5,14 +5,20 @@ import '../../../core/network/api_client.dart';
 import '../../auth/models/auth_models.dart';
 import '../models/body_profile_models.dart';
 import '../models/user_profile_models.dart';
+import 'payment_repository.dart';
 
 class ProfileRepository {
   final ApiClient _apiClient;
   final Dio _cloudinaryDio;
+  PaymentRepository? _payments;
 
   ProfileRepository({ApiClient? apiClient, Dio? cloudinaryDio})
       : _apiClient = apiClient ?? ApiClient(),
         _cloudinaryDio = cloudinaryDio ?? Dio();
+
+  /// Payment APIs — single implementation lives in [PaymentRepository].
+  PaymentRepository get payments =>
+      _payments ??= PaymentRepository(apiClient: _apiClient);
 
   Map<String, dynamic>? _extractMap(dynamic data) {
     if (data == null) return null;
@@ -146,77 +152,28 @@ class ProfileRepository {
     }
   }
 
-  // 7. Get user active subscription
-  Future<UserSubscriptionModel> getMySubscription() async {
-    try {
-      final response = await _apiClient.dio.get('/subscriptions/me');
-      final body = response.data;
-      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
-      return UserSubscriptionModel.fromJson(data);
-    } on DioException catch (_) {
-      return const UserSubscriptionModel();
-    }
-  }
+  // 7. Get user active subscription (delegated to PaymentRepository)
+  Future<UserSubscriptionModel> getMySubscription() =>
+      payments.getMySubscription();
 
-  // 8. Get user daily AI quota
-  Future<DailyQuotaModel> getDailyQuota() async {
-    try {
-      final response = await _apiClient.dio.get('/subscriptions/me/daily-quota');
-      final body = response.data;
-      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
-      return DailyQuotaModel.fromJson(data);
-    } on DioException catch (_) {
-      return const DailyQuotaModel();
-    }
-  }
+  // 8. Get user daily AI quota (delegated to PaymentRepository)
+  Future<DailyQuotaModel> getDailyQuota() => payments.getDailyQuota();
 
-  // 9. Get all subscription plans
-  Future<List<SubscriptionPlanModel>> getSubscriptionPlans() async {
-    try {
-      final response = await _apiClient.dio.get('/subscriptions/plans');
-      final body = response.data;
-      final data = body['data'];
-      if (data is List) {
-        return data.map((item) {
-          final map = _extractMap(item) ?? {};
-          return SubscriptionPlanModel.fromJson(map);
-        }).toList();
-      }
-      return [];
-    } on DioException catch (_) {
-      return [];
-    }
-  }
+  // 9. Get all subscription plans (delegated to PaymentRepository)
+  Future<List<SubscriptionPlanModel>> getSubscriptionPlans() =>
+      payments.getSubscriptionPlans();
 
-  // 10. Create Direct Purchase Link via PayOS
+  // 10. Create Direct Purchase Link via PayOS (delegated to PaymentRepository)
   Future<PaymentLinkModel> createDirectPurchase({
     required String planSlug,
     String? returnUrl,
     String? cancelUrl,
-  }) async {
-    try {
-      final response = await _apiClient.dio.post(
-        '/subscriptions/me/purchase',
-        data: {
-          'planSlug': planSlug,
-          if (returnUrl != null && returnUrl.isNotEmpty) 'returnUrl': returnUrl,
-          if (cancelUrl != null && cancelUrl.isNotEmpty) 'cancelUrl': cancelUrl,
-        },
+  }) =>
+      payments.createDirectPurchase(
+        planSlug: planSlug,
+        returnUrl: returnUrl,
+        cancelUrl: cancelUrl,
       );
-      final body = response.data;
-      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
-      return PaymentLinkModel.fromJson(data);
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String message = 'Khởi tạo thanh toán thất bại';
-      if (data is Map && data['message'] != null) {
-        message = data['message'].toString();
-      } else if (e.message != null) {
-        message = e.message!;
-      }
-      throw Exception(message);
-    }
-  }
 
 // 11. Body Profile
   Future<BodyProfileModel> getBodyProfile() async {
@@ -253,84 +210,19 @@ class ProfileRepository {
     }
   }
 
-  // 10d. Wallet - Get user balance
-  Future<WalletModel> getWallet() async {
-    try {
-      final response = await _apiClient.dio.get('/subscriptions/me/wallet');
-      final body = response.data;
-      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
-      return WalletModel.fromJson(data);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? e.message ?? 'Không thể tải số dư ví');
-    }
-  }
+  // 10d. Wallet - Get user balance (delegated to PaymentRepository)
+  Future<WalletModel> getWallet() => payments.getWallet();
 
-  // 10e. Wallet - Get statements
-  Future<List<WalletStatementModel>> getWalletStatements({int page = 1, int pageSize = 20}) async {
-    try {
-      final response = await _apiClient.dio.get(
-        '/subscriptions/me/wallet/statements',
-        queryParameters: {'page': page, 'pageSize': pageSize},
-      );
-      final body = response.data;
-      final data = body['data'];
-      List items = [];
-      if (data is Map && data['items'] is List) {
-        items = data['items'];
-      } else if (data is List) {
-        items = data;
-      } else if (body['items'] is List) {
-        items = body['items'];
-      }
-      return items.map((item) => WalletStatementModel.fromJson(Map<String, dynamic>.from(item))).toList();
-    } on DioException catch (_) {
-      return [];
-    }
-  }
+  // 10e. Wallet - Get statements (delegated to PaymentRepository)
+  Future<List<WalletStatementModel>> getWalletStatements({int page = 1, int pageSize = 20}) =>
+      payments.getWalletStatements(page: page, pageSize: pageSize);
 
-  // 10f. Wallet - Create topup link
-  Future<PaymentLinkModel> createWalletTopUp(double amount, {String? returnUrl, String? cancelUrl}) async {
-    try {
-      final response = await _apiClient.dio.post(
-        '/subscriptions/me/wallet/topup',
-        data: {
-          'amount': amount,
-          if (returnUrl != null && returnUrl.isNotEmpty) 'returnUrl': returnUrl,
-          if (cancelUrl != null && cancelUrl.isNotEmpty) 'cancelUrl': cancelUrl,
-        },
-      );
-      final body = response.data;
-      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
-      return PaymentLinkModel.fromJson(data);
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String message = 'Không thể tạo yêu cầu nạp tiền';
-      if (data is Map && data['message'] != null) {
-        message = data['message'].toString();
-      } else if (e.message != null) {
-        message = e.message!;
-      }
-      throw Exception(message);
-    }
-  }
+  // 10f. Wallet - Create topup link (delegated to PaymentRepository)
+  Future<PaymentLinkModel> createWalletTopUp(double amount, {String? returnUrl, String? cancelUrl}) =>
+      payments.createWalletTopUp(amount, returnUrl: returnUrl, cancelUrl: cancelUrl);
 
-  // 10g. Subscription - Purchase plan with wallet
-  Future<void> purchasePlanWithWallet(String planSlug) async {
-    try {
-      await _apiClient.dio.post(
-        '/subscriptions/me/purchase-with-wallet',
-        data: {'planSlug': planSlug},
-      );
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      String message = 'Thanh toán bằng ví thất bại';
-      if (data is Map && data['message'] != null) {
-        message = data['message'].toString();
-      } else if (e.message != null) {
-        message = e.message!;
-      }
-      throw Exception(message);
-    }
-  }
+  // 10g. Subscription - Purchase plan with wallet (delegated to PaymentRepository)
+  Future<void> purchasePlanWithWallet(String planSlug) =>
+      payments.purchasePlanWithWallet(planSlug);
 
 }
