@@ -1,3 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "echo 'skip install: flutter project, no npm deps'",
+  "buildCommand": "echo \"APP_ENV=production\" > .env && if [ ! -d \"$HOME/flutter\" ]; then git clone --depth 1 -b 3.47.2 https://github.com/flutter/flutter.git \"$HOME/flutter\"; fi && export PATH=\"$HOME/flutter/bin:$PATH\" && flutter --version && flutter pub get && flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL --dart-define=API_BASE_URL_ANDROID=$API_BASE_URL_ANDROID --dart-define=CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME",
+  "outputDirectory": "build/web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

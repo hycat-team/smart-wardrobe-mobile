@@ -23,6 +23,7 @@ import 'package:smart_wardrobe/features/profile/presentation/change_password_scr
 import 'package:smart_wardrobe/features/profile/presentation/subscription_detail_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/subscription_upgrade_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/payment_waiting_screen.dart';
+import 'package:smart_wardrobe/features/profile/presentation/payment_result_screen.dart';
 import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -148,6 +149,42 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             return const SubscriptionUpgradeScreen();
           }
           return PaymentWaitingScreen(pending: pending);
+        },
+      ),
+      GoRoute(
+        // Trang thông báo kết quả thanh toán: mọi return từ PayOS
+        // (deep-link mobile / web returnUrl) và mọi kết luận từ
+        // PaymentWaitingScreen đều đổ về đây.
+        path: '/profile/payment/result',
+        builder: (context, state) {
+          final extra = state.extra;
+          if (extra is PaymentResult) {
+            return PaymentResultScreen(result: extra);
+          }
+          if (extra is PendingPayment) {
+            // Ưu tiên đọc param `result` của mình; PayOS có thể append
+            // thêm `status=PAID` / `cancel=true` đè lên query.
+            final statusStr = state.uri.queryParameters['result'] ??
+                state.uri.queryParameters['status'] ??
+                'success';
+            final status = switch (statusStr.toLowerCase()) {
+              'success' => PaymentResultStatus.success,
+              'cancelled' || 'cancel' || 'canceled' =>
+                PaymentResultStatus.cancelled,
+              'expired' => PaymentResultStatus.expired,
+              _ => PaymentResultStatus.failed,
+            };
+            return PaymentResultScreen(
+              result: PaymentResult.fromPending(extra, status),
+            );
+          }
+          // Cold-start từ deep-link / web: chỉ còn query params.
+          if (state.uri.queryParameters.isNotEmpty) {
+            return PaymentResultScreen(
+              result: PaymentResult.fromQuery(state.uri.queryParameters),
+            );
+          }
+          return const SubscriptionUpgradeScreen();
         },
       ),
       StatefulShellRoute.indexedStack(

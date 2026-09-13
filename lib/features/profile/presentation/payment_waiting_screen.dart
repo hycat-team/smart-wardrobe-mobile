@@ -22,12 +22,14 @@ class PaymentWaitingScreen extends ConsumerStatefulWidget {
   ConsumerState<PaymentWaitingScreen> createState() => _PaymentWaitingScreenState();
 }
 
-class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> with SingleTickerProviderStateMixin {
+class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   Timer? _pollingTimer;
   int _secondsElapsed = 0;
   bool _isSuccess = false;
   bool _isExpired = false;
   bool _isChecking = false;
+  bool _navigatedToResult = false;
   late AnimationController _pulseController;
 
   static const int _fastPhaseSeconds = 120;
@@ -36,12 +38,22 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
     _scheduleNext();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // User quay lại app từ browser / app ngân hàng (nút back hệ thống,
+    // app-switch): verify ngay thay vì đợi lượt poll tiếp theo.
+    if (state == AppLifecycleState.resumed) {
+      _checkNow(silent: true);
+    }
   }
 
   /// Polling lùi dần: 3s trong 2 phút đầu, sau đó 10s tới tối đa 15 phút.
@@ -60,7 +72,7 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
       }
       if (_secondsElapsed >= _expirySeconds || widget.pending.isExpired) {
         _pollingTimer?.cancel();
-        setState(() => _isExpired = true);
+        _onExpired();
         return;
       }
       _scheduleNext();
@@ -87,20 +99,62 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
     ref.invalidate(walletStatementsProvider);
     if (!widget.pending.isTopUp) {
       ref.read(subscriptionOverviewProvider.notifier).loadOverview();
+    } else {
+      ref.read(walletProvider.notifier).loadWallet();
     }
+    // Direct về trang thông báo kết quả để user luôn thấy success,
+    // thay vì ở lại màn chờ hoặc rơi về home khi app restart.
+    if (_navigatedToResult || !mounted) {
+      if (mounted) setState(() => _isSuccess = true);
+      return;
+    }
+    _navigatedToResult = true;
     if (mounted) setState(() => _isSuccess = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go(
+        '/profile/payment/result',
+        extra: PaymentResult.fromPending(
+          widget.pending,
+          PaymentResultStatus.success,
+        ),
+      );
+    });
+  }
+
+  void _onExpired() {
+    if (_navigatedToResult || !mounted) {
+      if (mounted) setState(() => _isExpired = true);
+      return;
+    }
+    _navigatedToResult = true;
+    if (mounted) setState(() => _isExpired = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.go(
+        '/profile/payment/result',
+        extra: PaymentResult.fromPending(
+          widget.pending,
+          PaymentResultStatus.expired,
+          message:
+              'Mã #${widget.pending.orderCode} (${widget.pending.formattedAmount}) đã quá 15 phút và không còn hiệu lực. Số dư của bạn không thay đổi.',
+        ),
+      );
+    });
   }
 
   /// Nút "Tôi đã thanh toán" — kiểm tra ngay thay vì đợi lượt poll tiếp theo.
-  Future<void> _checkNow() async {
-    if (_isChecking || _isSuccess || _isExpired) return;
+  /// [silent] dùng cho auto-check khi resume: success thì direct về trang
+  /// thông báo, fail thì im lặng để poll tiếp, không spam SnackBar.
+  Future<void> _checkNow({bool silent = false}) async {
+    if (_isChecking || _isSuccess || _isExpired || _navigatedToResult) return;
     setState(() => _isChecking = true);
     final done = await _checkOnce();
     if (!mounted) return;
     setState(() => _isChecking = false);
     if (done) {
       _onSuccess();
-    } else {
+    } else if (!silent) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Chưa ghi nhận thanh toán. Nếu bạn vừa chuyển khoản, vui lòng đợi thêm ít phút rồi thử lại.'),
@@ -119,6 +173,7 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen> wit
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pollingTimer?.cancel();
     _pulseController.dispose();
     super.dispose();

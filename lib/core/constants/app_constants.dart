@@ -5,25 +5,40 @@ import 'dart:io' show Platform;
 class AppConstants {
   static const String appName = 'Smart Wardrobe';
 
-  // Cloudinary Cloud Name with fallback
+  // Cloudinary Cloud Name with fallback (--dart-define > .env > demo).
   static String get cloudinaryCloudName {
+    const defined = String.fromEnvironment('CLOUDINARY_CLOUD_NAME');
+    if (defined.isNotEmpty) return defined;
     if (dotenv.isInitialized) {
       return dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? 'demo';
     }
     return 'demo';
   }
 
-  // Base API URL with Android emulator support & .env loading
+  // Base API URL with Android emulator support & .env loading.
+  // Thứ tự ưu tiên: --dart-define (cho bản build CI/Vercel) > .env > localhost.
   static String get baseUrl {
+    const definedUrl = String.fromEnvironment('API_BASE_URL');
+    const definedAndroidUrl = String.fromEnvironment('API_BASE_URL_ANDROID');
     if (dotenv.isInitialized) {
       try {
         if (!kIsWeb && Platform.isAndroid) {
-          return dotenv.env['API_BASE_URL_ANDROID'] ??
-              'http://[IP_ADDRESS]/api/v1';
+          return definedAndroidUrl.isNotEmpty
+              ? definedAndroidUrl
+              : (dotenv.env['API_BASE_URL_ANDROID'] ??
+                  'http://[IP_ADDRESS]/api/v1');
         }
       } catch (_) {}
+      if (definedUrl.isNotEmpty) return definedUrl;
       return dotenv.env['API_BASE_URL'] ?? 'http://[IP_ADDRESS]/api/v1';
     }
+
+    try {
+      if (!kIsWeb && Platform.isAndroid && definedAndroidUrl.isNotEmpty) {
+        return definedAndroidUrl;
+      }
+    } catch (_) {}
+    if (definedUrl.isNotEmpty) return definedUrl;
 
     try {
       if (!kIsWeb && Platform.isAndroid) {

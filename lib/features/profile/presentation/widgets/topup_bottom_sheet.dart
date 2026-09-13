@@ -62,14 +62,17 @@ class _TopUpBottomSheetState extends ConsumerState<TopUpBottomSheet> {
       final notifier = ref.read(walletProvider.notifier);
       // Snapshot số dư trước khi tạo link để waiting poll tăng trưởng tuyệt đối.
       final baselineBalance = ref.read(walletProvider).wallet.balance;
-      final returnUrl = kIsWeb
-          ? '${Uri.base.origin}/profile'
-          : 'smartwardrobe://wallet/topup/success';
-      final cancelUrl = kIsWeb
-          ? '${Uri.base.origin}/profile'
-          : 'smartwardrobe://wallet/topup/cancel';
+      final urls = PaymentReturnUrls.forTopUp(
+        isWeb: kIsWeb,
+        webOrigin: kIsWeb ? Uri.base.origin : null,
+        amount: entered,
+      );
 
-      final link = await notifier.topUp(entered, returnUrl: returnUrl, cancelUrl: cancelUrl);
+      final link = await notifier.topUp(
+        entered,
+        returnUrl: urls.returnUrl,
+        cancelUrl: urls.cancelUrl,
+      );
 
       if (!mounted) return;
       setState(() => _isCreatingTopUp = false);

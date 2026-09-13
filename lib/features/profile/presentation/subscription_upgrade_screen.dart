@@ -25,17 +25,15 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
 
     try {
       final notifier = ref.read(subscriptionOverviewProvider.notifier);
-      final returnUrl = kIsWeb
-          ? '${Uri.base.origin}/profile/subscription'
-          : 'smartwardrobe://subscription/success';
-      final cancelUrl = kIsWeb
-          ? '${Uri.base.origin}/profile/subscription'
-          : 'smartwardrobe://subscription/cancel';
-
+      final urls = PaymentReturnUrls.forPurchase(
+        isWeb: kIsWeb,
+        webOrigin: kIsWeb ? Uri.base.origin : null,
+        amount: premiumPlan.price.toDouble(),
+      );
       final link = await notifier.createPurchase(
         premiumPlan.slug.isNotEmpty ? premiumPlan.slug : 'premium-monthly',
-        returnUrl: returnUrl,
-        cancelUrl: cancelUrl,
+        returnUrl: urls.returnUrl,
+        cancelUrl: urls.cancelUrl,
       );
 
       if (!mounted) return;

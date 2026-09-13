@@ -390,6 +390,178 @@ class PendingPayment {
 }
 
 
+/// Trạng thái kết quả thanh toán hiển thị trên trang thông báo.
+enum PaymentResultStatus {
+  success,
+  failed,
+  cancelled,
+  expired,
+}
+
+/// Kết quả thanh toán để điều hướng về trang thông báo.
+///
+/// Deep-link / web returnUrl chỉ mang [orderCode]/[status] để điều hướng;
+/// trạng thái thật luôn verify lại qua backend (ví / subscription).
+class PaymentResult {
+  final int orderCode;
+  final double amount;
+  final PaymentKind kind;
+  final String label;
+  final PaymentResultStatus status;
+  final String? message;
+  final String? paymentUrl;
+
+  const PaymentResult({
+    required this.orderCode,
+    required this.amount,
+    required this.kind,
+    required this.label,
+    required this.status,
+    this.message,
+    this.paymentUrl,
+  });
+
+  bool get isTopUp => kind == PaymentKind.walletTopUp;
+  bool get isSuccess => status == PaymentResultStatus.success;
+
+  String get formattedAmount {
+    final intAmt = amount.toInt();
+    final str = intAmt.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} đ';
+  }
+
+  factory PaymentResult.fromPending(
+    PendingPayment pending,
+    PaymentResultStatus status, {
+    String? message,
+  }) {
+    return PaymentResult(
+      orderCode: pending.orderCode,
+      amount: pending.amount,
+      kind: pending.kind,
+      label: pending.label,
+      status: status,
+      message: message,
+      paymentUrl: pending.paymentUrl,
+    );
+  }
+
+  /// Parse từ query deep-link / web: ?status=&orderCode=&amount=&kind=
+  ///
+  /// PayOS khi redirect về returnUrl/cancelUrl sẽ append thêm param của nó
+  /// (`code=00&id=...&cancel=false&status=PAID&orderCode=...`) nên phải ưu
+  /// tiên đọc param PayOS trước, param `status` của mình chỉ là fallback.
+  factory PaymentResult.fromQuery(Map<String, String> q) {
+    final payosCancel = (q['cancel'] ?? '').toLowerCase() == 'true';
+    final payosStatus = (q['status'] ?? '').toUpperCase();
+    final payosCode = q['code'] ?? '';
+    // PayOS cancelUrl cũng có thể mang status=CANCELLED.
+    final payosCancelled = payosStatus == 'CANCELLED';
+
+    late final PaymentResultStatus status;
+    if (payosCancel || payosCancelled) {
+      status = PaymentResultStatus.cancelled;
+    } else if (payosStatus == 'PAID' || payosCode == '00') {
+      status = PaymentResultStatus.success;
+    } else {
+      final statusStr = (q['result'] ?? q['status'] ?? 'success').toLowerCase();
+      status = switch (statusStr) {
+        'success' || 'paid' => PaymentResultStatus.success,
+        'failed' || 'fail' || 'error' => PaymentResultStatus.failed,
+        'cancelled' || 'cancel' || 'canceled' => PaymentResultStatus.cancelled,
+        'expired' => PaymentResultStatus.expired,
+        // PayOS status khác (PENDING/PROCESSING...): chưa chốt được.
+        _ => PaymentResultStatus.failed,
+      };
+    }
+    final kindStr = (q['kind'] ?? 'topup').toLowerCase();
+    final kind = (kindStr.contains('purchase') || kindStr.contains('sub'))
+        ? PaymentKind.directPurchase
+        : PaymentKind.walletTopUp;
+    return PaymentResult(
+      orderCode: int.tryParse(q['orderCode'] ?? q['ordercode'] ?? '0') ?? 0,
+      amount: double.tryParse(q['amount'] ?? '0') ?? 0,
+      kind: kind,
+      label: q['label'] ??
+          (kind == PaymentKind.walletTopUp
+              ? 'Nạp ví Closy Pay'
+              : 'Gói Closy Premium'),
+      status: status,
+      message: q['message'],
+      paymentUrl: q['paymentUrl'],
+    );
+  }
+
+  Map<String, String> toQuery() => {
+        'status': status.name,
+        'orderCode': orderCode.toString(),
+        'amount': amount.toStringAsFixed(0),
+        'kind': isTopUp ? 'topup' : 'purchase',
+        'label': label,
+      };
+}
+
+/// Helper dựng returnUrl/cancelUrl cho PayOS.
+///
+/// - Mobile: custom scheme `smartwardrobe://...` (cần intent-filter + app_links).
+/// - Web: `${origin}/profile/payment/result?...` để land đúng trang thông báo.
+class PaymentReturnUrls {
+  final String returnUrl;
+  final String cancelUrl;
+
+  const PaymentReturnUrls({required this.returnUrl, required this.cancelUrl});
+
+  static PaymentReturnUrls forTopUp({
+    required bool isWeb,
+    String? webOrigin,
+    double? amount,
+  }) {
+    if (isWeb) {
+      final origin = (webOrigin ?? '').replaceAll(RegExp(r'/$'), '');
+      final amt = (amount ?? 0).toStringAsFixed(0);
+      return PaymentReturnUrls(
+        returnUrl:
+            '$origin/profile/payment/result?result=success&kind=topup&amount=$amt',
+        cancelUrl:
+            '$origin/profile/payment/result?result=cancelled&kind=topup&amount=$amt',
+      );
+    }
+    return const PaymentReturnUrls(
+      returnUrl: 'smartwardrobe://wallet/topup/success',
+      cancelUrl: 'smartwardrobe://wallet/topup/cancel',
+    );
+  }
+
+  static PaymentReturnUrls forPurchase({
+    required bool isWeb,
+    String? webOrigin,
+    double? amount,
+  }) {
+    if (isWeb) {
+      final origin = (webOrigin ?? '').replaceAll(RegExp(r'/$'), '');
+      final amt = (amount ?? 0).toStringAsFixed(0);
+      return PaymentReturnUrls(
+        returnUrl:
+            '$origin/profile/payment/result?result=success&kind=purchase&amount=$amt',
+        cancelUrl:
+            '$origin/profile/payment/result?result=cancelled&kind=purchase&amount=$amt',
+      );
+    }
+    return const PaymentReturnUrls(
+      returnUrl: 'smartwardrobe://subscription/success',
+      cancelUrl: 'smartwardrobe://subscription/cancel',
+    );
+  }
+}
+
+
 class WalletModel {
   final String userId;
   final double balance;
