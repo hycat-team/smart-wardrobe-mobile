@@ -1,0 +1,2 @@
+# Keep shell scripts LF so they run on Vercel/Linux build containers.
+tool/vercel_build.sh text eol=lf
