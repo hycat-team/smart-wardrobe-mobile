@@ -124,6 +124,8 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
               clearSelection: true,
               successMessage: 'Đã nạp "${outfit.name}" vào Studio để chỉnh sửa!',
             );
+    // Báo màn Studio nhảy sang đúng tab canvas, bất kể đang ở tab nào.
+    _ref.read(outfitStudioProvider.notifier).requestOpenCanvas();
   }
 }
 

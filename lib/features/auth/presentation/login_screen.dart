@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/router/app_router.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -53,7 +54,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           backgroundColor: AppColors.primary,
         ),
       );
-      context.go('/wardrobe');
+      // Quay lại đích đến đã giữ trước khi bị đá về /login (ví dụ trang
+      // thông báo kết quả thanh toán từ deep-link/cold-start).
+      final pending = ref.read(pendingRedirectProvider);
+      ref.read(pendingRedirectProvider.notifier).state = null;
+      context.go((pending != null && pending.isNotEmpty) ? pending : '/wardrobe');
     } else {
       final error = authState.errorMessage ?? 'Sai tài khoản hoặc mật khẩu.';
       ScaffoldMessenger.of(context).showSnackBar(

@@ -21,29 +21,29 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   final TextEditingController _promptController = TextEditingController();
   final TextEditingController _outfitNameController = TextEditingController();
   final TextEditingController _drawerSearchController = TextEditingController();
+  final TextEditingController _occasionCustomController = TextEditingController();
+  final TextEditingController _styleCustomController = TextEditingController();
+  final TextEditingController _colorCustomController = TextEditingController();
+  final ScrollController _aiScrollController = ScrollController();
   bool _isDrawerSearchOpen = false;
 
+  // 3 options cố định mỗi nhóm (CHK008) + ô tự nhập phía dưới cho giá trị khác.
   final List<Map<String, String>> _occasions = [
     {'label': 'Dạo phố / Cafe', 'value': 'casual'},
     {'label': 'Công sở / Đi làm', 'value': 'work'},
     {'label': 'Hẹn hò', 'value': 'date'},
-    {'label': 'Tiệc tùng', 'value': 'party'},
-    {'label': 'Thể thao', 'value': 'sport'},
   ];
 
   final List<Map<String, String>> _styles = [
     {'label': 'Tối giản (Minimalist)', 'value': 'minimalist'},
     {'label': 'Thanh lịch (Elegant)', 'value': 'elegant'},
     {'label': 'Cổ điển (Vintage)', 'value': 'vintage'},
-    {'label': 'Đường phố (Streetwear)', 'value': 'streetwear'},
-    {'label': 'Năng động (Sporty)', 'value': 'sporty'},
   ];
 
   final List<Map<String, String>> _colorTones = [
     {'label': 'Tông sáng', 'value': 'light'},
     {'label': 'Tông trầm / Đen', 'value': 'dark'},
     {'label': 'Pastel dịu ngọt', 'value': 'pastel'},
-    {'label': 'Màu đất / Trung tính', 'value': 'earthy'},
   ];
 
   @override
@@ -58,6 +58,10 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
     _promptController.dispose();
     _outfitNameController.dispose();
     _drawerSearchController.dispose();
+    _occasionCustomController.dispose();
+    _styleCustomController.dispose();
+    _colorCustomController.dispose();
+    _aiScrollController.dispose();
     super.dispose();
   }
 
@@ -127,7 +131,9 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                       backgroundColor: AppColors.primary,
                     ),
                   );
-                  context.push('/outfits');
+                  // Về tab Outfits trong shell để giữ bottom navbar,
+                  // không dùng route /outfits top-level (mất navbar).
+                  context.go('/my-outfits');
                 } else {
                   final error = ref.read(outfitStudioProvider).errorMessage;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -256,6 +262,36 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
     final aiState = ref.watch(aiOutfitProvider);
     final studioState = ref.watch(outfitStudioProvider);
 
+    // "Mở Trên Studio" từ list outfit: luôn nhảy sang đúng tab canvas (1),
+    // bất kể trước đó đang ở tab AI (0) hay Studio (1). Consume 1 lần.
+    if (studioState.openCanvasRequested) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_tabController.index != 1) {
+          _tabController.animateTo(1);
+        }
+        ref.read(outfitStudioProvider.notifier).consumeCanvasOpenRequest();
+      });
+    }
+
+    // Tạo set đồ AI xong: tự scroll xuống (animated) để user thấy ngay
+    // outfit vừa tạo, không phải kéo tay tìm (CHK009).
+    ref.listen<RecommendedOutfitRes?>(
+      aiOutfitProvider.select((s) => s.recommendation),
+      (prev, next) {
+        if (next != null && !identical(prev, next) && mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || !_aiScrollController.hasClients) return;
+            _aiScrollController.animateTo(
+              _aiScrollController.position.maxScrollExtent,
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+            );
+          });
+        }
+      },
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -357,8 +393,49 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   // -------------------------------------------------------------
   // TAB 1: AI OUTFIT GENERATOR
   // -------------------------------------------------------------
+  /// Ô tự nhập giá trị ngoài 3 options cứng (CHK008). Nhập chữ thì giá trị
+  /// tự nhập thắng (chip tắt chọn); bấm chip thì xóa ô tự nhập.
+  Widget _buildCustomOptionField({
+    required TextEditingController controller,
+    required String hintText,
+    required ValueChanged<String> onCustom,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(fontSize: 13, color: AppColors.primary),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          prefixIcon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+          filled: true,
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        ),
+        onChanged: (v) {
+          final text = v.trim();
+          if (text.isNotEmpty) onCustom(text);
+        },
+      ),
+    );
+  }
+
   Widget _buildAIGeneratorTab(AIOutfitState state) {
     return SingleChildScrollView(
+      controller: _aiScrollController,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -455,9 +532,17 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                   color: AppColors.primary,
                 ),
                 shape: const StadiumBorder(side: BorderSide(color: AppColors.border, width: 0.6)),
-                onSelected: (_) => ref.read(aiOutfitProvider.notifier).setOccasion(occ['value']!),
+                onSelected: (_) {
+                  _occasionCustomController.clear();
+                  ref.read(aiOutfitProvider.notifier).setOccasion(occ['value']!);
+                },
               );
             }).toList(),
+          ),
+          _buildCustomOptionField(
+            controller: _occasionCustomController,
+            hintText: 'Hoặc nhập dịp khác... (VD: đi đám cưới, du lịch)',
+            onCustom: (v) => ref.read(aiOutfitProvider.notifier).setOccasion(v),
           ),
           const SizedBox(height: 16),
 
@@ -482,9 +567,17 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                   color: AppColors.primary,
                 ),
                 shape: const StadiumBorder(side: BorderSide(color: AppColors.border, width: 0.6)),
-                onSelected: (_) => ref.read(aiOutfitProvider.notifier).setStyle(st['value']!),
+                onSelected: (_) {
+                  _styleCustomController.clear();
+                  ref.read(aiOutfitProvider.notifier).setStyle(st['value']!);
+                },
               );
             }).toList(),
+          ),
+          _buildCustomOptionField(
+            controller: _styleCustomController,
+            hintText: 'Hoặc nhập phong cách khác... (VD: Hàn Quốc, công chúa)',
+            onCustom: (v) => ref.read(aiOutfitProvider.notifier).setStyle(v),
           ),
           const SizedBox(height: 16),
 
@@ -509,9 +602,17 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                   color: AppColors.primary,
                 ),
                 shape: const StadiumBorder(side: BorderSide(color: AppColors.border, width: 0.6)),
-                onSelected: (_) => ref.read(aiOutfitProvider.notifier).setColorTone(tone['value']!),
+                onSelected: (_) {
+                  _colorCustomController.clear();
+                  ref.read(aiOutfitProvider.notifier).setColorTone(tone['value']!);
+                },
               );
             }).toList(),
+          ),
+          _buildCustomOptionField(
+            controller: _colorCustomController,
+            hintText: 'Hoặc nhập gam màu khác... (VD: trắng kem, xanh navy)',
+            onCustom: (v) => ref.read(aiOutfitProvider.notifier).setColorTone(v),
           ),
           const SizedBox(height: 16),
 
@@ -808,7 +909,8 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                           backgroundColor: AppColors.primary,
                         ),
                       );
-                      context.push('/outfits');
+                      // Về tab Outfits trong shell để giữ bottom navbar.
+                      context.go('/my-outfits');
                     } else {
                       final error = ref.read(outfitStudioProvider).errorMessage;
                       ScaffoldMessenger.of(context).showSnackBar(

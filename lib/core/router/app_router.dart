@@ -47,6 +47,19 @@ final appRouterNotifierProvider = Provider<AppRouterNotifier>((ref) {
   return AppRouterNotifier(ref);
 });
 
+/// Đích đến mà user định tới khi bị redirect về /login (deep-link thanh toán,
+/// web returnUrl, cold-start...). Đăng nhập xong sẽ quay lại đây thay vì
+/// rơi về home làm mất thông báo kết quả.
+final pendingRedirectProvider = StateProvider<String?>((ref) => null);
+
+bool _isAuthPath(String location) {
+  final path = Uri.tryParse(location)?.path ?? location;
+  return path == '/login' ||
+      path == '/auth/register' ||
+      path == '/auth/forgot-password' ||
+      path == '/auth/preferences';
+}
+
 final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = ref.watch(appRouterNotifierProvider);
 
@@ -64,13 +77,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path == '/auth/forgot-password' ||
           path == '/auth/preferences';
 
-      // 1. Chưa đăng nhập mà vào bất kỳ trang nào khác trang auth -> Buộc chuyển hướng về /login
+      // 1. Chưa đăng nhập mà vào bất kỳ trang nào khác trang auth -> giữ lại
+      // đích đến (kẻo deep-link kết quả thanh toán bị mất) rồi về /login.
       if (!isAuth && !isAuthPage) {
+        ref.read(pendingRedirectProvider.notifier).state =
+            state.uri.toString();
         return '/login';
       }
 
-      // 2. Đã đăng nhập mà đang ở trang auth -> Chuyển hướng vào trang chính /wardrobe
+      // 2. Đã đăng nhập mà đang ở trang auth -> quay lại đích đến đã giữ,
+      // không có thì vào trang chính /wardrobe như cũ.
       if (isAuth && isAuthPage) {
+        final pending = ref.read(pendingRedirectProvider.notifier).state;
+        ref.read(pendingRedirectProvider.notifier).state = null;
+        if (pending != null &&
+            pending.isNotEmpty &&
+            !_isAuthPath(pending)) {
+          return pending;
+        }
         return '/wardrobe';
       }
 

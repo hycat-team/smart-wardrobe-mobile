@@ -14,6 +14,10 @@ class OutfitStudioState {
   final String selectedDrawerCategory;
   final String? _drawerSearchQuery;
 
+  /// true khi có outfit vừa được nạp từ ngoài vào canvas (từ list "Mở Trên
+  /// Studio") và màn Studio cần nhảy sang tab canvas. Screen consume 1 lần.
+  final bool openCanvasRequested;
+
   const OutfitStudioState({
     this.canvasItems = const [],
     this.selectedIndex,
@@ -24,6 +28,7 @@ class OutfitStudioState {
     this.isLoadingWardrobe = false,
     this.selectedDrawerCategory = 'All',
     String? drawerSearchQuery = '',
+    this.openCanvasRequested = false,
   }) : _drawerSearchQuery = drawerSearchQuery;
 
   String get drawerSearchQuery => _drawerSearchQuery ?? '';
@@ -82,6 +87,7 @@ class OutfitStudioState {
     bool? isLoadingWardrobe,
     String? selectedDrawerCategory,
     String? drawerSearchQuery,
+    bool? openCanvasRequested,
     bool clearError = false,
     bool clearSuccess = false,
   }) {
@@ -95,6 +101,7 @@ class OutfitStudioState {
       isLoadingWardrobe: isLoadingWardrobe ?? this.isLoadingWardrobe,
       selectedDrawerCategory: selectedDrawerCategory ?? this.selectedDrawerCategory,
       drawerSearchQuery: drawerSearchQuery ?? this.drawerSearchQuery,
+      openCanvasRequested: openCanvasRequested ?? this.openCanvasRequested,
     );
   }
 }
@@ -334,6 +341,18 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
 
   void clearMessages() {
     state = state.copyWith(clearError: true, clearSuccess: true);
+  }
+
+  /// Đánh dấu cần nhảy sang tab Studio canvas (dùng sau loadIntoStudio).
+  void requestOpenCanvas() {
+    state = state.copyWith(openCanvasRequested: true);
+  }
+
+  /// Screen đã xử lý yêu cầu nhảy tab — xóa cờ để không nhảy lại.
+  void consumeCanvasOpenRequest() {
+    if (state.openCanvasRequested) {
+      state = state.copyWith(openCanvasRequested: false);
+    }
   }
 }
 
