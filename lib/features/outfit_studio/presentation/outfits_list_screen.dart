@@ -309,7 +309,8 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
     if (mounted) context.go('/studio');
   }
 
-  void _confirmDeleteOutfit(UserOutfitModel outfit) {    showDialog(
+  void _confirmDeleteOutfit(UserOutfitModel outfit) {
+    showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

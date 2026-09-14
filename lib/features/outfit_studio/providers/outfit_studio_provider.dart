@@ -248,7 +248,7 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
           fashionItemId: fashionItem.id,
           imageUrl: fashionItem.imageUrl,
           name: primary.displayName,
-          role: group.role,
+          role: role.name,
           positionX: slot.x,
           positionY: slot.y,
           scale: 1.0,
