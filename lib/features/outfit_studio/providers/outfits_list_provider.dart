@@ -17,6 +17,10 @@ class OutfitsListState {
   // Chế độ chọn nhiều để xóa hàng loạt (US2).
   final bool isSelecting;
   final Set<String> selectedIds;
+  // Máy trạng thái tải thêm (US 006 + cứng hóa 007).
+  final bool lastPageWasFull;
+  final int emptyStreak;
+  final bool loadMoreExhausted;
 
   const OutfitsListState({
     this.isLoading = false,
@@ -29,12 +33,18 @@ class OutfitsListState {
     this.isLoadingDetail = false,
     this.isSelecting = false,
     this.selectedIds = const {},
+    this.lastPageWasFull = false,
+    this.emptyStreak = 0,
+    this.loadMoreExhausted = false,
   });
 
   int get selectedCount => selectedIds.length;
 
-  /// Còn trang tiếp theo để tải (scroll vô hạn — US 006).
-  bool get hasMore => outfits.length < total;
+  /// Còn trang tiếp theo để tải (scroll vô hạn — 006, cứng hóa 007).
+  bool get hasMore =>
+      !loadMoreExhausted &&
+      (outfits.length < total ||
+          (lastPageWasFull && emptyStreak < 2));
 
   OutfitsListState copyWith({
     bool? isLoading,
@@ -49,6 +59,9 @@ class OutfitsListState {
     bool clearDetail = false,
     bool? isSelecting,
     Set<String>? selectedIds,
+    bool? lastPageWasFull,
+    int? emptyStreak,
+    bool? loadMoreExhausted,
   }) {
     return OutfitsListState(
       isLoading: isLoading ?? this.isLoading,
@@ -61,11 +74,17 @@ class OutfitsListState {
       isLoadingDetail: isLoadingDetail ?? this.isLoadingDetail,
       isSelecting: isSelecting ?? this.isSelecting,
       selectedIds: selectedIds ?? this.selectedIds,
+      lastPageWasFull: lastPageWasFull ?? this.lastPageWasFull,
+      emptyStreak: emptyStreak ?? this.emptyStreak,
+      loadMoreExhausted: loadMoreExhausted ?? this.loadMoreExhausted,
     );
   }
 }
 
 class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
+  /// Kích thước 1 trang outfit (khớp default limit của repository — US 007).
+  static const int pageSize = 50;
+
   final Ref _ref;
 
   OutfitsListNotifier(this._ref) : super(const OutfitsListState()) {
@@ -83,6 +102,9 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
         outfits: result.items,
         page: result.page,
         total: result.total,
+        lastPageWasFull: result.items.length >= pageSize,
+        emptyStreak: 0,
+        loadMoreExhausted: false,
       );
     } catch (e) {
       state = state.copyWith(
@@ -92,8 +114,9 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
     }
   }
 
-  /// Tải thêm trang outfit tiếp theo nối vào cuối (scroll vô hạn — US 006).
+  /// Tải thêm trang outfit tiếp theo nối vào cuối (scroll vô hạn).
   /// 1 request tại 1 thời điểm, dedupe theo id, giữ nguyên tick chọn.
+  /// Cứng hóa 007: trang trùng/rỗng tối đa 2 probe rồi dừng.
   Future<void> loadMore() async {
     if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
     final nextPage = state.page + 1;
@@ -106,11 +129,18 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
       final existingIds = state.outfits.map((o) => o.id).toSet();
       final fresh =
           result.items.where((o) => !existingIds.contains(o.id)).toList();
+      final merged = [...state.outfits, ...fresh];
+      final emptyStreak = fresh.isEmpty ? state.emptyStreak + 1 : 0;
+      final exhausted = fresh.isEmpty &&
+          (merged.length >= result.total || emptyStreak >= 2);
       state = state.copyWith(
         isLoadingMore: false,
-        outfits: [...state.outfits, ...fresh],
+        outfits: merged,
         page: result.page,
         total: result.total,
+        lastPageWasFull: result.items.length >= pageSize,
+        emptyStreak: emptyStreak,
+        loadMoreExhausted: exhausted,
       );
     } catch (e) {
       if (!mounted) return;

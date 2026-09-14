@@ -588,8 +588,12 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
             )
           : null,
       body: NotificationListener<ScrollNotification>(
-        // Scroll vô hạn (US 006): gần chạm cuối thì tải thêm trang.
+        // Scroll vô hạn (006, cứng hóa 007): chỉ nghe trục dọc,
+        // gần chạm cuối thì tải thêm trang.
         onNotification: (notification) {
+          if (notification.metrics.axis != Axis.vertical) {
+            return false;
+          }
           final metrics = notification.metrics;
           if (metrics.maxScrollExtent - metrics.pixels <= 400) {
             ref.read(outfitsListProvider.notifier).loadMore();

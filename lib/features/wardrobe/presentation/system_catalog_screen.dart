@@ -381,6 +381,8 @@ class _CategoryChip extends StatelessWidget {
         selected: selected,
         onSelected: (_) => onSelected(),
         selectedColor: AppColors.primary,
+        // Tick trắng cùng màu chữ khi chọn (US 007).
+        checkmarkColor: selected ? Colors.white : AppColors.primary,
         labelStyle: TextStyle(
           color: selected ? Colors.white : AppColors.primary,
           fontSize: 12,

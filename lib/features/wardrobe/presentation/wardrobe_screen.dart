@@ -290,8 +290,12 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
             onRefresh: () => ref.read(wardrobeProvider.notifier).loadItems(refresh: true),
             color: AppColors.primary,
             child: NotificationListener<ScrollNotification>(
-              // Scroll vô hạn (US 006): gần chạm cuối thì tải thêm trang.
+              // Scroll vô hạn (006, cứng hóa 007): chỉ nghe trục dọc để
+              // bỏ qua ListView chips ngang, gần chạm cuối thì tải thêm.
               onNotification: (notification) {
+                if (notification.metrics.axis != Axis.vertical) {
+                  return false;
+                }
                 final metrics = notification.metrics;
                 if (metrics.maxScrollExtent - metrics.pixels <= 400) {
                   ref.read(wardrobeProvider.notifier).loadMore();
@@ -377,6 +381,10 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                                   }
                                 },
                                 selectedColor: AppColors.primary,
+                                // Tick trắng cùng màu chữ khi chọn (US 007).
+                                checkmarkColor: selectedCategorySlug == null
+                                    ? Colors.white
+                                    : AppColors.primary,
                                 labelStyle: TextStyle(
                                   color: selectedCategorySlug == null ? Colors.white : AppColors.primary,
                                   fontSize: 12,
@@ -396,6 +404,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                                         .selectCategory(selected ? cat.slug : null);
                                   },
                                   selectedColor: AppColors.primary,
+                                  // Tick trắng cùng màu chữ khi chọn (US 007).
+                                  checkmarkColor:
+                                      selectedCategorySlug == cat.slug
+                                          ? Colors.white
+                                          : AppColors.primary,
                                   labelStyle: TextStyle(
                                     color: selectedCategorySlug == cat.slug ? Colors.white : AppColors.primary,
                                     fontSize: 12,

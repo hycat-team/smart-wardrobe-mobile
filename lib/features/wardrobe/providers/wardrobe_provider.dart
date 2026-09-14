@@ -53,6 +53,10 @@ class WardrobeState {
   // Chế độ chọn nhiều để xóa hàng loạt (US2). Không ảnh hưởng list/items.
   final bool isSelecting;
   final Set<String> selectedIds;
+  // Máy trạng thái tải thêm (US 006 + cứng hóa 007).
+  final bool lastPageWasFull;
+  final int emptyStreak;
+  final bool loadMoreExhausted;
 
   const WardrobeState({
     this.isLoading = false,
@@ -65,12 +69,20 @@ class WardrobeState {
     this.notificationMessage,
     this.isSelecting = false,
     this.selectedIds = const {},
+    this.lastPageWasFull = false,
+    this.emptyStreak = 0,
+    this.loadMoreExhausted = false,
   });
 
   int get selectedCount => selectedIds.length;
 
-  /// Còn trang tiếp theo để tải (scroll vô hạn — US 006).
-  bool get hasMore => items.length < total;
+  /// Còn trang tiếp theo để tải (scroll vô hạn — 006, cứng hóa 007).
+  /// Bao cả case tổng số sai (trang đầy → cho tải tiếp) và case trang
+  /// trùng/rỗng (tối đa 2 probe rồi dừng, không spinner vô hạn).
+  bool get hasMore =>
+      !loadMoreExhausted &&
+      (items.length < total ||
+          (lastPageWasFull && emptyStreak < 2));
 
   WardrobeState copyWith({
     bool? isLoading,
@@ -83,6 +95,9 @@ class WardrobeState {
     String? notificationMessage,
     bool? isSelecting,
     Set<String>? selectedIds,
+    bool? lastPageWasFull,
+    int? emptyStreak,
+    bool? loadMoreExhausted,
   }) {
     return WardrobeState(
       isLoading: isLoading ?? this.isLoading,
@@ -94,6 +109,9 @@ class WardrobeState {
       isSelecting: isSelecting ?? this.isSelecting,
       selectedIds: selectedIds ?? this.selectedIds,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      lastPageWasFull: lastPageWasFull ?? this.lastPageWasFull,
+      emptyStreak: emptyStreak ?? this.emptyStreak,
+      loadMoreExhausted: loadMoreExhausted ?? this.loadMoreExhausted,
     );
   }
 }
@@ -120,6 +138,9 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
     _activeSubscriptions.clear();
     super.dispose();
   }
+
+  /// Kích thước 1 trang tủ đồ (khớp default limit của repository — US 007).
+  static const int pageSize = 20;
 
   Future<void> loadItems({bool refresh = false}) async {
     final currentCategorySlug = _ref.read(selectedCategorySlugProvider);
@@ -151,6 +172,11 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
         items: mergedList,
         page: result.page,
         total: result.total + pendingOptimistic.length,
+        // Reset máy tải thêm; trang đầy → cho phép tải tiếp kể cả khi
+        // tổng số báo thiếu (US 007).
+        lastPageWasFull: result.items.length >= pageSize,
+        emptyStreak: 0,
+        loadMoreExhausted: false,
       );
 
       // Auto-listen to SSE for any items currently in processing state (status == 3)
@@ -164,9 +190,11 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
     }
   }
 
-  /// Tải thêm trang tiếp theo nối vào cuối danh sách (scroll vô hạn — US 006).
+  /// Tải thêm trang tiếp theo nối vào cuối danh sách (scroll vô hạn).
   /// An toàn: 1 request tại 1 thời điểm, dedupe theo id, bỏ kết quả nếu
   /// user đã refresh/đổi filter giữa chừng, giữ nguyên lựa chọn tick.
+  /// Cứng hóa 007: trang trùng/rỗng tối đa 2 probe rồi dừng (không spinner
+  /// vô hạn); trang đầy cho tải tiếp kể cả khi tổng số báo thiếu.
   Future<void> loadMore() async {
     if (state.isLoading ||
         state.isRefreshing ||
@@ -190,11 +218,18 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
       final fresh = result.items
           .where((it) => !existingIds.contains(it.id.toLowerCase()))
           .toList();
+      final merged = [...state.items, ...fresh];
+      final emptyStreak = fresh.isEmpty ? state.emptyStreak + 1 : 0;
+      final exhausted = fresh.isEmpty &&
+          (merged.length >= result.total || emptyStreak >= 2);
       state = state.copyWith(
         isLoadingMore: false,
-        items: [...state.items, ...fresh],
+        items: merged,
         page: result.page,
         total: result.total,
+        lastPageWasFull: result.items.length >= pageSize,
+        emptyStreak: emptyStreak,
+        loadMoreExhausted: exhausted,
       );
       _checkAndSubscribeProcessingItems(fresh);
     } catch (e) {
