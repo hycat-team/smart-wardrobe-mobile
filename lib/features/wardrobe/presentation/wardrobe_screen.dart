@@ -289,7 +289,16 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           RefreshIndicator(
             onRefresh: () => ref.read(wardrobeProvider.notifier).loadItems(refresh: true),
             color: AppColors.primary,
-            child: CustomScrollView(
+            child: NotificationListener<ScrollNotification>(
+              // Scroll vô hạn (US 006): gần chạm cuối thì tải thêm trang.
+              onNotification: (notification) {
+                final metrics = notification.metrics;
+                if (metrics.maxScrollExtent - metrics.pixels <= 400) {
+                  ref.read(wardrobeProvider.notifier).loadMore();
+                }
+                return false;
+              },
+              child: CustomScrollView(
               slivers: [
                 SliverAppBar(
                   floating: true,
@@ -513,9 +522,23 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                     ),
                   ),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                // Chân trang tải thêm (US 006)
+                if (wardrobeState.isLoadingMore)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.primary),
+                      ),
+                    ),
+                  )
+                else
+                  const SliverToBoxAdapter(
+                      child: SizedBox(height: 32)),
               ],
             ),
+          ),
           ),
 
           // Uploading Banner / Overlay

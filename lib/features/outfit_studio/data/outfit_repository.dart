@@ -5,11 +5,23 @@ import '../../../shared/models/bulk_deletion_result.dart';
 import '../../wardrobe/models/wardrobe_models.dart';
 import '../models/outfit_models.dart';
 
+/// Kết quả phân trang outfit (scroll vô hạn — US 006).
+class OutfitPaginationResult {
+  final List<UserOutfitModel> items;
+  final int page;
+  final int total;
+
+  const OutfitPaginationResult({
+    required this.items,
+    required this.page,
+    required this.total,
+  });
+}
+
 class OutfitRepository {
   final ApiClient _apiClient;
 
   OutfitRepository({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
-
   Map<String, dynamic>? _parseResponseData(dynamic data) {
     if (data == null) return null;
     if (data is Map<String, dynamic>) return data;
@@ -69,6 +81,12 @@ class OutfitRepository {
 
   /// Lấy danh sách tất cả outfit của user
   Future<List<UserOutfitModel>> getMyOutfits({int page = 1, int limit = 50}) async {
+    final result = await getMyOutfitsPaginated(page: page, limit: limit);
+    return result.items;
+  }
+
+  /// Lấy danh sách outfit kèm phân trang (scroll vô hạn — US 006).
+  Future<OutfitPaginationResult> getMyOutfitsPaginated({int page = 1, int limit = 50}) async {
     try {
       final response = await _apiClient.dio.get(
         '/me/outfits',
@@ -79,12 +97,21 @@ class OutfitRepository {
         final nested = _parseResponseData(data['data']) ?? data;
         final itemsRaw = nested['items'] ?? [];
         if (itemsRaw is List) {
-          return itemsRaw
+          final items = itemsRaw
               .map((item) => UserOutfitModel.fromJson(item as Map<String, dynamic>))
               .toList();
+          return OutfitPaginationResult(
+            items: items,
+            page: nested['page'] is int ? nested['page'] as int : page,
+            total: nested['total'] is int
+                ? nested['total'] as int
+                : (nested['total'] is num
+                    ? (nested['total'] as num).toInt()
+                    : items.length),
+          );
         }
       }
-      return [];
+      return OutfitPaginationResult(items: const [], page: page, total: 0);
     } on DioException catch (e) {
       throw Exception(_extractErrorMessage(e, 'Không thể tải danh sách outfit'));
     }

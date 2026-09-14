@@ -199,6 +199,21 @@ class WardrobeRepository {
     }
   }
 
+  /// Số tổng quan tủ đồ + outfit cho Home (US 006).
+  /// `GET /me/wardrobe-items/stats` — BE + FE web đã dùng.
+  Future<WardrobeStats> getWardrobeStats() async {
+    try {
+      final response = await _apiClient.dio.get('/me/wardrobe-items/stats');
+      final body = response.data;
+      if (body is Map<String, dynamic>) return WardrobeStats.fromJson(body);
+      if (body is Map) return WardrobeStats.fromJson(Map<String, dynamic>.from(body));
+      return const WardrobeStats();
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? e.message ?? 'Không thể tải số liệu tổng quan';
+      throw Exception(message);
+    }
+  }
+
   Future<WardrobeCategoryDistributionResult> getCategoryDistribution() async {
     try {
       final response = await _apiClient.dio.get('/me/dashboard/wardrobe/category-distribution');

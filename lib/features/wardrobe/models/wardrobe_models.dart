@@ -488,3 +488,29 @@ class WardrobeCategoryDistributionResult {
     );
   }
 }
+
+/// Số tổng quan tủ đồ + outfit (US 006).
+/// `GET /me/wardrobe-items/stats` — nguồn chuẩn cho Home (thay vì đếm list).
+class WardrobeStats {
+  final int activeItemsCount;
+  final int outfitsCount;
+
+  const WardrobeStats({
+    this.activeItemsCount = 0,
+    this.outfitsCount = 0,
+  });
+
+  factory WardrobeStats.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] is Map<String, dynamic> ? json['data'] : json;
+    int asInt(dynamic v) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v?.toString() ?? '') ?? 0;
+    }
+
+    return WardrobeStats(
+      activeItemsCount: asInt(data['activeItemsCount']),
+      outfitsCount: asInt(data['outfitsCount']),
+    );
+  }
+}

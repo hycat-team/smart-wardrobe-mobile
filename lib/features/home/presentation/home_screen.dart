@@ -18,15 +18,11 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider).user;
-    final wardrobeState = ref.watch(wardrobeProvider);
-    final outfitsState = ref.watch(outfitsListProvider);
+    // Số liệu tổng quan lấy từ cùng nguồn API với trang Thống kê tủ đồ
+    // (US 006) — không đếm từ list phân trang.
+    final insightsAsync = ref.watch(wardrobeInsightsProvider);
+    final statsAsync = ref.watch(wardrobeStatsProvider);
     final distributionAsync = ref.watch(categoryDistributionProvider);
-
-    // Tính toán số lượng cho stats cards
-    final totalWardrobeItems = wardrobeState.total > 0
-        ? wardrobeState.total
-        : wardrobeState.items.length;
-    final totalSavedOutfits = outfitsState.outfits.length;
 
     // Lấy tên hiển thị chào mừng
     final greetingName = _resolveGreetingName(userProfile?.firstName, userProfile?.displayName);
@@ -43,6 +39,8 @@ class HomeScreen extends ConsumerWidget {
             ref.invalidate(wardrobeProvider);
             ref.invalidate(outfitsListProvider);
             ref.invalidate(categoryDistributionProvider);
+            ref.invalidate(wardrobeInsightsProvider);
+            ref.invalidate(wardrobeStatsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -62,11 +60,12 @@ class HomeScreen extends ConsumerWidget {
 
                 const SizedBox(height: 18),
 
-                // 3. Quick Stats Row (Tủ đồ hiện có & Outfits đã lưu)
+                // 3. Quick Stats Row (cùng nguồn API với trang Thống kê)
                 _buildQuickStatsRow(
                   context,
-                  wardrobeCount: totalWardrobeItems,
-                  outfitCount: totalSavedOutfits,
+                  ref,
+                  wardrobeCount: insightsAsync.whenData((i) => i.totalItems),
+                  outfitCount: statsAsync.whenData((s) => s.outfitsCount),
                 ),
 
                 const SizedBox(height: 28),
@@ -305,11 +304,13 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  /// 2 Thẻ thống kê: Tủ đồ hiện có (món) & Outfits đã lưu (set)
+  /// 2 Thẻ thống kê: Tủ đồ hiện có (món) & Outfits đã lưu (set).
+  /// Số liệu từ cùng nguồn API với trang Thống kê (US 006).
   Widget _buildQuickStatsRow(
-    BuildContext context, {
-    required int wardrobeCount,
-    required int outfitCount,
+    BuildContext context,
+    WidgetRef ref, {
+    required AsyncValue<int> wardrobeCount,
+    required AsyncValue<int> outfitCount,
   }) {
     return Row(
       children: [
@@ -318,9 +319,10 @@ class HomeScreen extends ConsumerWidget {
           child: _buildMetricCard(
             context,
             title: 'Tủ đồ hiện có',
-            count: wardrobeCount,
+            countAsync: wardrobeCount,
             unit: 'món',
             onTap: () => context.go('/wardrobe'),
+            onRetry: () => ref.invalidate(wardrobeInsightsProvider),
           ),
         ),
         const SizedBox(width: 14),
@@ -330,22 +332,25 @@ class HomeScreen extends ConsumerWidget {
           child: _buildMetricCard(
             context,
             title: 'Outfits đã lưu',
-            count: outfitCount,
+            countAsync: outfitCount,
             unit: 'set',
             onTap: () => context.push('/outfits'),
+            onRetry: () => ref.invalidate(wardrobeStatsProvider),
           ),
         ),
       ],
     );
   }
 
-  /// Thẻ metric tối giản phong cách Quiet Luxury
+  /// Thẻ metric tối giản phong cách Quiet Luxury.
+  /// Chưa có số liệu thì hiện chờ/lỗi + thử lại, không hiện số thiếu (US 006).
   Widget _buildMetricCard(
     BuildContext context, {
     required String title,
-    required int count,
+    required AsyncValue<int> countAsync,
     required String unit,
     required VoidCallback onTap,
+    VoidCallback? onRetry,
   }) {
     return InkWell(
       onTap: onTap,
@@ -381,25 +386,58 @@ class HomeScreen extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),
-            RichText(
-              text: TextSpan(
-                text: '$count ',
-                style: GoogleFonts.beVietnamPro(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                  letterSpacing: -0.5,
-                ),
-                children: [
-                  TextSpan(
-                    text: unit,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      color: AppColors.textSecondary,
-                    ),
+            countAsync.when(
+              data: (count) => RichText(
+                text: TextSpan(
+                  text: '$count ',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                    letterSpacing: -0.5,
                   ),
-                ],
+                  children: [
+                    TextSpan(
+                      text: unit,
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              loading: () => const SizedBox(
+                height: 28,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary),
+                  ),
+                ),
+              ),
+              error: (_, __) => InkWell(
+                onTap: onRetry,
+                borderRadius: BorderRadius.circular(8),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_off_outlined,
+                        size: 18, color: AppColors.textSecondary),
+                    SizedBox(width: 6),
+                    Text(
+                      'Thử lại',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

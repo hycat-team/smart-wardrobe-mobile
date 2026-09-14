@@ -15,6 +15,13 @@ final categoriesProvider = FutureProvider<List<CategoryModel>>((ref) async {
   return await repo.getCategories();
 });
 
+/// Số tổng quan (tổng món + tổng outfit) cho Home — cùng nguồn BE với
+/// web FE, thay việc đếm từ list phân trang (US 006).
+final wardrobeStatsProvider = FutureProvider<WardrobeStats>((ref) async {
+  final repo = ref.watch(wardrobeRepositoryProvider);
+  return await repo.getWardrobeStats();
+});
+
 final wardrobeInsightsProvider = FutureProvider.autoDispose<WardrobeInsightsModel>((ref) async {
   final repo = ref.watch(wardrobeRepositoryProvider);
   return await repo.getWardrobeInsights();
@@ -37,6 +44,7 @@ final selectedCategorySlugProvider = StateProvider<String?>((ref) => null);
 class WardrobeState {
   final bool isLoading;
   final bool isRefreshing;
+  final bool isLoadingMore;
   final List<WardrobeItemModel> items;
   final int page;
   final int total;
@@ -49,6 +57,7 @@ class WardrobeState {
   const WardrobeState({
     this.isLoading = false,
     this.isRefreshing = false,
+    this.isLoadingMore = false,
     this.items = const [],
     this.page = 1,
     this.total = 0,
@@ -60,9 +69,13 @@ class WardrobeState {
 
   int get selectedCount => selectedIds.length;
 
+  /// Còn trang tiếp theo để tải (scroll vô hạn — US 006).
+  bool get hasMore => items.length < total;
+
   WardrobeState copyWith({
     bool? isLoading,
     bool? isRefreshing,
+    bool? isLoadingMore,
     List<WardrobeItemModel>? items,
     int? page,
     int? total,
@@ -80,6 +93,7 @@ class WardrobeState {
       notificationMessage: notificationMessage,
       isSelecting: isSelecting ?? this.isSelecting,
       selectedIds: selectedIds ?? this.selectedIds,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 }
@@ -89,6 +103,9 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
   final Ref _ref;
   final Map<String, SSESubscription> _activeSubscriptions = {};
   Timer? _pollingSafetyTimer;
+  // Phiên tải danh sách — tăng mỗi khi refresh/đổi filter để bỏ kết quả
+  // loadMore cũ về trễ (US 006).
+  int _listGeneration = 0;
 
   WardrobeNotifier(this._repository, this._ref) : super(const WardrobeState()) {
     loadItems();
@@ -107,7 +124,9 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
   Future<void> loadItems({bool refresh = false}) async {
     final currentCategorySlug = _ref.read(selectedCategorySlugProvider);
     if (refresh) {
-      state = state.copyWith(isRefreshing: true, errorMessage: null);
+      _listGeneration++;
+      state = state.copyWith(
+          isRefreshing: true, isLoadingMore: false, errorMessage: null);
     } else {
       state = state.copyWith(isLoading: true, errorMessage: null);
     }
@@ -140,6 +159,48 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
       state = state.copyWith(
         isLoading: false,
         isRefreshing: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  /// Tải thêm trang tiếp theo nối vào cuối danh sách (scroll vô hạn — US 006).
+  /// An toàn: 1 request tại 1 thời điểm, dedupe theo id, bỏ kết quả nếu
+  /// user đã refresh/đổi filter giữa chừng, giữ nguyên lựa chọn tick.
+  Future<void> loadMore() async {
+    if (state.isLoading ||
+        state.isRefreshing ||
+        state.isLoadingMore ||
+        !state.hasMore) {
+      return;
+    }
+    final generation = _listGeneration;
+    final categorySlug = _ref.read(selectedCategorySlugProvider);
+    final nextPage = state.page + 1;
+    state = state.copyWith(isLoadingMore: true);
+
+    try {
+      final result = await _repository.getMyWardrobeItems(
+        page: nextPage,
+        categorySlug: categorySlug,
+      );
+      if (!mounted || generation != _listGeneration) return;
+
+      final existingIds = state.items.map((e) => e.id.toLowerCase()).toSet();
+      final fresh = result.items
+          .where((it) => !existingIds.contains(it.id.toLowerCase()))
+          .toList();
+      state = state.copyWith(
+        isLoadingMore: false,
+        items: [...state.items, ...fresh],
+        page: result.page,
+        total: result.total,
+      );
+      _checkAndSubscribeProcessingItems(fresh);
+    } catch (e) {
+      if (!mounted || generation != _listGeneration) return;
+      state = state.copyWith(
+        isLoadingMore: false,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
     }

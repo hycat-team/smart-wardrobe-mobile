@@ -7,7 +7,10 @@ import 'outfit_studio_provider.dart';
 
 class OutfitsListState {
   final bool isLoading;
+  final bool isLoadingMore;
   final List<UserOutfitModel> outfits;
+  final int page;
+  final int total;
   final String? errorMessage;
   final UserOutfitModel? selectedDetail;
   final bool isLoadingDetail;
@@ -17,7 +20,10 @@ class OutfitsListState {
 
   const OutfitsListState({
     this.isLoading = false,
+    this.isLoadingMore = false,
     this.outfits = const [],
+    this.page = 1,
+    this.total = 0,
     this.errorMessage,
     this.selectedDetail,
     this.isLoadingDetail = false,
@@ -27,9 +33,15 @@ class OutfitsListState {
 
   int get selectedCount => selectedIds.length;
 
+  /// Còn trang tiếp theo để tải (scroll vô hạn — US 006).
+  bool get hasMore => outfits.length < total;
+
   OutfitsListState copyWith({
     bool? isLoading,
+    bool? isLoadingMore,
     List<UserOutfitModel>? outfits,
+    int? page,
+    int? total,
     String? errorMessage,
     UserOutfitModel? selectedDetail,
     bool? isLoadingDetail,
@@ -40,7 +52,10 @@ class OutfitsListState {
   }) {
     return OutfitsListState(
       isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       outfits: outfits ?? this.outfits,
+      page: page ?? this.page,
+      total: total ?? this.total,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       selectedDetail: clearDetail ? null : (selectedDetail ?? this.selectedDetail),
       isLoadingDetail: isLoadingDetail ?? this.isLoadingDetail,
@@ -58,17 +73,49 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
   }
 
   Future<void> fetchOutfits() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(
+        isLoading: true, isLoadingMore: false, clearError: true);
     try {
       final repo = _ref.read(outfitRepositoryProvider);
-      final list = await repo.getMyOutfits();
+      final result = await repo.getMyOutfitsPaginated(page: 1);
       state = state.copyWith(
         isLoading: false,
-        outfits: list,
+        outfits: result.items,
+        page: result.page,
+        total: result.total,
       );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  /// Tải thêm trang outfit tiếp theo nối vào cuối (scroll vô hạn — US 006).
+  /// 1 request tại 1 thời điểm, dedupe theo id, giữ nguyên tick chọn.
+  Future<void> loadMore() async {
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+    final nextPage = state.page + 1;
+    state = state.copyWith(isLoadingMore: true, clearError: true);
+    try {
+      final repo = _ref.read(outfitRepositoryProvider);
+      final result =
+          await repo.getMyOutfitsPaginated(page: nextPage);
+      if (!mounted) return;
+      final existingIds = state.outfits.map((o) => o.id).toSet();
+      final fresh =
+          result.items.where((o) => !existingIds.contains(o.id)).toList();
+      state = state.copyWith(
+        isLoadingMore: false,
+        outfits: [...state.outfits, ...fresh],
+        page: result.page,
+        total: result.total,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      state = state.copyWith(
+        isLoadingMore: false,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
     }
@@ -107,8 +154,13 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
       final result = await repo.deleteOutfits(ids);
       if (result.deletedIds.isNotEmpty) {
         final deleted = result.deletedIds.toSet();
+        final remaining =
+            state.outfits.where((o) => !deleted.contains(o.id)).toList();
         state = state.copyWith(
-          outfits: state.outfits.where((o) => !deleted.contains(o.id)).toList(),
+          outfits: remaining,
+          total: state.total > deleted.length
+              ? state.total - deleted.length
+              : remaining.length,
         );
       }
       if (result.failedIds.isEmpty) {

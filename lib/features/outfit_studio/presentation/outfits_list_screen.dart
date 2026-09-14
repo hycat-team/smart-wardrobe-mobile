@@ -587,10 +587,19 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
               ),
             )
           : null,
-      body: RefreshIndicator(
-        onRefresh: () => ref.read(outfitsListProvider.notifier).fetchOutfits(),
-        color: AppColors.primary,
-        child: state.isLoading && state.outfits.isEmpty
+      body: NotificationListener<ScrollNotification>(
+        // Scroll vô hạn (US 006): gần chạm cuối thì tải thêm trang.
+        onNotification: (notification) {
+          final metrics = notification.metrics;
+          if (metrics.maxScrollExtent - metrics.pixels <= 400) {
+            ref.read(outfitsListProvider.notifier).loadMore();
+          }
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: () => ref.read(outfitsListProvider.notifier).fetchOutfits(),
+          color: AppColors.primary,
+          child: state.isLoading && state.outfits.isEmpty
             ? const Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               )
@@ -673,7 +682,7 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Tổng cộng ${state.outfits.length} bộ trang phục',
+                                  'Tổng cộng ${state.total > 0 ? state.total : state.outfits.length} bộ trang phục',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
@@ -716,9 +725,19 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
                                 },
                               ),
                             ),
+                            // Chỉ báo tải thêm cuối danh sách (US 006)
+                            if (state.isLoadingMore)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                      color: AppColors.primary),
+                                ),
+                              ),
                           ],
                         ),
                       ),
+        ),
       ),
     );
   }
