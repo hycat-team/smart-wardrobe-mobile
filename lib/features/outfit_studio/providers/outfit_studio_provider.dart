@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../wardrobe/models/wardrobe_models.dart';
+import '../layout/canvas_layout.dart';
 import '../models/outfit_models.dart';
 import 'ai_outfit_provider.dart';
 
@@ -18,6 +19,12 @@ class OutfitStudioState {
   /// Studio") và màn Studio cần nhảy sang tab canvas. Screen consume 1 lần.
   final bool openCanvasRequested;
 
+  /// Kích thước canvas thực tế (do màn hình báo về, logical px).
+  /// Dùng để kẹp vị trí item vào khung nhìn khi nạp set (US 005).
+  /// null = chưa đo được → dùng fallback 360x520.
+  final double? canvasWidth;
+  final double? canvasHeight;
+
   const OutfitStudioState({
     this.canvasItems = const [],
     this.selectedIndex,
@@ -29,6 +36,8 @@ class OutfitStudioState {
     this.selectedDrawerCategory = 'All',
     String? drawerSearchQuery = '',
     this.openCanvasRequested = false,
+    this.canvasWidth,
+    this.canvasHeight,
   }) : _drawerSearchQuery = drawerSearchQuery;
 
   String get drawerSearchQuery => _drawerSearchQuery ?? '';
@@ -90,6 +99,8 @@ class OutfitStudioState {
     bool? openCanvasRequested,
     bool clearError = false,
     bool clearSuccess = false,
+    double? canvasWidth,
+    double? canvasHeight,
   }) {
     return OutfitStudioState(
       canvasItems: canvasItems ?? this.canvasItems,
@@ -102,6 +113,8 @@ class OutfitStudioState {
       selectedDrawerCategory: selectedDrawerCategory ?? this.selectedDrawerCategory,
       drawerSearchQuery: drawerSearchQuery ?? this.drawerSearchQuery,
       openCanvasRequested: openCanvasRequested ?? this.openCanvasRequested,
+      canvasWidth: canvasWidth ?? this.canvasWidth,
+      canvasHeight: canvasHeight ?? this.canvasHeight,
     );
   }
 }
@@ -144,6 +157,20 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     } else {
       state = state.copyWith(selectedIndex: index);
     }
+  }
+
+  /// Màn hình báo kích thước canvas thực tế (gọi post-frame từ LayoutBuilder).
+  /// Chỉ notify khi lệch > 1px để tránh vòng rebuild.
+  void setCanvasSize(double width, double height) {
+    final oldW = state.canvasWidth;
+    final oldH = state.canvasHeight;
+    if (oldW != null &&
+        oldH != null &&
+        (width - oldW).abs() <= 1 &&
+        (height - oldH).abs() <= 1) {
+      return;
+    }
+    state = state.copyWith(canvasWidth: width, canvasHeight: height);
   }
 
   void addItemToCanvas(WardrobeItemModel item) {
@@ -194,32 +221,26 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     );
   }
 
-  /// Nạp các món được AI gợi ý trực tiếp vào Studio Canvas để user tinh chỉnh
+  /// Nạp các món được AI gợi ý trực tiếp vào Studio Canvas để user tinh chỉnh.
+  /// Vị trí theo vai trò BE trả về (chuẩn hóa đủ 7 role + slug Việt),
+  /// món trùng role lệch cascade, sau đó kẹp vào khung + tách chồng lấn (US 005).
   void loadFromAIRecommendation(RecommendedOutfitRes res) {
     final items = <CanvasItem>[];
-    int layer = 1;
+    final occurrence = <CanvasRole, int>{};
 
     for (final group in res.items) {
       final primary = group.primary;
       if (primary == null || primary.fashionItem == null) continue;
 
       final fashionItem = primary.fashionItem!;
-      double posX = 0;
-      double posY = 0;
-      final role = group.role.toLowerCase();
-
-      if (role == 'top') {
-        posY = -120;
-      } else if (role == 'bottom') {
-        posY = 80;
-      } else if (role == 'fullbody') {
-        posY = -20;
-      } else if (role == 'footwear') {
-        posY = 220;
-      } else if (role == 'accessory') {
-        posX = -130;
-        posY = -90;
-      }
+      final role = normalizeRole(
+        group.role,
+        categorySlug: fashionItem.category?.slug,
+        categoryName: fashionItem.category?.name,
+      );
+      final occ = occurrence[role] ?? 0;
+      occurrence[role] = occ + 1;
+      final slot = roleSlot(role, occ);
 
       items.add(
         CanvasItem(
@@ -228,16 +249,21 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
           imageUrl: fashionItem.imageUrl,
           name: primary.displayName,
           role: group.role,
-          positionX: posX,
-          positionY: posY,
+          positionX: slot.x,
+          positionY: slot.y,
           scale: 1.0,
-          layerOrder: layer++,
+          layerOrder: slot.layer,
         ),
       );
     }
 
+    final laidOut = layoutCanvasItems(
+      items,
+      canvasWidth: state.canvasWidth ?? 360,
+      canvasHeight: state.canvasHeight ?? 520,
+    );
     state = state.copyWith(
-      canvasItems: items,
+      canvasItems: laidOut,
       clearSelection: true,
       successMessage: 'Đã nạp set đồ AI vào Studio để chỉnh sửa!',
     );

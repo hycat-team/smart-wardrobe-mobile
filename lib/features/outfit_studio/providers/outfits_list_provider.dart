@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/bulk_deletion_result.dart';
+import '../layout/canvas_layout.dart';
 import '../models/outfit_models.dart';
 import 'ai_outfit_provider.dart';
 import 'outfit_studio_provider.dart';
@@ -158,21 +159,30 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
     );
   }
 
-  /// Nạp các món đồ của một outfit đã lưu vào Studio Canvas để chỉnh sửa
+  /// Nạp các món đồ của một outfit đã lưu vào Studio Canvas để chỉnh sửa.
+  /// Giữ đúng vị trí/tỉ lệ/lớp đã lưu; outfit legacy (mọi món ở gốc tọa độ)
+  /// thì tự dàn theo vai trò; mọi trường hợp đều kẹp vào khung + tách
+  /// chồng lấn, 1 món ra giữa (US 005).
   void loadIntoStudio(UserOutfitModel outfit) {
-    final canvasItems = <CanvasItem>[];
+    var canvasItems = <CanvasItem>[];
     int layer = 1;
 
     for (final item in outfit.items) {
       final fItem = item.fashionItem;
       if (fItem == null) continue;
 
+      final role = normalizeRole(
+        '',
+        categorySlug: fItem.category?.slug,
+        categoryName: fItem.category?.name,
+      );
       canvasItems.add(
         CanvasItem(
           id: '${item.id}_${DateTime.now().millisecondsSinceEpoch}',
           fashionItemId: fItem.id,
           imageUrl: fItem.imageUrl,
           name: fItem.category?.name ?? 'Món đồ',
+          role: role.name,
           positionX: item.positionX,
           positionY: item.positionY,
           scale: item.scale,
@@ -181,9 +191,36 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
       );
     }
 
+    // Legacy: outfit lưu trước khi có tọa độ → tự dàn theo vai trò.
+    final hasStoredLayout =
+        canvasItems.any((c) => c.positionX != 0 || c.positionY != 0);
+    if (!hasStoredLayout && canvasItems.isNotEmpty) {
+      final occurrence = <CanvasRole, int>{};
+      final relaid = <CanvasItem>[];
+      for (final c in canvasItems) {
+        final role = normalizeRole(c.role);
+        final occ = occurrence[role] ?? 0;
+        occurrence[role] = occ + 1;
+        final slot = roleSlot(role, occ);
+        relaid.add(c.copyWith(
+          positionX: slot.x,
+          positionY: slot.y,
+          layerOrder: slot.layer,
+        ));
+      }
+      canvasItems = relaid;
+    }
+
+    final studio = _ref.read(outfitStudioProvider);
+    final laidOut = layoutCanvasItems(
+      canvasItems,
+      canvasWidth: studio.canvasWidth ?? 360,
+      canvasHeight: studio.canvasHeight ?? 520,
+    );
+
     _ref.read(outfitStudioProvider.notifier).state =
         _ref.read(outfitStudioProvider.notifier).state.copyWith(
-              canvasItems: canvasItems,
+              canvasItems: laidOut,
               clearSelection: true,
               successMessage: 'Đã nạp "${outfit.name}" vào Studio để chỉnh sửa!',
             );

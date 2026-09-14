@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/bulk_deletion_result.dart';
 import '../../../shared/widgets/closy_network_image.dart';
 import '../models/outfit_models.dart';
+import '../providers/outfit_studio_provider.dart';
 import '../providers/outfits_list_provider.dart';
 
 class OutfitsListScreen extends ConsumerStatefulWidget {
@@ -236,11 +237,8 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
 
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(sheetCtx).pop();
-                            ref.read(outfitsListProvider.notifier).loadIntoStudio(currentOutfit);
-                            context.go('/studio');
-                          },
+                          onPressed: () => _openInStudioWithConfirm(
+                              sheetCtx, currentOutfit),
                           icon: const Icon(Icons.edit_outlined, size: 16),
                           label: const Text('Mở Trên Studio', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                           style: ElevatedButton.styleFrom(
@@ -262,8 +260,56 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
     );
   }
 
-  void _confirmDeleteOutfit(UserOutfitModel outfit) {
-    showDialog(
+  /// Mở outfit đã lưu lên Studio, hỏi ghi đè nếu canvas đang có đồ dở (US 005).
+  Future<void> _openInStudioWithConfirm(
+      BuildContext sheetCtx, UserOutfitModel outfit) async {
+    final hasItems =
+        ref.read(outfitStudioProvider).canvasItems.isNotEmpty;
+    // Lấy navigator trước async gap (lint use_build_context_synchronously).
+    final sheetNavigator = Navigator.of(sheetCtx);
+    var replace = true;
+    if (hasItems) {
+      replace = await showDialog<bool>(
+            context: context,
+            builder: (dialogCtx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                'Thay đồ trên canvas?',
+                style: GoogleFonts.playfairDisplay(
+                    fontWeight: FontWeight.w600),
+              ),
+              content: const Text(
+                'Canvas đang có đồ bạn dàn dở. Mở outfit này sẽ thay thế toàn bộ bố cục hiện tại.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(false),
+                  child: const Text('Giữ lại',
+                      style:
+                          TextStyle(color: AppColors.textSecondary)),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogCtx).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                  ),
+                  child: const Text('Ghi đè'),
+                ),
+              ],
+            ),
+          ) ==
+          true;
+    }
+    if (!mounted || !replace) return;
+    sheetNavigator.pop();
+    ref.read(outfitsListProvider.notifier).loadIntoStudio(outfit);
+    if (mounted) context.go('/studio');
+  }
+
+  void _confirmDeleteOutfit(UserOutfitModel outfit) {    showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

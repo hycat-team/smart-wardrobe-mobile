@@ -65,6 +65,54 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
     super.dispose();
   }
 
+  /// Hỏi ghi đè khi canvas đang có đồ dở trước khi nạp set mới (US 005, FR-009).
+  /// Trả về true khi được phép thay thế (canvas trống hoặc user đồng ý).
+  Future<bool> _confirmReplaceCanvasIfBusy() async {
+    final hasItems = ref.read(outfitStudioProvider).canvasItems.isNotEmpty;
+    if (!hasItems) return true;
+    final replace = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Thay đồ trên canvas?',
+          style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w600, fontSize: 20),
+        ),
+        content: const Text(
+          'Canvas đang có đồ bạn dàn dở. Nạp set mới sẽ thay thế toàn bộ bố cục hiện tại.',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Giữ lại', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Ghi đè'),
+          ),
+        ],
+      ),
+    );
+    return replace == true;
+  }
+
+  /// Nạp set AI lên canvas sau khi đã xác nhận ghi đè (nếu cần).
+  Future<void> _loadAISetWithConfirm(
+    RecommendedOutfitRes res, {
+    required void Function() afterLoad,
+  }) async {
+    final confirmed = await _confirmReplaceCanvasIfBusy();
+    if (!mounted || !confirmed) return;
+    ref.read(outfitStudioProvider.notifier).loadFromAIRecommendation(res);
+    afterLoad();
+  }
+
   void _showSaveLookDialog() {
     final studioState = ref.read(outfitStudioProvider);
     if (studioState.canvasItems.isEmpty) {
@@ -871,14 +919,15 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  ref.read(outfitStudioProvider.notifier).loadFromAIRecommendation(res);
-                  _tabController.animateTo(1);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Đã nạp set đồ vào Studio thủ công để bạn tùy chỉnh toạ độ/layer!'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
+                  _loadAISetWithConfirm(res, afterLoad: () {
+                    _tabController.animateTo(1);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã nạp set đồ vào Studio thủ công để bạn tùy chỉnh toạ độ/layer!'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  });
                 },
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
                 label: const Text('Mở trên Studio', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -895,6 +944,8 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: () async {
+                  final confirmed = await _confirmReplaceCanvasIfBusy();
+                  if (!mounted || !confirmed) return;
                   ref.read(outfitStudioProvider.notifier).loadFromAIRecommendation(res);
                   final success = await ref
                       .read(outfitStudioProvider.notifier)
@@ -987,6 +1038,15 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                           )
                         : LayoutBuilder(
                             builder: (context, constraints) {
+                              // Báo kích thước canvas thực tế cho provider để kẹp
+                              // vị trí khi nạp set (US 005). Guard ≤1px trong
+                              // setCanvasSize nên không gây vòng rebuild.
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                ref
+                                    .read(outfitStudioProvider.notifier)
+                                    .setCanvasSize(constraints.maxWidth,
+                                        constraints.maxHeight);
+                              });
                               final canvasWidth = constraints.maxWidth;
                               final canvasHeight = constraints.maxHeight;
                               final centerX = canvasWidth / 2;
