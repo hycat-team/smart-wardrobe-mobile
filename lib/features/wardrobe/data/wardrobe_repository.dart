@@ -108,15 +108,22 @@ class WardrobeRepository {
   }
 
   Future<void> deleteWardrobeItem(String id) async {
+    await deleteWardrobeItems([id]);
+  }
+
+  /// Xóa hàng loạt món đồ trong một lần gọi (US2).
+  /// BE `DELETE /wardrobe-items/bulk` yêu cầu `ids` non-empty (min=1).
+  Future<void> deleteWardrobeItems(List<String> ids) async {
+    if (ids.isEmpty) return;
     try {
       await _apiClient.dio.delete(
         '/wardrobe-items/bulk',
         data: {
-          'ids': [id],
+          'ids': ids,
         },
       );
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? e.message ?? 'Không thể xóa món đồ';
+      final message = e.response?.data?['message'] ?? e.message ?? 'Không thể xóa các món đồ';
       throw Exception(message);
     }
   }
@@ -198,6 +205,75 @@ class WardrobeRepository {
       return WardrobeCategoryDistributionResult.fromJson(response.data);
     } on DioException catch (e) {
       final message = e.response?.data?['message'] ?? e.message ?? 'Không thể tải phân bổ danh mục';
+      throw Exception(message);
+    }
+  }
+
+  /// Lấy danh sách trang phục mẫu từ tủ đồ hệ thống (US3).
+  /// Endpoint đã có sẵn trên BE + FE web đã dùng (`GET /system-catalog/wardrobe-items`).
+  /// Item trả về cùng shape `WardrobeItemRes` nên parse bằng [WardrobeItemModel].
+  Future<WardrobePaginationResult> getSystemCatalogItems({
+    int page = 1,
+    int limit = 20,
+    String? categorySlug,
+    String? query,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+      };
+      if (categorySlug != null && categorySlug.isNotEmpty && categorySlug.toLowerCase() != 'all') {
+        queryParams['categorySlug'] = categorySlug;
+      }
+      if (query != null && query.trim().isNotEmpty) {
+        queryParams['q'] = query.trim();
+      }
+
+      final response = await _apiClient.dio.get(
+        '/system-catalog/wardrobe-items',
+        queryParameters: queryParams,
+      );
+
+      final body = response.data;
+      final data = body['data'] is Map<String, dynamic> ? body['data'] : body;
+      final rawList = (data['data'] ?? data['items'] ?? data) as List<dynamic>? ?? [];
+
+      final items = rawList
+          .map((item) => WardrobeItemModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+
+      return WardrobePaginationResult(
+        items: items,
+        page: data['page'] is int ? data['page'] : page,
+        limit: data['limit'] is int ? data['limit'] : limit,
+        total: data['total'] is int ? data['total'] : items.length,
+      );
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? e.message ?? 'Không thể tải tủ đồ hệ thống';
+      throw Exception(message);
+    }
+  }
+
+  /// Thêm các mẫu hệ thống đã chọn vào tủ cá nhân (US3).
+  /// `POST /wardrobe-items/catalog-init {catalogItemIds}` — không tốn quota AI.
+  /// Trả về danh sách món cá nhân vừa tạo.
+  Future<List<WardrobeItemModel>> initClosetFromCatalog(List<String> catalogItemIds) async {
+    if (catalogItemIds.isEmpty) return [];
+    try {
+      final response = await _apiClient.dio.post(
+        '/wardrobe-items/catalog-init',
+        data: {
+          'catalogItemIds': catalogItemIds,
+        },
+      );
+      final body = response.data;
+      final rawList = (body['data'] ?? body) as List<dynamic>? ?? [];
+      return rawList
+          .map((item) => WardrobeItemModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? e.message ?? 'Không thể thêm đồ từ tủ hệ thống';
       throw Exception(message);
     }
   }

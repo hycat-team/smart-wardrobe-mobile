@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/sse_service.dart';
+import '../../../shared/models/bulk_deletion_result.dart';
 import '../data/wardrobe_repository.dart';
 import '../models/wardrobe_models.dart';
 
@@ -41,6 +42,9 @@ class WardrobeState {
   final int total;
   final String? errorMessage;
   final String? notificationMessage;
+  // Chế độ chọn nhiều để xóa hàng loạt (US2). Không ảnh hưởng list/items.
+  final bool isSelecting;
+  final Set<String> selectedIds;
 
   const WardrobeState({
     this.isLoading = false,
@@ -50,7 +54,11 @@ class WardrobeState {
     this.total = 0,
     this.errorMessage,
     this.notificationMessage,
+    this.isSelecting = false,
+    this.selectedIds = const {},
   });
+
+  int get selectedCount => selectedIds.length;
 
   WardrobeState copyWith({
     bool? isLoading,
@@ -60,15 +68,18 @@ class WardrobeState {
     int? total,
     String? errorMessage,
     String? notificationMessage,
+    bool? isSelecting,
+    Set<String>? selectedIds,
   }) {
     return WardrobeState(
       isLoading: isLoading ?? this.isLoading,
-      isRefreshing: isRefreshing ?? this.isRefreshing,
       items: items ?? this.items,
       page: page ?? this.page,
       total: total ?? this.total,
-      errorMessage: errorMessage,
+      errorMessage: errorMessage ?? this.errorMessage,
       notificationMessage: notificationMessage,
+      isSelecting: isSelecting ?? this.isSelecting,
+      selectedIds: selectedIds ?? this.selectedIds,
     );
   }
 }
@@ -327,21 +338,68 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
   }
 
   Future<bool> deleteItem(String id) async {
+    final result = await deleteItems([id]);
+    return result.isAllSuccess;
+  }
+
+  /// Xóa hàng loạt món đồ trong một lần gọi bulk (US2).
+  /// Xóa optimistic khỏi list; thất bại thì rollback nguyên list cũ.
+  Future<BulkDeletionResult> deleteItems(List<String> ids) async {
+    if (ids.isEmpty) return const BulkDeletionResult();
+    final previousItems = List<WardrobeItemModel>.from(state.items);
+    final previousTotal = state.total;
+    final toDelete = ids.toSet();
+    state = state.copyWith(
+      items: state.items.where((it) => !toDelete.contains(it.id)).toList(),
+      total: state.total > toDelete.length ? state.total - toDelete.length : 0,
+    );
     try {
-      await _repository.deleteWardrobeItem(id);
-      final updatedList = state.items.where((it) => it.id != id).toList();
-      state = state.copyWith(
-        items: updatedList,
-        total: state.total > 0 ? state.total - 1 : 0,
-      );
+      await _repository.deleteWardrobeItems(ids);
+      state = state.copyWith(isSelecting: false, selectedIds: const {});
       // Invalidate stats
       _ref.invalidate(wardrobeInsightsProvider);
       _ref.invalidate(categoryDistributionProvider);
-      return true;
+      return BulkDeletionResult(deletedIds: ids);
     } catch (e) {
-      state = state.copyWith(errorMessage: e.toString().replaceAll('Exception: ', ''));
-      return false;
+      state = state.copyWith(
+        items: previousItems,
+        total: previousTotal,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return BulkDeletionResult(
+        failedIds: ids,
+        failureMessages: [e.toString().replaceAll('Exception: ', '')],
+      );
     }
+  }
+
+  // --- Chế độ chọn nhiều (US2) ---
+
+  void enterSelection([String? seedId]) {
+    state = state.copyWith(
+      isSelecting: true,
+      selectedIds: seedId == null ? const {} : {seedId},
+    );
+  }
+
+  void exitSelection() {
+    state = state.copyWith(isSelecting: false, selectedIds: const {});
+  }
+
+  void toggleSelect(String id) {
+    final next = Set<String>.from(state.selectedIds);
+    if (next.contains(id)) {
+      next.remove(id);
+    } else {
+      next.add(id);
+    }
+    state = state.copyWith(selectedIds: next);
+  }
+
+  void selectAll() {
+    state = state.copyWith(
+      selectedIds: state.items.map((it) => it.id).toSet(),
+    );
   }
 
   Future<WardrobeItemModel?> updateItem(

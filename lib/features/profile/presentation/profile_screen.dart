@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/ai_quota_display.dart';
 import '../../../shared/widgets/closy_network_image.dart';
 import '../../auth/models/auth_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -33,7 +34,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đang tải ảnh đại diện lên Cloudinary...'),
+          content: Text('Đang tải ảnh đại diện lên ...'),
           duration: Duration(seconds: 2),
         ),
       );
@@ -334,7 +335,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             // 2. Subscription & Daily AI Quota Card
           if (isAuth) ...[
-            _buildSubscriptionCard(sub, quota),
+            _buildSubscriptionCard(
+              sub,
+              quota,
+              // Chỉ hiện skeleton/lỗi khi chưa từng có số liệu thật (US4).
+              quotaLoading:
+                  subOverview.isLoading && !subOverview.quotaLoaded,
+              quotaError: !subOverview.quotaLoaded
+                  ? subOverview.errorMessage
+                  : null,
+              onQuotaRetry: () => ref
+                  .read(subscriptionOverviewProvider.notifier)
+                  .loadOverview(),
+            ),
             const SizedBox(height: 20),
           ],
 
@@ -360,7 +373,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildSubscriptionCard(UserSubscriptionModel sub, DailyQuotaModel quota) {
+  Widget _buildSubscriptionCard(
+    UserSubscriptionModel sub,
+    DailyQuotaModel quota, {
+    bool quotaLoading = false,
+    String? quotaError,
+    VoidCallback? onQuotaRetry,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.primary,
@@ -467,74 +486,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Quota 1: AI Outfit
-          _buildQuotaRow(
+          // Quota 1: AI Outfit (widget dùng chung với trang Gói — US4)
+          AiQuotaDisplay(
             icon: Icons.auto_awesome_rounded,
             title: 'Gợi ý phối đồ AI',
             used: quota.aiOutfitUsed,
             limit: quota.aiOutfitLimit,
-            progress: quota.outfitProgress,
+            dark: true,
+            isLoading: quotaLoading,
+            errorMessage: quotaError,
+            onRetry: onQuotaRetry,
           ),
           const SizedBox(height: 10),
 
-          // Quota 2: Stylist Chat AI
-          _buildQuotaRow(
+          // Quota 2: Stylist Chat AI (widget dùng chung với trang Gói — US4)
+          AiQuotaDisplay(
             icon: Icons.chat_bubble_outline_rounded,
             title: 'Tư vấn Stylist AI',
             used: quota.aiChatUsed,
             limit: quota.aiChatLimit,
-            progress: quota.chatProgress,
+            dark: true,
+            isLoading: quotaLoading,
+            errorMessage: quotaError,
+            onRetry: onQuotaRetry,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildQuotaRow({
-    required IconData icon,
-    required String title,
-    required int used,
-    required int limit,
-    required double progress,
-  }) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 13, color: Colors.white.withOpacity(0.8)),
-                const SizedBox(width: 6),
-                Text(
-                  title,
-                  style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12),
-                ),
-              ],
-            ),
-            Text(
-              '$used / $limit lượt',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 5,
-            backgroundColor: Colors.white.withOpacity(0.12),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              progress >= 0.9 ? Colors.orange.shade300 : AppColors.accentSand,
-            ),
-          ),
-        ),
-      ],
     );
   }
 

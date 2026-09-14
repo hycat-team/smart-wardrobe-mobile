@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/models/bulk_deletion_result.dart';
 import '../models/outfit_models.dart';
 import 'ai_outfit_provider.dart';
 import 'outfit_studio_provider.dart';
@@ -9,6 +10,9 @@ class OutfitsListState {
   final String? errorMessage;
   final UserOutfitModel? selectedDetail;
   final bool isLoadingDetail;
+  // Chế độ chọn nhiều để xóa hàng loạt (US2).
+  final bool isSelecting;
+  final Set<String> selectedIds;
 
   const OutfitsListState({
     this.isLoading = false,
@@ -16,7 +20,11 @@ class OutfitsListState {
     this.errorMessage,
     this.selectedDetail,
     this.isLoadingDetail = false,
+    this.isSelecting = false,
+    this.selectedIds = const {},
   });
+
+  int get selectedCount => selectedIds.length;
 
   OutfitsListState copyWith({
     bool? isLoading,
@@ -26,6 +34,8 @@ class OutfitsListState {
     bool? isLoadingDetail,
     bool clearError = false,
     bool clearDetail = false,
+    bool? isSelecting,
+    Set<String>? selectedIds,
   }) {
     return OutfitsListState(
       isLoading: isLoading ?? this.isLoading,
@@ -33,6 +43,8 @@ class OutfitsListState {
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       selectedDetail: clearDetail ? null : (selectedDetail ?? this.selectedDetail),
       isLoadingDetail: isLoadingDetail ?? this.isLoadingDetail,
+      isSelecting: isSelecting ?? this.isSelecting,
+      selectedIds: selectedIds ?? this.selectedIds,
     );
   }
 }
@@ -81,18 +93,69 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
   }
 
   Future<bool> deleteOutfit(String id) async {
+    final result = await deleteOutfits([id]);
+    return result.isAllSuccess;
+  }
+
+  /// Xóa hàng loạt outfit: xóa tuần tự từng id, mục thành công gỡ khỏi
+  /// list ngay, mục thất bại giữ lại để báo + thử lại (US2).
+  Future<BulkDeletionResult> deleteOutfits(List<String> ids) async {
+    if (ids.isEmpty) return const BulkDeletionResult();
     try {
       final repo = _ref.read(outfitRepositoryProvider);
-      await repo.deleteOutfit(id);
-      final updatedList = state.outfits.where((o) => o.id != id).toList();
-      state = state.copyWith(outfits: updatedList);
-      return true;
+      final result = await repo.deleteOutfits(ids);
+      if (result.deletedIds.isNotEmpty) {
+        final deleted = result.deletedIds.toSet();
+        state = state.copyWith(
+          outfits: state.outfits.where((o) => !deleted.contains(o.id)).toList(),
+        );
+      }
+      if (result.failedIds.isEmpty) {
+        state = state.copyWith(isSelecting: false, selectedIds: const {});
+      } else {
+        state = state.copyWith(
+          errorMessage: 'Không thể xoá ${result.failedCount} bộ trang phục. Vui lòng thử lại.',
+        );
+      }
+      return result;
     } catch (e) {
       state = state.copyWith(
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
-      return false;
+      return BulkDeletionResult(
+        failedIds: ids,
+        failureMessages: [e.toString().replaceAll('Exception: ', '')],
+      );
     }
+  }
+
+  // --- Chế độ chọn nhiều (US2) ---
+
+  void enterSelection([String? seedId]) {
+    state = state.copyWith(
+      isSelecting: true,
+      selectedIds: seedId == null ? const {} : {seedId},
+    );
+  }
+
+  void exitSelection() {
+    state = state.copyWith(isSelecting: false, selectedIds: const {});
+  }
+
+  void toggleSelect(String id) {
+    final next = Set<String>.from(state.selectedIds);
+    if (next.contains(id)) {
+      next.remove(id);
+    } else {
+      next.add(id);
+    }
+    state = state.copyWith(selectedIds: next);
+  }
+
+  void selectAll() {
+    state = state.copyWith(
+      selectedIds: state.outfits.map((o) => o.id).toSet(),
+    );
   }
 
   /// Nạp các món đồ của một outfit đã lưu vào Studio Canvas để chỉnh sửa

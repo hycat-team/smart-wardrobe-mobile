@@ -119,9 +119,20 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final detailAsync = ref.watch(wardrobeItemDetailProvider(widget.itemId));
+    // Route đang trong cử chỉ pop (vuốt-back): route không còn current.
+    // Giữ nguyên khung hình đã cache, bỏ qua mọi emission mới từ provider
+    // giữa chừng cử chỉ để tránh giật/nháy (US1).
+    final isPopping = ModalRoute.of(context)?.isCurrent == false;
+    if (isPopping && _currentItem != null) {
+      return _buildContent(context, _currentItem!);
+    }
 
     return detailAsync.when(
-      data: (fetchedItem) => _buildContent(context, fetchedItem),
+      data: (fetchedItem) {
+        // Cache bản mới nhất (không setState): dùng khi pop (xem trên).
+        _currentItem = fetchedItem;
+        return _buildContent(context, fetchedItem);
+      },
       loading: () {
         if (_currentItem != null) {
           return _buildContent(context, _currentItem!);
@@ -225,6 +236,9 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
                             child: Hero(
                               tag: 'item_${item.id}',
+                              // Đồng bộ với Hero phía list: cho flight chạy
+                              // theo cử chỉ vuốt-back, tránh nháy khung (US1).
+                              transitionOnUserGestures: true,
                               child: ClosyNetworkImage(
                                 imageUrl: item.displayImageUrl,
                                 fit: BoxFit.contain,

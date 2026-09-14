@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/models/bulk_deletion_result.dart';
 import '../../../shared/widgets/closy_network_image.dart';
 import '../models/outfit_models.dart';
 import '../providers/outfits_list_provider.dart';
@@ -307,6 +308,98 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
     );
   }
 
+  void _confirmBulkDeleteOutfits(List<String> ids) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Xác nhận xoá ${ids.length} outfit',
+            style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w600)),
+        content: Text(
+            'Các bộ trang phục đã chọn sẽ bị xoá khỏi tủ đồ và không thể hoàn tác.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Huỷ',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              _runBulkDeleteOutfits(ids);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            child: Text('Xoá ${ids.length} outfit'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runBulkDeleteOutfits(List<String> ids) async {
+    final result =
+        await ref.read(outfitsListProvider.notifier).deleteOutfits(ids);
+    if (!mounted) return;
+
+    if (result.isAllSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã xoá ${result.deletedCount} outfit thành công.'),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    } else {
+      _showBulkDeleteOutfitsFailure(result);
+    }
+  }
+
+  void _showBulkDeleteOutfitsFailure(BulkDeletionResult result) {
+    final outfits = ref.read(outfitsListProvider).outfits;
+    final names = result.failedIds
+        .map((id) {
+          final match = outfits.where((o) => o.id == id);
+          // Mục thất bại vẫn còn trong list (giữ lại để thử lại).
+          return match.isEmpty ? null : match.first.name;
+        })
+        .whereType<String>()
+        .toList();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Xoá chưa hoàn tất'),
+        content: Text(
+          result.deletedCount > 0
+              ? 'Đã xoá ${result.deletedCount} outfit, còn ${result.failedCount} outfit thất bại (${result.describeFailures(names)}). Vui lòng thử lại.'
+              : 'Không thể xoá ${result.failedCount} outfit đã chọn. Vui lòng kiểm tra mạng và thử lại.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Đóng',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogCtx).pop();
+              _runBulkDeleteOutfits(result.failedIds);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            child: Text('Thử lại (${result.failedCount})'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Color _parseColorHex(String hexString) {
     try {
       final buffer = StringBuffer();
@@ -327,39 +420,126 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        leading: widget.showBackButton
+        leading: state.isSelecting
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.primary),
-                onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
-                  } else {
-                    context.go('/studio');
-                  }
-                },
+                icon: const Icon(Icons.close_rounded,
+                    size: 20, color: AppColors.primary),
+                tooltip: 'Hủy chọn',
+                onPressed: () =>
+                    ref.read(outfitsListProvider.notifier).exitSelection(),
               )
-            : null,
+            : (widget.showBackButton
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 18, color: AppColors.primary),
+                    onPressed: () {
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        context.go('/studio');
+                      }
+                    },
+                  )
+                : null),
         title: Text(
-          'Tủ Outfit Của Tôi',
+          state.isSelecting
+              ? '${state.selectedCount} đã chọn'
+              : 'Tủ Outfit Của Tôi',
           style: GoogleFonts.playfairDisplay(
             fontSize: 22,
             fontWeight: FontWeight.w600,
             color: AppColors.primary,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
-            onPressed: () => ref.read(outfitsListProvider.notifier).fetchOutfits(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
-            tooltip: 'Tạo Outfit Mới',
-            onPressed: () => context.go('/studio'),
-          ),
-          const SizedBox(width: 8),
-        ],
+        actions: state.isSelecting
+            ? [
+                TextButton(
+                  onPressed: () =>
+                      ref.read(outfitsListProvider.notifier).selectAll(),
+                  child: const Text('Chọn tất cả'),
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.checklist_rounded,
+                      color: AppColors.primary),
+                  tooltip: 'Chọn nhiều để xóa',
+                  onPressed: () => ref
+                      .read(outfitsListProvider.notifier)
+                      .enterSelection(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded,
+                      color: AppColors.primary),
+                  onPressed: () =>
+                      ref.read(outfitsListProvider.notifier).fetchOutfits(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline_rounded,
+                      color: AppColors.primary),
+                  tooltip: 'Tạo Outfit Mới',
+                  onPressed: () => context.go('/studio'),
+                ),
+                const SizedBox(width: 8),
+              ],
       ),
+      bottomNavigationBar: state.isSelecting
+          ? SafeArea(
+              top: false,
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        state.selectedCount == 0
+                            ? 'Chạm để chọn outfit cần xóa'
+                            : 'Đã chọn ${state.selectedCount} outfit',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: state.selectedCount == 0
+                          ? null
+                          : () => _confirmBulkDeleteOutfits(
+                              state.selectedIds.toList()),
+                      icon:
+                          const Icon(Icons.delete_outline_rounded, size: 18),
+                      label: Text('Xóa (${state.selectedCount})'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor:
+                            Colors.white.withOpacity(0.25),
+                        disabledForegroundColor:
+                            Colors.white.withOpacity(0.6),
+                        shape: const StadiumBorder(),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: () => ref.read(outfitsListProvider.notifier).fetchOutfits(),
         color: AppColors.primary,
@@ -483,7 +663,9 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
                                 itemCount: state.outfits.length,
                                 itemBuilder: (context, index) {
                                   final outfit = state.outfits[index];
-                                  return _buildOutfitCard(outfit);
+                                  final isSelected = state.selectedIds
+                                      .contains(outfit.id);
+                                  return _buildOutfitCard(outfit, isSelected);
                                 },
                               ),
                             ),
@@ -494,14 +676,30 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
     );
   }
 
-  Widget _buildOutfitCard(UserOutfitModel outfit) {
+  Widget _buildOutfitCard(UserOutfitModel outfit, bool isSelected) {
     return GestureDetector(
-      onTap: () => _showOutfitDetailSheet(outfit),
+      onTap: () {
+        if (ref.read(outfitsListProvider).isSelecting) {
+          ref.read(outfitsListProvider.notifier).toggleSelect(outfit.id);
+          return;
+        }
+        _showOutfitDetailSheet(outfit);
+      },
+      onLongPress: () {
+        final notifier = ref.read(outfitsListProvider.notifier);
+        if (!ref.read(outfitsListProvider).isSelecting) {
+          notifier.enterSelection(outfit.id);
+        } else {
+          notifier.toggleSelect(outfit.id);
+        }
+      },
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border, width: 0.8),
+          border: Border.all(
+              color: isSelected ? AppColors.primary : AppColors.border,
+              width: isSelected ? 2.0 : 0.8),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -514,23 +712,49 @@ class _OutfitsListScreenState extends ConsumerState<OutfitsListScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF9F6F0),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                  child: outfit.coverImageUrl != null && outfit.coverImageUrl!.isNotEmpty
-                      ? ClosyNetworkImage(
-                          imageUrl: outfit.coverImageUrl!,
-                          fit: BoxFit.contain,
-                          memCacheWidth: 350,
-                        )
-                      : const Center(
-                          child: Icon(Icons.checkroom_rounded, size: 40, color: AppColors.accentSandDark),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF9F6F0),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(18)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(18)),
+                      child: outfit.coverImageUrl != null &&
+                              outfit.coverImageUrl!.isNotEmpty
+                          ? ClosyNetworkImage(
+                              imageUrl: outfit.coverImageUrl!,
+                              fit: BoxFit.contain,
+                              memCacheWidth: 350,
+                            )
+                          : const Center(
+                              child: Icon(Icons.checkroom_rounded,
+                                  size: 40, color: AppColors.accentSandDark),
+                            ),
+                    ),
+                  ),
+                  // Selection check badge (US2)
+                  if (isSelected)
+                    const Positioned(
+                      top: 8,
+                      left: 8,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
                         ),
-                ),
+                        child: Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.check_rounded,
+                              size: 14, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
 

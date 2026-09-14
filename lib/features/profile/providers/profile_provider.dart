@@ -150,6 +150,9 @@ class SubscriptionOverviewState {
   final bool isCreatingPurchase;
   final UserSubscriptionModel subscription;
   final DailyQuotaModel dailyQuota;
+  // true sau lần tải hạn mức thành công đầu tiên — dùng để phân biệt
+  // "chưa có số liệu" (hiện skeleton/lỗi) với số 0 thật (US4, FR-014).
+  final bool quotaLoaded;
   final PaymentLinkModel? activePaymentLink;
   final String? errorMessage;
   final String? purchaseErrorMessage;
@@ -159,6 +162,7 @@ class SubscriptionOverviewState {
     this.isCreatingPurchase = false,
     this.subscription = const UserSubscriptionModel(),
     this.dailyQuota = const DailyQuotaModel(),
+    this.quotaLoaded = false,
     this.activePaymentLink,
     this.errorMessage,
     this.purchaseErrorMessage,
@@ -169,6 +173,7 @@ class SubscriptionOverviewState {
     bool? isCreatingPurchase,
     UserSubscriptionModel? subscription,
     DailyQuotaModel? dailyQuota,
+    bool? quotaLoaded,
     PaymentLinkModel? activePaymentLink,
     String? errorMessage,
     String? purchaseErrorMessage,
@@ -180,6 +185,7 @@ class SubscriptionOverviewState {
       isCreatingPurchase: isCreatingPurchase ?? this.isCreatingPurchase,
       subscription: subscription ?? this.subscription,
       dailyQuota: dailyQuota ?? this.dailyQuota,
+      quotaLoaded: quotaLoaded ?? this.quotaLoaded,
       activePaymentLink: clearActivePayment ? null : (activePaymentLink ?? this.activePaymentLink),
       errorMessage: errorMessage,
       purchaseErrorMessage: clearPurchaseError ? null : (purchaseErrorMessage ?? this.purchaseErrorMessage),
@@ -205,6 +211,7 @@ class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewSta
         isLoading: false,
         subscription: results[0] as UserSubscriptionModel,
         dailyQuota: results[1] as DailyQuotaModel,
+        quotaLoaded: true,
       );
     } catch (e) {
       state = state.copyWith(
@@ -251,6 +258,7 @@ class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewSta
       state = state.copyWith(
         subscription: sub,
         dailyQuota: quota,
+        quotaLoaded: true,
       );
       return sub.isPremium;
     } catch (_) {

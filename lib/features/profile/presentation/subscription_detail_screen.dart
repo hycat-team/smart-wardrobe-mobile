@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/ai_quota_display.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
 
@@ -52,8 +53,13 @@ class SubscriptionDetailScreen extends ConsumerWidget {
                     _buildCurrentPlanHero(context, overviewState.subscription),
                     const SizedBox(height: 24),
 
-                    // 2. Daily AI Quotas Section
-                    _buildQuotasSection(overviewState.dailyQuota),
+                    // 2. Daily AI Quotas Section (widget dùng chung với Hồ sơ — US4)
+                    _buildQuotasSection(
+                      overviewState,
+                      onRetry: () => ref
+                          .read(subscriptionOverviewProvider.notifier)
+                          .loadOverview(),
+                    ),
                     const SizedBox(height: 28),
 
                     // 3. Upgrade Banner / Plans Section
@@ -255,7 +261,13 @@ class SubscriptionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQuotasSection(DailyQuotaModel quota) {
+  Widget _buildQuotasSection(
+    SubscriptionOverviewState overview, {
+    VoidCallback? onRetry,
+  }) {
+    final quota = overview.dailyQuota;
+    // Chỉ hiện skeleton/lỗi khi chưa từng có số liệu thật (US4, FR-014).
+    final firstLoad = !overview.quotaLoaded;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -281,74 +293,30 @@ class SubscriptionDetailScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 18),
 
-          _buildDetailedQuotaBar(
+          AiQuotaDisplay(
             title: 'Gợi ý phối đồ AI',
             used: quota.aiOutfitUsed,
             limit: quota.aiOutfitLimit,
-            progress: quota.outfitProgress,
             icon: Icons.auto_awesome_rounded,
+            isLoading: overview.isLoading && firstLoad,
+            errorMessage: firstLoad ? overview.errorMessage : null,
+            onRetry: onRetry,
+            showResetNote: false,
           ),
           const SizedBox(height: 16),
 
-          _buildDetailedQuotaBar(
+          AiQuotaDisplay(
             title: 'Tư vấn Stylist AI',
             used: quota.aiChatUsed,
             limit: quota.aiChatLimit,
-            progress: quota.chatProgress,
             icon: Icons.chat_bubble_outline_rounded,
+            isLoading: overview.isLoading && firstLoad,
+            errorMessage: firstLoad ? overview.errorMessage : null,
+            onRetry: onRetry,
+            showResetNote: false,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDetailedQuotaBar({
-    required String title,
-    required int used,
-    required int limit,
-    required double progress,
-    required IconData icon,
-  }) {
-    final remaining = (limit - used).clamp(0, limit);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            Text(
-              'Còn lại: $remaining / $limit',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: remaining == 0 ? Colors.red.shade700 : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 7,
-            backgroundColor: AppColors.surfaceSubtle,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              progress >= 0.9 ? Colors.orange.shade700 : AppColors.primary,
-            ),
-          ),
-        ),
-      ],
     );
   }
 

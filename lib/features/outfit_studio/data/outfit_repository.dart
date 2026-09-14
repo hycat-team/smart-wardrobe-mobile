@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/models/bulk_deletion_result.dart';
 import '../../wardrobe/models/wardrobe_models.dart';
 import '../models/outfit_models.dart';
 
@@ -108,6 +109,30 @@ class OutfitRepository {
     } on DioException catch (e) {
       throw Exception(_extractErrorMessage(e, 'Không thể xoá outfit'));
     }
+  }
+
+  /// Xoá hàng loạt outfit (US2).
+  /// BE chưa có route bulk cho outfit nên xóa tuần tự từng `DELETE /outfits/{id}`
+  /// (không `Future.wait` để giữ thứ tự + quy lỗi rõ từng mục).
+  /// Không abort sớm: tiếp tục các id còn lại, gom kết quả vào [BulkDeletionResult].
+  Future<BulkDeletionResult> deleteOutfits(List<String> ids) async {
+    final deleted = <String>[];
+    final failed = <String>[];
+    final messages = <String>[];
+    for (final id in ids) {
+      try {
+        await deleteOutfit(id);
+        deleted.add(id);
+      } catch (e) {
+        failed.add(id);
+        messages.add(e.toString().replaceAll('Exception: ', ''));
+      }
+    }
+    return BulkDeletionResult(
+      deletedIds: deleted,
+      failedIds: failed,
+      failureMessages: messages,
+    );
   }
 
   /// Lưu một outfit mới vào hệ thống

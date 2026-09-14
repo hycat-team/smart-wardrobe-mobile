@@ -10,6 +10,7 @@ import 'package:smart_wardrobe/features/auth/providers/auth_provider.dart';
 import 'package:smart_wardrobe/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/wardrobe_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/item_detail_screen.dart';
+import 'package:smart_wardrobe/features/wardrobe/presentation/system_catalog_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/wardrobe_insights_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/models/wardrobe_models.dart';
 import 'package:smart_wardrobe/features/outfit_studio/presentation/outfit_studio_screen.dart';
@@ -136,6 +137,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final item = state.extra as WardrobeItemModel?;
           return ItemDetailScreen(itemId: id, initialItem: item);
         },
+      ),
+      GoRoute(
+        path: '/wardrobe/catalog',
+        builder: (context, state) => const SystemCatalogScreen(),
       ),
       GoRoute(
         path: '/wardrobe/insights',
