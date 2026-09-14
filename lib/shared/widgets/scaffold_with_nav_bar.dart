@@ -75,36 +75,36 @@ class ScaffoldWithNavBar extends StatelessWidget {
                         ),
                       ),
 
-                      // Tab 1: Stylist
+                      // Tab 1: Wardrobe
                       Expanded(
                         child: _StandardNavItem(
                           index: 1,
                           currentIndex: currentIndex,
-                          icon: Icons.auto_awesome_outlined,
-                          activeIcon: Icons.auto_awesome,
-                          label: 'Stylist',
+                          icon: Icons.checkroom_outlined,
+                          activeIcon: Icons.checkroom_rounded,
+                          label: 'Wardrobe',
                           onTap: () => _onTabTapped(1),
                         ),
                       ),
 
-                      // Tab 2: Wardrobe (Center Hero Elevated Button)
+                      // Tab 2: AI Outfit (Center Hero Elevated Button)
                       Expanded(
                         child: _CenterHeroNavItem(
                           index: 2,
                           currentIndex: currentIndex,
-                          label: 'Wardrobe',
+                          label: 'AI Outfit',
                           onTap: () => _onTabTapped(2),
                         ),
                       ),
 
-                      // Tab 3: Outfits
+                      // Tab 3: AI Chat
                       Expanded(
                         child: _StandardNavItem(
                           index: 3,
                           currentIndex: currentIndex,
-                          icon: Icons.style_outlined,
-                          activeIcon: Icons.style_rounded,
-                          label: 'Outfits',
+                          icon: Icons.chat_bubble_outline_rounded,
+                          activeIcon: Icons.chat_bubble_rounded,
+                          label: 'AI Chat',
                           onTap: () => _onTabTapped(3),
                         ),
                       ),
@@ -228,7 +228,6 @@ class _CenterHeroNavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   static const Color _accentCaramel = Color(0xFFBE9B7B);
-  static const Color _inactiveRing = Color(0xFFD8C4B6);
 
   @override
   Widget build(BuildContext context) {
@@ -246,42 +245,24 @@ class _CenterHeroNavItem extends StatelessWidget {
           AnimatedContainer(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeInOutCubic,
-            width: 49,
-            height: 49,
+            width: isSelected ? 50 : 48,
+            height: isSelected ? 50 : 48,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isSelected ? _accentCaramel : Colors.white,
-              border: isSelected
-                  ? null
-                  : Border.all(
-                      color: _inactiveRing,
-                      width: 1.5,
-                    ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: _accentCaramel.withOpacity(0.38),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-            ),
-            child: Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: Icon(
-                  isSelected ? Icons.checkroom_rounded : Icons.checkroom_outlined,
-                  key: ValueKey<bool>(isSelected),
-                  size: 25,
-                  color: isSelected ? Colors.white : const Color(0xFF2D2D2D),
+              color: isSelected ? _accentCaramel : const Color(0xFFC0A184),
+              boxShadow: [
+                BoxShadow(
+                  color: _accentCaramel.withOpacity(isSelected ? 0.42 : 0.26),
+                  blurRadius: isSelected ? 14 : 9,
+                  offset: Offset(0, isSelected ? 4 : 2),
                 ),
+              ],
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: 25,
+                color: Colors.white,
               ),
             ),
           ),

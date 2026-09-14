@@ -179,9 +179,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                       backgroundColor: AppColors.primary,
                     ),
                   );
-                  // Về tab Outfits trong shell để giữ bottom navbar,
-                  // không dùng route /outfits top-level (mất navbar).
-                  context.go('/my-outfits');
+                  context.push('/outfits');
                 } else {
                   final error = ref.read(outfitStudioProvider).errorMessage;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -960,8 +958,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                           backgroundColor: AppColors.primary,
                         ),
                       );
-                      // Về tab Outfits trong shell để giữ bottom navbar.
-                      context.go('/my-outfits');
+                      context.push('/outfits');
                     } else {
                       final error = ref.read(outfitStudioProvider).errorMessage;
                       ScaffoldMessenger.of(context).showSnackBar(

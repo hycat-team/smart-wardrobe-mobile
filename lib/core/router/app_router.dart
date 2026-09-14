@@ -8,6 +8,7 @@ import 'package:smart_wardrobe/features/auth/presentation/preferences_screen.dar
 import 'package:smart_wardrobe/features/auth/presentation/forgot_password_screen.dart';
 import 'package:smart_wardrobe/features/auth/providers/auth_provider.dart';
 import 'package:smart_wardrobe/features/onboarding/presentation/onboarding_screen.dart';
+import 'package:smart_wardrobe/features/home/presentation/home_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/wardrobe_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/item_detail_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/system_catalog_screen.dart';
@@ -96,7 +97,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             !_isAuthPath(pending)) {
           return pending;
         }
-        return '/wardrobe';
+        return '/home';
       }
 
       return null;
@@ -104,7 +105,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        redirect: (context, state) => '/wardrobe',
+        redirect: (context, state) => '/home',
       ),
       GoRoute(
         path: '/login',
@@ -128,7 +129,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/outfits',
-        builder: (context, state) => const OutfitsListScreen(),
+        builder: (context, state) => const OutfitsListScreen(showBackButton: true),
+      ),
+      GoRoute(
+        path: '/my-outfits',
+        redirect: (context, state) => '/outfits',
       ),
       GoRoute(
         path: '/wardrobe/item/:id',
@@ -221,25 +226,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return ScaffoldWithNavBar(navigationShell: navigationShell);
         },
         branches: [
-          // Branch 0: Tab "Home" -> Outfit Studio & AI gợi ý phối đồ
+          // Branch 0: Tab "Home" -> Trang chủ tổng quan & gợi ý
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/studio',
-                builder: (context, state) => const OutfitStudioScreen(),
+                path: '/home',
+                builder: (context, state) => const HomeScreen(),
               ),
             ],
           ),
-          // Branch 1: Tab "Stylist" -> AI Stylist Chatbot
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/stylist',
-                builder: (context, state) => const StylistScreen(),
-              ),
-            ],
-          ),
-          // Branch 2: Tab "Wardrobe" (Center Hero) -> Tủ đồ số cá nhân
+          // Branch 1: Tab "Wardrobe" -> Tủ đồ số cá nhân
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -248,16 +244,25 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 3: Tab "Outfits" -> Danh sách bộ phối đã lưu
+          // Branch 2: Tab "AI Outfit" (Center Hero) -> Outfit Studio & AI phối đồ
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/my-outfits',
-                builder: (context, state) => const OutfitsListScreen(showBackButton: false),
+                path: '/studio',
+                builder: (context, state) => const OutfitStudioScreen(),
               ),
             ],
           ),
-          // Branch 4: Tab "Profile" -> Tài khoản, số đo & thanh toán
+          // Branch 3: Tab "AI Chat" -> AI Stylist Trò chuyện tư vấn
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/stylist',
+                builder: (context, state) => const StylistScreen(),
+              ),
+            ],
+          ),
+          // Branch 4: Tab "Profile" -> Tài khoản cá nhân, số đo & gói dịch vụ
           StatefulShellBranch(
             routes: [
               GoRoute(
