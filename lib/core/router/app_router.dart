@@ -221,14 +221,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return ScaffoldWithNavBar(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/wardrobe',
-                builder: (context, state) => const WardrobeScreen(),
-              ),
-            ],
-          ),
+          // Branch 0: Tab "Home" -> Outfit Studio & AI gợi ý phối đồ
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -237,6 +230,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          // Branch 1: Tab "Stylist" -> AI Stylist Chatbot
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -245,6 +239,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          // Branch 2: Tab "Wardrobe" (Center Hero) -> Tủ đồ số cá nhân
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/wardrobe',
+                builder: (context, state) => const WardrobeScreen(),
+              ),
+            ],
+          ),
+          // Branch 3: Tab "Outfits" -> Danh sách bộ phối đã lưu
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -253,14 +257,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // StatefulShellBranch(
-          //   routes: [
-          //     GoRoute(
-          //       path: '/curates',
-          //       builder: (context, state) => const MarketplaceScreen(),
-          //     ),
-          //   ],
-          // ),
+          // Branch 4: Tab "Profile" -> Tài khoản, số đo & thanh toán
           StatefulShellBranch(
             routes: [
               GoRoute(

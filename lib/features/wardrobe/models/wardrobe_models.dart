@@ -143,7 +143,7 @@ class WardrobeItemModel {
 
   String get displayTitle {
     if (isProcessing) {
-      return 'Đang phân tích AI...';
+      return 'Đang phân tích...';
     }
     if (needsReview) {
       final cat = category?.name ?? fashionItem?.category?.name;
@@ -167,7 +167,7 @@ class WardrobeItemModel {
 
   String get displayCategoryName {
     if (isProcessing) {
-      return 'ĐANG XỬ LÝ AI';
+      return 'ĐANG XỬ LÝ...';
     }
     if (needsReview) {
       return (category?.name ?? fashionItem?.category?.name ?? 'CẦN KIỂM TRA').toUpperCase();
@@ -203,7 +203,7 @@ class WardrobeItemModel {
       case 2:
         return 'Đã bán';
       case 3:
-        return 'Đang phân tích AI';
+        return 'Đang phân tích';
       case 4:
         return 'Lỗi phân tích';
       case 5:
