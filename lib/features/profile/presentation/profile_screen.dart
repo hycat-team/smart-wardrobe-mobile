@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/config/release_flags.dart';
 import '../../../shared/widgets/ai_quota_display.dart';
 import '../../../shared/widgets/closy_network_image.dart';
 import '../../auth/models/auth_models.dart';
@@ -439,32 +440,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ],
               ),
-              InkWell(
-                onTap: () => context.push('/profile/subscription'),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentSand,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Chi tiết',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+              // Ẩn điểm vào Gói hội viên ở bản phát hành Play (spec 008, FR-021).
+              if (ReleaseFlags.enablePaidFeatures)
+                InkWell(
+                  onTap: () => context.push('/profile/subscription'),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentSand,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Chi tiết',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 2),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 10, color: AppColors.primary),
-                    ],
+                        SizedBox(width: 2),
+                        Icon(Icons.arrow_forward_ios_rounded,
+                            size: 10, color: AppColors.primary),
+                      ],
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -543,12 +548,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Đổi mật khẩu tài khoản và quản lý đăng xuất',
           () => context.push('/profile/change-password'),
         ),
-        _buildMenuTile(
-          Icons.workspace_premium_outlined,
-          'Gói hội viên & Hạn mức AI',
-          'Xem quyền lợi chi tiết và các gói dịch vụ nâng cấp',
-          () => context.push('/profile/subscription'),
-        ),
+        // Ẩn điểm vào Gói hội viên ở bản phát hành Play (spec 008, FR-021).
+        if (ReleaseFlags.enablePaidFeatures)
+          _buildMenuTile(
+            Icons.workspace_premium_outlined,
+            'Gói hội viên & Hạn mức AI',
+            'Xem quyền lợi chi tiết và các gói dịch vụ nâng cấp',
+            () => context.push('/profile/subscription'),
+          ),
         // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng hồ sơ số đo).
         /*
         _buildMenuTile(
@@ -563,6 +570,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Thống kê & Phân tích tủ đồ',
           'Xem giá trị tủ đồ, tỷ lệ danh mục và các món đồ ít mặc',
           () => context.push('/wardrobe/insights'),
+        ),
+        _buildMenuTile(
+          Icons.insights_rounded,
+          'Thống kê chi tiết',
+          'Mức sử dụng, giá trị, outfit và xu hướng 6 tháng',
+          () => context.push('/wardrobe/statistics'),
         ),
         // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng outfits yêu thích/đã lưu).
         /*

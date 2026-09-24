@@ -18,15 +18,29 @@ class AppConstants {
   // Base API URL with Android emulator support & .env loading.
   // Thứ tự ưu tiên: --dart-define (cho bản build CI/Vercel) > .env > localhost.
   static String get baseUrl {
+    final url = _resolveBaseUrl();
+    // Bản release bắt buộc trỏ tới endpoint HTTPS thật (spec 008, FR-023).
+    // Fail-fast thay vì fallback im lặng về địa chỉ mẫu.
+    if (kReleaseMode && (url.isEmpty || url.contains('[IP_ADDRESS]'))) {
+      throw StateError(
+        'API_BASE_URL chưa cấu hình cho bản release. '
+        'Truyền --dart-define=API_BASE_URL=https://<prod>/api/v1 khi build.',
+      );
+    }
+    return url;
+  }
+
+  static String _resolveBaseUrl() {
     const definedUrl = String.fromEnvironment('API_BASE_URL');
     const definedAndroidUrl = String.fromEnvironment('API_BASE_URL_ANDROID');
     if (dotenv.isInitialized) {
       try {
         if (!kIsWeb && Platform.isAndroid) {
-          return definedAndroidUrl.isNotEmpty
-              ? definedAndroidUrl
-              : (dotenv.env['API_BASE_URL_ANDROID'] ??
-                  'http://[IP_ADDRESS]/api/v1');
+          if (definedAndroidUrl.isNotEmpty) return definedAndroidUrl;
+          if (definedUrl.isNotEmpty) return definedUrl;
+          return dotenv.env['API_BASE_URL_ANDROID'] ??
+              dotenv.env['API_BASE_URL'] ??
+              'http://[IP_ADDRESS]/api/v1';
         }
       } catch (_) {}
       if (definedUrl.isNotEmpty) return definedUrl;
@@ -34,17 +48,14 @@ class AppConstants {
     }
 
     try {
-      if (!kIsWeb && Platform.isAndroid && definedAndroidUrl.isNotEmpty) {
-        return definedAndroidUrl;
+      if (!kIsWeb && Platform.isAndroid) {
+        if (definedAndroidUrl.isNotEmpty) return definedAndroidUrl;
+        if (definedUrl.isNotEmpty) return definedUrl;
+        return 'http://[IP_ADDRESS]/api/v1';
       }
     } catch (_) {}
     if (definedUrl.isNotEmpty) return definedUrl;
 
-    try {
-      if (!kIsWeb && Platform.isAndroid) {
-        return 'http://[IP_ADDRESS]/api/v1';
-      }
-    } catch (_) {}
     return 'http://[IP_ADDRESS]/api/v1';
   }
 

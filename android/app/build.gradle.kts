@@ -4,6 +4,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+import java.util.Properties
+import java.io.FileInputStream
+
+// Upload key cho bản phát hành Google Play (spec 008, contract C2).
+// File `android/key.properties` KHÔNG commit (xem .gitignore).
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.smartwardrobe.smart_wardrobe"
     compileSdk = flutter.compileSdkVersion
@@ -29,11 +40,31 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            // Chỉ throw khi thực sự build release để không chặn build debug
+            // của dev chưa có key. Bản phát hành LUÔN ký bằng upload key,
+            // không fallback về debug (contract C2).
+            val isReleaseTask = gradle.startParameter.taskNames.any {
+                it.contains("Release", ignoreCase = true)
+            }
+            if (!keystorePropertiesFile.exists() && isReleaseTask) {
+                throw GradleException(
+                    "Missing android/key.properties — tạo theo docs/Release_Play_Checklist.md (mục 1)."
+                )
+            }
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

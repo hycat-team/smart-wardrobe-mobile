@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/profile_provider.dart';
+import '../../../../core/config/release_flags.dart';
 import 'topup_bottom_sheet.dart';
 
 class ClosyWalletCard extends ConsumerStatefulWidget {
@@ -26,6 +27,10 @@ class _ClosyWalletCardState extends ConsumerState<ClosyWalletCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Ẩn toàn bộ thẻ ví ở bản phát hành Play (spec 008, FR-021).
+    if (!ReleaseFlags.enablePaidFeatures) {
+      return const SizedBox.shrink();
+    }
     final walletState = ref.watch(walletProvider);
     final wallet = walletState.wallet;
     const goldColor = Color(0xFFD4AF37);

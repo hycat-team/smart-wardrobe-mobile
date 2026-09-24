@@ -13,6 +13,7 @@ import 'package:smart_wardrobe/features/wardrobe/presentation/wardrobe_screen.da
 import 'package:smart_wardrobe/features/wardrobe/presentation/item_detail_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/system_catalog_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/wardrobe_insights_screen.dart';
+import 'package:smart_wardrobe/features/wardrobe/presentation/wardrobe_statistics_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/models/wardrobe_models.dart';
 import 'package:smart_wardrobe/features/outfit_studio/presentation/outfit_studio_screen.dart';
 import 'package:smart_wardrobe/features/outfit_studio/presentation/outfits_list_screen.dart';
@@ -27,6 +28,7 @@ import 'package:smart_wardrobe/features/profile/presentation/subscription_upgrad
 import 'package:smart_wardrobe/features/profile/presentation/payment_waiting_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/payment_result_screen.dart';
 import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
+import 'package:smart_wardrobe/core/config/release_flags.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -152,6 +154,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const WardrobeInsightsScreen(),
       ),
       GoRoute(
+        path: '/wardrobe/statistics',
+        builder: (context, state) => const WardrobeStatisticsScreen(),
+      ),
+      GoRoute(
         path: '/profile/body',
         builder: (context, state) => const BodyProfileScreen(),
       ),
@@ -165,18 +171,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/profile/wallet',
+        // Chặn ở bản phát hành Play khi trả phí bị ẩn (spec 008, FR-021).
+        redirect: (context, state) =>
+            ReleaseFlags.enablePaidFeatures ? null : '/profile',
         builder: (context, state) => const WalletDetailScreen(),
       ),
       GoRoute(
         path: '/profile/subscription',
+        redirect: (context, state) =>
+            ReleaseFlags.enablePaidFeatures ? null : '/profile',
         builder: (context, state) => const SubscriptionDetailScreen(),
       ),
       GoRoute(
         path: '/profile/subscription/upgrade',
+        redirect: (context, state) =>
+            ReleaseFlags.enablePaidFeatures ? null : '/profile',
         builder: (context, state) => const SubscriptionUpgradeScreen(),
       ),
       GoRoute(
         path: '/profile/subscription/waiting',
+        redirect: (context, state) =>
+            ReleaseFlags.enablePaidFeatures ? null : '/profile',
         builder: (context, state) {
           final pending = state.extra as PendingPayment?;
           if (pending == null) {

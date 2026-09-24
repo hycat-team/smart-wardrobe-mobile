@@ -53,6 +53,11 @@ migrate_working_dir/
 # env
 .env
 
+# Release signing secrets (spec 008) — KHÔNG commit keystore/mật khẩu.
+android/key.properties
+*.jks
+*.keystore
+
 # Spec Kit + agent tooling (machine-local, reinstallable on each machine).
 # Shareable parts are committed explicitly: specs/, skills-lock.json,
 # .agents/skills/closy-mobile-flutter/. Everything else below is ignored.

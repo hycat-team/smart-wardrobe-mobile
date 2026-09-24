@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smart_wardrobe/core/config/release_flags.dart';
 
 /// Đón deep-link PayOS quay về app và điều hướng về trang thông báo.
 ///
@@ -34,6 +35,8 @@ class PaymentDeepLinkHandler {
   }
 
   void _handle(Uri uri) {
+    // Bỏ qua deep-link thanh toán ở bản phát hành Play (spec 008, FR-021).
+    if (!ReleaseFlags.enablePaidFeatures) return;
     if (uri.scheme != 'smartwardrobe') return;
     final target = _mapToResultRoute(uri);
     if (target == null) return;

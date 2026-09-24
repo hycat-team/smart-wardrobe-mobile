@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/sse_service.dart';
 import '../models/wardrobe_models.dart';
+import '../models/wardrobe_stats_models.dart';
 
 class WardrobePaginationResult {
   final List<WardrobeItemModel> items;
@@ -222,6 +223,68 @@ class WardrobeRepository {
       final message = e.response?.data?['message'] ?? e.message ?? 'Không thể tải phân bổ danh mục';
       throw Exception(message);
     }
+  }
+
+  /// Gói thống kê tổng hợp cho màn Thống kê (spec 009).
+  /// Gộp 3 nguồn hiện có: insights, phân bổ danh mục, số tổng quan.
+  /// `unused30` lấy từ số lượng của máy chủ (ngữ nghĩa ">30 ngày");
+  /// `unused60/90` đếm từ danh sách trả về (có thể thiếu nếu máy chủ
+  /// cắt danh sách theo limit). Theo FR-014, `wearDataAvailable` luôn
+  /// false cho tới khi máy chủ cung cấp `wearCount`/`wearHistory` thật.
+  Future<StatsBundle> getWardrobeStatistics() async {
+    final insights = await getWardrobeInsights();
+
+    var distribution = const WardrobeCategoryDistributionResult(totalItems: 0);
+    try {
+      distribution = await getCategoryDistribution();
+    } catch (_) {
+      // Phân bổ danh mục là dữ liệu phụ — thiếu thì hiển thị rỗng.
+    }
+
+    var outfitsCount = 0;
+    try {
+      final stats = await getWardrobeStats();
+      outfitsCount = stats.outfitsCount;
+    } catch (_) {
+      // Số outfit là dữ liệu phụ — thiếu thì hiển thị 0.
+    }
+
+    var unused60 = 0;
+    var unused90 = 0;
+    var missingPriceCount = 0;
+    for (final item in insights.underutilizedItems) {
+      if (item.lastWornDaysAgo >= 90) {
+        unused90++;
+      }
+      if (item.lastWornDaysAgo >= 60) {
+        unused60++;
+      }
+      if (item.purchasePriceVnd <= 0) {
+        missingPriceCount++;
+      }
+    }
+
+    return StatsBundle(
+      utilization: UtilizationMetric(
+        totalItems: insights.totalItems,
+        unused30: insights.underutilizedItemsCount,
+        unused60: unused60,
+        unused90: unused90,
+      ),
+      value: ValueMetric(
+        totalValueVnd: insights.totalWardrobeValueVnd,
+        byCategory: distribution.categories
+            .map((c) => CategoryValue(
+                  categoryId: c.categoryId,
+                  categoryName: c.categoryName,
+                  itemCount: c.itemCount,
+                ))
+            .toList(),
+        missingPriceCount: missingPriceCount,
+      ),
+      outfits: OutfitStat(totalOutfits: outfitsCount),
+      wearDataAvailable: false,
+    );
   }
 
   /// Lấy danh sách trang phục mẫu từ tủ đồ hệ thống (US3).
