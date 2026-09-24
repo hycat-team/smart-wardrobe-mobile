@@ -548,6 +548,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Đổi mật khẩu tài khoản và quản lý đăng xuất',
           () => context.push('/profile/change-password'),
         ),
+        _buildMenuTile(
+          Icons.privacy_tip_outlined,
+          'Chính sách bảo mật',
+          'Cách Closy thu thập, sử dụng và bảo vệ dữ liệu của bạn',
+          () => context.push('/profile/privacy'),
+        ),
         // Ẩn điểm vào Gói hội viên ở bản phát hành Play (spec 008, FR-021).
         if (ReleaseFlags.enablePaidFeatures)
           _buildMenuTile(

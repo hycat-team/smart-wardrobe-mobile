@@ -43,16 +43,11 @@ void main() {
     expect(r.formattedAmount, '50.000 đ');
   });
 
-  test('deep-link keeps PayOS query when mapping to result route', () {
+  test('deep-link cũ không mở checkout, về màn hình gói (009-web-payment-redirect)', () {
     final route = PaymentDeepLinkHandler.mapForTest(Uri.parse(
         'smartwardrobe://wallet/topup/success?code=00&cancel=false&status=PAID&orderCode=555'));
     expect(route, isNotNull);
-    expect(route, contains('/profile/payment/result'));
-    expect(route, contains('status=PAID'));
-    expect(route, contains('orderCode=555'));
-    final parsed = Uri.parse('https://x$route');
-    final r = PaymentResult.fromQuery(parsed.queryParameters);
-    expect(r.status, PaymentResultStatus.success);
+    expect(route, equals('/profile/subscription'));
   });
 
   test('PaymentReturnUrls embeds amount, uses result param', () {

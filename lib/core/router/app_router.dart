@@ -23,10 +23,10 @@ import 'package:smart_wardrobe/features/profile/presentation/wallet_detail_scree
 import 'package:smart_wardrobe/features/profile/presentation/body_profile_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/profile_edit_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/change_password_screen.dart';
+import 'package:smart_wardrobe/features/profile/presentation/privacy_policy_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/subscription_detail_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/subscription_upgrade_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/payment_waiting_screen.dart';
-import 'package:smart_wardrobe/features/profile/presentation/payment_result_screen.dart';
 import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
 import 'package:smart_wardrobe/core/config/release_flags.dart';
 import 'package:smart_wardrobe/features/profile/presentation/widgets/web_guidance_card.dart';
@@ -169,6 +169,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/change-password',
         builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        // Chính sách bảo mật: luôn mở được ở mọi bản build (kể cả bản Play
+        // ẩn trả phí) để reviewer và người dùng đều xem được.
+        path: '/profile/privacy',
+        builder: (context, state) => const PrivacyPolicyScreen(),
       ),
       GoRoute(
         path: '/profile/wallet',

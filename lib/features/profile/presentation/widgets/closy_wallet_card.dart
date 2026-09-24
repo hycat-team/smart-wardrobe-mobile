@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/profile_provider.dart';
 import '../../../../core/config/release_flags.dart';
-import 'topup_bottom_sheet.dart';
 
 class ClosyWalletCard extends ConsumerStatefulWidget {
   const ClosyWalletCard({super.key});
