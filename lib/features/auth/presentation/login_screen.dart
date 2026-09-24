@@ -103,12 +103,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Center(
                       child: Image.asset(
                         'assets/images/logo-full.png',
-                        width: 220,
+                        width: 168,
+                        height: 168,
                         fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
                         semanticLabel: 'Closy logo',
+                        errorBuilder: (context, error, stackTrace) => Text(
+                          'CLOSY',
+                          style: GoogleFonts.playfairDisplay(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            letterSpacing: 4,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     Text(
                       'Chào mừng trở lại',
                       textAlign: TextAlign.center,

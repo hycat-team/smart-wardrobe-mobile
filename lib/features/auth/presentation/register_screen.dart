@@ -225,6 +225,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Center(
+            child: Image.asset(
+              'assets/images/logo-full.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              semanticLabel: 'Closy logo',
+              errorBuilder: (context, error, stackTrace) => Text(
+                'CLOSY',
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                  letterSpacing: 4,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(
             'Bắt đầu hành trình',
             style: GoogleFonts.playfairDisplay(
