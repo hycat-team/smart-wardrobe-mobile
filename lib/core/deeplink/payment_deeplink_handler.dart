@@ -4,13 +4,13 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
-/// Đón deep-link PayOS quay về app và điều hướng về trang thông báo.
+/// Đón deep-link thanh toán cũ và chuyển về màn hình gói.
 ///
-/// - `smartwardrobe://subscription/success|cancel` → gói Premium.
-/// - `smartwardrobe://wallet/topup/success|cancel` → nạp ví.
-/// - Web: `/profile/payment/result?...` đã là route GoRouter, không cần xử lý.
-///
-/// Chỉ điều hướng; trạng thái thật do [PaymentResultScreen] verify lại qua BE.
+/// Luồng thanh toán đã chuyển lên website (009-web-payment-redirect):
+/// app không còn màn hình chờ/kết quả checkout. Mọi deep-link PayOS cũ
+/// (`smartwardrobe://subscription/...`, `smartwardrobe://wallet/...`)
+/// đều được chuyển về màn hình gói (hiển thị hướng dẫn lên website),
+/// không điều hướng tới trang thanh toán nào (FR-009).
 class PaymentDeepLinkHandler {
   final GoRouter router;
   final AppLinks _appLinks = AppLinks();
@@ -45,37 +45,17 @@ class PaymentDeepLinkHandler {
     });
   }
 
-  /// Map deep-link PayOS → route trang thông báo trong app.
+  /// Map deep-link thanh toán cũ → màn hình gói trong app.
   ///
-  /// PayOS append thêm query của nó (`code`, `cancel`, `status`, `orderCode`)
-  /// vào custom-scheme URL — giữ nguyên toàn bộ query để
-  /// [PaymentResult.fromQuery] ưu tiên đọc param PayOS.
+  /// Không còn map tới `/profile/payment/result` (route này giờ hiển thị
+  /// thông báo hết hiệu lực). Màn hình gói hiển thị hướng dẫn lên website
+  /// và tự tải lại trạng thái mới nhất khi mở.
   static String? _mapToResultRoute(Uri uri) {
-    // host: subscription | wallet ; path: /success | /cancel | /topup/success ...
+    // host: subscription | wallet — mọi path đều về màn hình gói.
     final host = uri.host.toLowerCase();
-    final segments =
-        uri.pathSegments.map((s) => s.toLowerCase()).toList();
-    final last = segments.isNotEmpty ? segments.last : '';
-    final isCancel = last == 'cancel' ||
-        last == 'cancelled' ||
-        last == 'canceled' ||
-        last == 'fail' ||
-        last == 'failed';
-
-    final status = isCancel ? 'cancelled' : 'success';
-    // Giữ lại query PayOS append (code/cancel/status/orderCode) để
-    // PaymentResult.fromQuery đọc đúng; chỉ thêm kind còn thiếu.
-    final merged = Map<String, String>.from(uri.queryParameters);
-    merged.putIfAbsent('result', () => status);
-    final kind = host == 'subscription' ? 'purchase' : 'topup';
-    merged.putIfAbsent('kind', () => kind);
-    final qs = merged.entries
-        .map((e) =>
-            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
-        .join('&');
 
     if (host == 'subscription' || host == 'wallet') {
-      return '/profile/payment/result?$qs';
+      return '/profile/subscription';
     }
     return null;
   }

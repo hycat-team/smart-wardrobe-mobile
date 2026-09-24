@@ -101,27 +101,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     const SizedBox(height: 12),
                     Center(
-                      child: Container(
-                        width: 68,
-                        height: 68,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.25),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.checkroom_rounded,
-                            size: 34,
-                            color: Colors.white,
-                          ),
-                        ),
+                      child: Image.asset(
+                        'assets/images/logo-full.png',
+                        width: 220,
+                        fit: BoxFit.contain,
+                        semanticLabel: 'Closy logo',
                       ),
                     ),
                     const SizedBox(height: 24),

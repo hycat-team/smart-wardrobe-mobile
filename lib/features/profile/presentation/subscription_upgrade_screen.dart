@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,8 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
-import '../utils/payment_link_opener.dart';
-import 'widgets/topup_bottom_sheet.dart';
+import 'widgets/web_guidance_card.dart';
 
 class SubscriptionUpgradeScreen extends ConsumerStatefulWidget {
   const SubscriptionUpgradeScreen({super.key});
@@ -16,150 +14,34 @@ class SubscriptionUpgradeScreen extends ConsumerStatefulWidget {
   ConsumerState<SubscriptionUpgradeScreen> createState() => _SubscriptionUpgradeScreenState();
 }
 
-class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeScreen> {
-  bool _isProcessing = false;
+class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Tải lại ngay khi mở màn hình để phản ánh kết quả thanh toán web.
+    Future.microtask(() => _reload());
+  }
 
-  Future<void> _handleUpgrade(SubscriptionPlanModel premiumPlan) async {
-    if (_isProcessing) return;
-    setState(() => _isProcessing = true);
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-    try {
-      final notifier = ref.read(subscriptionOverviewProvider.notifier);
-      final urls = PaymentReturnUrls.forPurchase(
-        isWeb: kIsWeb,
-        webOrigin: kIsWeb ? Uri.base.origin : null,
-        amount: premiumPlan.price.toDouble(),
-      );
-      final link = await notifier.createPurchase(
-        premiumPlan.slug.isNotEmpty ? premiumPlan.slug : 'premium-monthly',
-        returnUrl: urls.returnUrl,
-        cancelUrl: urls.cancelUrl,
-      );
-
-      if (!mounted) return;
-      setState(() => _isProcessing = false);
-
-      if (link != null && link.paymentUrl.isNotEmpty) {
-        final pending = PendingPayment.purchase(
-          link: link,
-          amount: premiumPlan.price.toDouble(),
-          planLabel: '${premiumPlan.name} (${premiumPlan.durationDays} ngày)',
-        );
-        // 1. Open PayOS Checkout URL
-        await openPaymentLink(
-          context,
-          paymentUrl: pending.paymentUrl,
-          orderCode: pending.orderCode,
-        );
-
-        // 2. Navigate to waiting screen with live polling
-        if (mounted) {
-          context.push('/profile/subscription/waiting', extra: pending);
-        }
-      } else {
-        final err = ref.read(subscriptionOverviewProvider).purchaseErrorMessage ??
-            'Không thể tạo link thanh toán PayOS. Vui lòng thử lại!';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(err),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: ${e.toString()}'),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
-      }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Tự động đồng bộ gói khi quay lại app sau khi thanh toán trên web.
+    if (state == AppLifecycleState.resumed) {
+      _reload();
     }
   }
 
-
-  Future<void> _handlePurchaseWithWallet(SubscriptionPlanModel plan) async {
-    final walletState = ref.read(walletProvider);
-    final wallet = walletState.wallet;
-
-    if (wallet.balance < plan.price) {
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (ctx) => const TopUpBottomSheet(),
-      );
-      return;
-    }
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Xác nhận thanh toán'),
-        content: Text(
-          'Bạn có chắc muốn dùng ${plan.formattedPrice} từ Ví Closy để đăng ký ${plan.name} không?\n\nSố dư ví hiện tại: ${wallet.formattedBalance}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(c, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD4AF37),
-              foregroundColor: const Color(0xFF1E242B),
-            ),
-            child: const Text('Xác nhận thanh toán', style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true || !mounted) return;
-
-    setState(() => _isProcessing = true);
-    final notifier = ref.read(subscriptionOverviewProvider.notifier);
-    final success = await notifier.purchaseWithWallet(plan.slug.isNotEmpty ? plan.slug : 'premium-monthly');
-
+  void _reload() {
     if (!mounted) return;
-    setState(() => _isProcessing = false);
-
-    if (success) {
-      ref.read(walletProvider.notifier).loadWallet();
-
-      showDialog(
-        context: context,
-        builder: (c) => AlertDialog(
-          icon: const Icon(Icons.workspace_premium_rounded, size: 48, color: Color(0xFFD4AF37)),
-          title: const Text('Nâng Cấp Thành Công!'),
-          content: const Text('Tài khoản của bạn đã được nâng cấp lên Closy Premium. Tận hưởng các đặc quyền AI ngay bây giờ!'),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(c);
-                context.pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Tuyệt vời'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      final err = ref.read(subscriptionOverviewProvider).purchaseErrorMessage ?? 'Thanh toán bằng ví thất bại';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(err),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
-    }
+    ref.read(subscriptionOverviewProvider.notifier).loadOverview();
+    ref.invalidate(subscriptionPlansProvider);
   }
 
   @override
@@ -464,7 +346,7 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
           ),
           const SizedBox(height: 24),
 
-          // Payment Security & Guarantee Banner
+          // Thanh toán & nạp ví thực hiện trên website — xem hướng dẫn bên dưới
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -473,19 +355,19 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
             ),
             child: const Row(
               children: [
-                Icon(Icons.verified_user_rounded, color: Colors.green, size: 28),
+                Icon(Icons.language_rounded, color: Colors.green, size: 28),
                 SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Thanh toán an toàn qua VietQR / PayOS',
+                        'Mua gói & nạp ví trên website',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Hỗ trợ 40+ ngân hàng Việt Nam, quét QR banking nhanh chóng & kích hoạt tài khoản tức thì.',
+                        'Mở trình duyệt, đăng nhập cùng tài khoản và hoàn tất trên website. Xem hướng dẫn chi tiết bên dưới.',
                         style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
                       ),
                     ],
@@ -496,7 +378,7 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
           ),
           const SizedBox(height: 32),
 
-          // Upgrade CTA Button
+          // Web guidance (thay cho mọi nút thanh toán trong app)
           if (isAlreadyPremium)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -523,103 +405,7 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
               ),
             )
           else
-            Consumer(
-              builder: (context, ref, _) {
-                final wallet = ref.watch(walletProvider).wallet;
-                final hasEnough = wallet.balance >= premiumPlan.price;
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Wallet Balance Card Info
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: (hasEnough ? goldColor : Colors.grey).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: (hasEnough ? goldColor : Colors.grey).withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.account_balance_wallet_rounded,
-                                size: 18,
-                                color: hasEnough ? goldColor : AppColors.textSecondary,
-                              ),
-                              const SizedBox(width: 10),
-                              const Text(
-                                'Số dư Ví Closy:',
-                                style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            wallet.formattedBalance,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: hasEnough ? goldColor : AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Option 1: Purchase with Wallet
-                    ElevatedButton(
-                      onPressed: _isProcessing ? null : () => _handlePurchaseWithWallet(premiumPlan),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: hasEnough ? goldColor : const Color(0xFF2C3440),
-                        foregroundColor: hasEnough ? const Color(0xFF1E242B) : Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: hasEnough ? 2 : 0,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            hasEnough ? Icons.flash_on_rounded : Icons.add_circle_outline_rounded,
-                            size: 20,
-                            color: hasEnough ? const Color(0xFF1E242B) : goldColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            hasEnough
-                                ? 'Mua Bằng Ví Closy (${premiumPlan.formattedPrice})'
-                                : 'Ví Không Đủ Tiền • Nạp Thêm Ngay',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Option 2: PayOS Direct
-                    OutlinedButton.icon(
-                      onPressed: _isProcessing ? null : () => _handleUpgrade(premiumPlan),
-                      icon: const Icon(Icons.qr_code_2_rounded, size: 20),
-                      label: const Text(
-                        'Quét VietQR Trực Tiếp (PayOS)',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary, width: 1.2),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
+            const WebGuidanceCard(),
           const SizedBox(height: 32),
         ],
       ),

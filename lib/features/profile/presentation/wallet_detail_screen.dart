@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
-import 'widgets/topup_bottom_sheet.dart';
+import 'widgets/web_guidance_card.dart';
 
 class WalletDetailScreen extends ConsumerStatefulWidget {
   const WalletDetailScreen({super.key});
@@ -13,14 +13,34 @@ class WalletDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<WalletDetailScreen> createState() => _WalletDetailScreenState();
 }
 
-class _WalletDetailScreenState extends ConsumerState<WalletDetailScreen> {
-  void _openTopUp() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => const TopUpBottomSheet(),
-    );
+class _WalletDetailScreenState extends ConsumerState<WalletDetailScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Tải lại ngay khi mở màn hình để phản ánh kết quả nạp ví trên web.
+    Future.microtask(() => _reload());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Tự động đồng bộ số dư khi quay lại app sau khi nạp ví trên web.
+    if (state == AppLifecycleState.resumed) {
+      _reload();
+    }
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    ref.read(walletProvider.notifier).loadWallet();
+    ref.invalidate(walletStatementsProvider);
   }
 
   @override
@@ -110,23 +130,8 @@ class _WalletDetailScreenState extends ConsumerState<WalletDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _openTopUp,
-                        icon: const Icon(Icons.add_circle_rounded, size: 18),
-                        label: const Text(
-                          'Nạp Tiền Vào Ví',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: goldColor,
-                          foregroundColor: const Color(0xFF1E242B),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                      ),
-                    ),
+                    // Nạp ví thực hiện trên website — hướng dẫn văn bản.
+                    const WebGuidanceCard(actionLabel: 'nạp ví'),
                   ],
                 ),
               ),
