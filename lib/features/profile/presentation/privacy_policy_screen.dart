@@ -9,7 +9,7 @@ import '../../../core/theme/app_theme.dart';
 /// `https://closy.hycat.online/privacy` (repo smart-wardrobe-fe).
 class PrivacyPolicyScreen extends StatelessWidget {
   /// Email hỗ trợ duy nhất — phải trùng email trên Store listing.
-  static const supportEmail = 'support@closy.hycat.online';
+  static const supportEmail = 'hycat.support@gmail.com';
 
   const PrivacyPolicyScreen({super.key});
 
@@ -62,6 +62,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               bullets: const [
                 'Thông tin tài khoản: email, tên, thông tin hồ sơ do bạn cung cấp.',
                 'Nội dung của bạn: ảnh trang phục tải lên, dữ liệu tủ đồ và outfit.',
+                'Ảnh từ camera/thư viện: chỉ khi bạn chủ động chụp hoặc chọn ảnh để thêm vào tủ đồ.',
                 'Thông tin thiết bị và kỹ thuật cần thiết để vận hành app.',
               ],
               note:
@@ -91,7 +92,26 @@ class PrivacyPolicyScreen extends StatelessWidget {
               ],
             ),
             _buildSection(
-              title: '5. Liên hệ',
+              title: '5. Thời gian lưu trữ',
+              bullets: const [
+                'Dữ liệu được lưu cho đến khi bạn xóa tài khoản hoặc gửi yêu cầu xóa.',
+                'Sau khi xóa, ảnh và dữ liệu tủ đồ của bạn bị gỡ khỏi máy chủ; bản sao lưu kỹ thuật (nếu có) được xóa cuốn chiếu trong vòng 30 ngày.',
+              ],
+            ),
+            _buildSection(
+              title: '6. Trẻ em',
+              bullets: const [
+                'App không dành cho trẻ em dưới 13 tuổi. Người dưới 13 tuổi chỉ được dùng app dưới sự giám sát của phụ huynh hoặc người giám hộ.',
+              ],
+            ),
+            _buildSection(
+              title: '7. Thay đổi chính sách',
+              bullets: const [
+                'Khi chính sách thay đổi, chúng tôi cập nhật tại trang này kèm ngày hiệu lực mới. Thay đổi quan trọng được thông báo trong app trước khi áp dụng.',
+              ],
+            ),
+            _buildSection(
+              title: '8. Liên hệ',
               bullets: const [
                 'Mọi câu hỏi về chính sách này, vui lòng liên hệ: $supportEmail.',
               ],
