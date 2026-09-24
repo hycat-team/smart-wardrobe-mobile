@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Mở link PayOS bằng browser ngoài.
-///
-/// Không bao giờ fail im lặng:
-/// - link rỗng / sai định dạng → SnackBar báo rõ + trả về false.
-/// - không mở được browser (máy thiếu browser, scheme lạ, exception) →
-///   tự sao chép link vào clipboard để user dán tay vào trình duyệt.
+/// @Deprecated: Luồng thanh toán đã chuyển lên website
+/// (009-web-payment-redirect). Mobile không tạo và không mở bất kỳ
+/// link thanh toán nào — hàm này không còn được gọi từ UI.
+/// Giữ lại để tránh vỡ các màn hình cũ chưa xóa; KHÔNG dùng cho code mới.
+@Deprecated('Thanh toán chuyển lên website — không mở checkout trong app')
 Future<bool> openPaymentLink(
   BuildContext context, {
   required String paymentUrl,

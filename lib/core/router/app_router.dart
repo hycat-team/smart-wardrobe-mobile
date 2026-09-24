@@ -29,6 +29,7 @@ import 'package:smart_wardrobe/features/profile/presentation/payment_waiting_scr
 import 'package:smart_wardrobe/features/profile/presentation/payment_result_screen.dart';
 import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
 import 'package:smart_wardrobe/core/config/release_flags.dart';
+import 'package:smart_wardrobe/features/profile/presentation/widgets/web_guidance_card.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -189,6 +190,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SubscriptionUpgradeScreen(),
       ),
       GoRoute(
+        // Luồng thanh toán đã chuyển lên website (009-web-payment-redirect):
+        // mọi đường vào màn hình chờ/kết quả cũ đều hiển thị thông báo
+        // hết hiệu lực + hướng dẫn lên website, không mở checkout.
         path: '/profile/subscription/waiting',
         redirect: (context, state) =>
             ReleaseFlags.enablePaidFeatures ? null : '/profile',
@@ -201,40 +205,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
-        // Trang thông báo kết quả thanh toán: mọi return từ PayOS
-        // (deep-link mobile / web returnUrl) và mọi kết luận từ
-        // PaymentWaitingScreen đều đổ về đây.
         path: '/profile/payment/result',
-        builder: (context, state) {
-          final extra = state.extra;
-          if (extra is PaymentResult) {
-            return PaymentResultScreen(result: extra);
-          }
-          if (extra is PendingPayment) {
-            // Ưu tiên đọc param `result` của mình; PayOS có thể append
-            // thêm `status=PAID` / `cancel=true` đè lên query.
-            final statusStr = state.uri.queryParameters['result'] ??
-                state.uri.queryParameters['status'] ??
-                'success';
-            final status = switch (statusStr.toLowerCase()) {
-              'success' => PaymentResultStatus.success,
-              'cancelled' || 'cancel' || 'canceled' =>
-                PaymentResultStatus.cancelled,
-              'expired' => PaymentResultStatus.expired,
-              _ => PaymentResultStatus.failed,
-            };
-            return PaymentResultScreen(
-              result: PaymentResult.fromPending(extra, status),
-            );
-          }
-          // Cold-start từ deep-link / web: chỉ còn query params.
-          if (state.uri.queryParameters.isNotEmpty) {
-            return PaymentResultScreen(
-              result: PaymentResult.fromQuery(state.uri.queryParameters),
-            );
-          }
-          return const SubscriptionUpgradeScreen();
-        },
+        builder: (context, state) => const ExpiredPaymentScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -291,3 +263,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Màn hình hiển thị khi người dùng truy cập các đường thanh toán cũ
+/// (màn hình chờ / kết quả PayOS) còn sót từ phiên bản trước.
+///
+/// Không mở checkout — chỉ thông báo hết hiệu lực + hướng dẫn lên
+/// website (FR-009).
+class ExpiredPaymentScreen extends StatelessWidget {
+  const ExpiredPaymentScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => context.pop(),
+        ),
+        title: const Text('Thông báo thanh toán'),
+        centerTitle: true,
+      ),
+      body: const SingleChildScrollView(
+        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: WebGuidanceCard.expired(),
+      ),
+    );
+  }
+}

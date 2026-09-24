@@ -151,6 +151,27 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const SizedBox(height: 8),
+              Center(
+                child: Image.asset(
+                  'assets/images/logo-full.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                  semanticLabel: 'Closy logo',
+                  errorBuilder: (context, error, stackTrace) => Text(
+                    'CLOSY',
+                    style: GoogleFonts.playfairDisplay(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               if (authState.errorMessage != null) _buildErrorBanner(authState.errorMessage!),
               if (_currentStep == 1) _buildEmailStep(authState),
               if (_currentStep == 2) _buildOtpStep(authState),

@@ -147,48 +147,34 @@ final userProfileProvider = StateNotifierProvider<UserProfileNotifier, UserProfi
 
 class SubscriptionOverviewState {
   final bool isLoading;
-  final bool isCreatingPurchase;
   final UserSubscriptionModel subscription;
   final DailyQuotaModel dailyQuota;
   // true sau lần tải hạn mức thành công đầu tiên — dùng để phân biệt
   // "chưa có số liệu" (hiện skeleton/lỗi) với số 0 thật (US4, FR-014).
   final bool quotaLoaded;
-  final PaymentLinkModel? activePaymentLink;
   final String? errorMessage;
-  final String? purchaseErrorMessage;
 
   const SubscriptionOverviewState({
     this.isLoading = false,
-    this.isCreatingPurchase = false,
     this.subscription = const UserSubscriptionModel(),
     this.dailyQuota = const DailyQuotaModel(),
     this.quotaLoaded = false,
-    this.activePaymentLink,
     this.errorMessage,
-    this.purchaseErrorMessage,
   });
 
   SubscriptionOverviewState copyWith({
     bool? isLoading,
-    bool? isCreatingPurchase,
     UserSubscriptionModel? subscription,
     DailyQuotaModel? dailyQuota,
     bool? quotaLoaded,
-    PaymentLinkModel? activePaymentLink,
     String? errorMessage,
-    String? purchaseErrorMessage,
-    bool clearActivePayment = false,
-    bool clearPurchaseError = false,
   }) {
     return SubscriptionOverviewState(
       isLoading: isLoading ?? this.isLoading,
-      isCreatingPurchase: isCreatingPurchase ?? this.isCreatingPurchase,
       subscription: subscription ?? this.subscription,
       dailyQuota: dailyQuota ?? this.dailyQuota,
       quotaLoaded: quotaLoaded ?? this.quotaLoaded,
-      activePaymentLink: clearActivePayment ? null : (activePaymentLink ?? this.activePaymentLink),
       errorMessage: errorMessage,
-      purchaseErrorMessage: clearPurchaseError ? null : (purchaseErrorMessage ?? this.purchaseErrorMessage),
     );
   }
 }
@@ -221,36 +207,6 @@ class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewSta
     }
   }
 
-  Future<PaymentLinkModel?> createPurchase(
-    String planSlug, {
-    String? returnUrl,
-    String? cancelUrl,
-  }) async {
-    state = state.copyWith(
-      isCreatingPurchase: true,
-      clearPurchaseError: true,
-    );
-    try {
-      final link = await _repository.createDirectPurchase(
-        planSlug: planSlug,
-        returnUrl: returnUrl,
-        cancelUrl: cancelUrl,
-      );
-      state = state.copyWith(
-        isCreatingPurchase: false,
-        activePaymentLink: link,
-      );
-      return link;
-    } catch (e) {
-      final msg = e.toString().replaceAll('Exception: ', '');
-      state = state.copyWith(
-        isCreatingPurchase: false,
-        purchaseErrorMessage: msg,
-      );
-      return null;
-    }
-  }
-
   Future<bool> checkSubscriptionStatus() async {
     try {
       final sub = await _repository.getMySubscription();
@@ -265,28 +221,8 @@ class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewSta
       return false;
     }
   }
-
-
-  Future<bool> purchaseWithWallet(String planSlug) async {
-    try {
-      state = state.copyWith(isCreatingPurchase: true, clearPurchaseError: true);
-      await _repository.purchasePlanWithWallet(planSlug);
-      await loadOverview();
-      state = state.copyWith(isCreatingPurchase: false);
-      return true;
-    } catch (e) {
-      state = state.copyWith(
-        isCreatingPurchase: false,
-        purchaseErrorMessage: e.toString().replaceAll('Exception: ', ''),
-      );
-      return false;
-    }
-  }
-
-  void clearActivePayment() {
-    state = state.copyWith(clearActivePayment: true, clearPurchaseError: true);
-  }
 }
+
 
 final subscriptionOverviewProvider =
     StateNotifierProvider<SubscriptionOverviewNotifier, SubscriptionOverviewState>((ref) {
@@ -426,16 +362,6 @@ class WalletNotifier extends StateNotifier<WalletState> {
       state = state.copyWith(wallet: wallet, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString().replaceAll('Exception: ', ''));
-    }
-  }
-
-  Future<PaymentLinkModel?> topUp(double amount, {String? returnUrl, String? cancelUrl}) async {
-    try {
-      final link = await _repository.createWalletTopUp(amount, returnUrl: returnUrl, cancelUrl: cancelUrl);
-      return link;
-    } catch (e) {
-      state = state.copyWith(errorMessage: e.toString().replaceAll('Exception: ', ''));
-      return null;
     }
   }
 }

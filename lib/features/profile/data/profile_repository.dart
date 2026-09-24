@@ -163,17 +163,9 @@ class ProfileRepository {
   Future<List<SubscriptionPlanModel>> getSubscriptionPlans() =>
       payments.getSubscriptionPlans();
 
-  // 10. Create Direct Purchase Link via PayOS (delegated to PaymentRepository)
-  Future<PaymentLinkModel> createDirectPurchase({
-    required String planSlug,
-    String? returnUrl,
-    String? cancelUrl,
-  }) =>
-      payments.createDirectPurchase(
-        planSlug: planSlug,
-        returnUrl: returnUrl,
-        cancelUrl: cancelUrl,
-      );
+  // 10. Direct Purchase: REMOVED.
+  // Luồng thanh toán chuyển lên website (009-web-payment-redirect) —
+  // mobile chỉ đọc danh sách gói, gói hiện tại và hạn mức.
 
 // 11. Body Profile
   Future<BodyProfileModel> getBodyProfile() async {
@@ -217,12 +209,7 @@ class ProfileRepository {
   Future<List<WalletStatementModel>> getWalletStatements({int page = 1, int pageSize = 20}) =>
       payments.getWalletStatements(page: page, pageSize: pageSize);
 
-  // 10f. Wallet - Create topup link (delegated to PaymentRepository)
-  Future<PaymentLinkModel> createWalletTopUp(double amount, {String? returnUrl, String? cancelUrl}) =>
-      payments.createWalletTopUp(amount, returnUrl: returnUrl, cancelUrl: cancelUrl);
-
-  // 10g. Subscription - Purchase plan with wallet (delegated to PaymentRepository)
-  Future<void> purchasePlanWithWallet(String planSlug) =>
-      payments.purchasePlanWithWallet(planSlug);
-
+  // 10f/10g. Wallet topup + purchase-with-wallet: REMOVED.
+  // Luồng thanh toán chuyển lên website (009-web-payment-redirect) —
+  // mobile chỉ đọc số dư và lịch sử ví.
 }
