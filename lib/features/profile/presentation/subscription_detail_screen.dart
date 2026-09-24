@@ -6,14 +6,52 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/ai_quota_display.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
+import 'widgets/web_guidance_card.dart';
 
-class SubscriptionDetailScreen extends ConsumerWidget {
+class SubscriptionDetailScreen extends ConsumerStatefulWidget {
   const SubscriptionDetailScreen({super.key});
 
   static const Color goldColor = Color(0xFFD4AF37);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SubscriptionDetailScreen> createState() =>
+      _SubscriptionDetailScreenState();
+}
+
+class _SubscriptionDetailScreenState
+    extends ConsumerState<SubscriptionDetailScreen>
+    with WidgetsBindingObserver {
+  Color get goldColor => SubscriptionDetailScreen.goldColor;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Tải lại ngay khi mở màn hình để phản ánh kết quả thanh toán web.
+    Future.microtask(() => _reload());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Tự động đồng bộ gói khi quay lại app sau khi thanh toán trên web.
+    if (state == AppLifecycleState.resumed) {
+      _reload();
+    }
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    ref.read(subscriptionOverviewProvider.notifier).loadOverview();
+    ref.invalidate(subscriptionPlansProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final overviewState = ref.watch(subscriptionOverviewProvider);
     final plansAsync = ref.watch(subscriptionPlansProvider);
 
@@ -110,6 +148,11 @@ class SubscriptionDetailScreen extends ConsumerWidget {
                       },
                     ),
                     const SizedBox(height: 24),
+                    // Thanh toán thực hiện trên website — hướng dẫn văn bản.
+                    if (!overviewState.subscription.isPremium) ...[
+                      const WebGuidanceCard(),
+                      const SizedBox(height: 24),
+                    ],
                   ],
                 ),
               ),
@@ -221,7 +264,7 @@ class SubscriptionDetailScreen extends ConsumerWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => context.push('/profile/subscription/upgrade'),
-                icon: const Icon(Icons.flash_on_rounded, size: 18, color: goldColor),
+                icon: Icon(Icons.flash_on_rounded, size: 18, color: goldColor),
                 label: const Text('Nâng cấp lên Premium ngay (59k)'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

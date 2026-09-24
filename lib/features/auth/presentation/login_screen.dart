@@ -101,30 +101,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     const SizedBox(height: 12),
                     Center(
-                      child: Container(
-                        width: 68,
-                        height: 68,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.25),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.checkroom_rounded,
-                            size: 34,
-                            color: Colors.white,
+                      child: Image.asset(
+                        'assets/images/logo-full.png',
+                        width: 168,
+                        height: 168,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        semanticLabel: 'Closy logo',
+                        errorBuilder: (context, error, stackTrace) => Text(
+                          'CLOSY',
+                          style: GoogleFonts.playfairDisplay(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            letterSpacing: 4,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
                     Text(
                       'Chào mừng trở lại',
                       textAlign: TextAlign.center,

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/profile_provider.dart';
-import 'topup_bottom_sheet.dart';
 
 class ClosyWalletCard extends ConsumerStatefulWidget {
   const ClosyWalletCard({super.key});
@@ -14,15 +13,6 @@ class ClosyWalletCard extends ConsumerStatefulWidget {
 
 class _ClosyWalletCardState extends ConsumerState<ClosyWalletCard> {
   bool _hideBalance = false;
-
-  void _openTopUpSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => const TopUpBottomSheet(),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,21 +137,31 @@ class _ClosyWalletCardState extends ConsumerState<ClosyWalletCard> {
                 Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _openTopUpSheet,
-                        icon: const Icon(Icons.add_circle_outline_rounded, size: 18),
-                        label: const Text(
-                          'Nạp Tiền',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: goldColor,
-                          foregroundColor: const Color(0xFF1E242B),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                      // Nạp ví thực hiện trên website — văn bản thuần túy,
+                      // không nút mở link (FR-004/FR-006).
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1.2,
                           ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.language_rounded, size: 18, color: goldColor),
+                            SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Nạp ví trên web: closy.hycat.online',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

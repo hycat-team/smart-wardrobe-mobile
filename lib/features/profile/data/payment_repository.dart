@@ -69,28 +69,10 @@ class PaymentRepository {
     }
   }
 
-  // 4. Create Direct Purchase Link via PayOS
-  Future<PaymentLinkModel> createDirectPurchase({
-    required String planSlug,
-    String? returnUrl,
-    String? cancelUrl,
-  }) async {
-    try {
-      final response = await _apiClient.dio.post(
-        '/subscriptions/me/purchase',
-        data: {
-          'planSlug': planSlug,
-          if (returnUrl != null && returnUrl.isNotEmpty) 'returnUrl': returnUrl,
-          if (cancelUrl != null && cancelUrl.isNotEmpty) 'cancelUrl': cancelUrl,
-        },
-      );
-      final body = response.data;
-      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
-      return PaymentLinkModel.fromJson(data);
-    } on DioException catch (e) {
-      throw Exception(_errorMessage(e, 'Khởi tạo thanh toán thất bại'));
-    }
-  }
+  // 4. Direct Purchase / Wallet TopUp / Purchase-with-wallet: REMOVED.
+  // Luồng thanh toán chuyển lên website (009-web-payment-redirect) —
+  // mobile không tạo yêu cầu thanh toán và không mở trang thanh toán.
+  // Giữ lại các API đọc (plans / subscription / quota / wallet) bên dưới.
 
   // 5. Wallet - Get user balance
   Future<WalletModel> getWallet() async {
@@ -126,35 +108,5 @@ class PaymentRepository {
       return [];
     }
   }
-
-  // 7. Wallet - Create topup link
-  Future<PaymentLinkModel> createWalletTopUp(double amount, {String? returnUrl, String? cancelUrl}) async {
-    try {
-      final response = await _apiClient.dio.post(
-        '/subscriptions/me/wallet/topup',
-        data: {
-          'amount': amount,
-          if (returnUrl != null && returnUrl.isNotEmpty) 'returnUrl': returnUrl,
-          if (cancelUrl != null && cancelUrl.isNotEmpty) 'cancelUrl': cancelUrl,
-        },
-      );
-      final body = response.data;
-      final data = _extractMap(body['data']) ?? _extractMap(body) ?? {};
-      return PaymentLinkModel.fromJson(data);
-    } on DioException catch (e) {
-      throw Exception(_errorMessage(e, 'Không thể tạo yêu cầu nạp tiền'));
-    }
-  }
-
-  // 8. Subscription - Purchase plan with wallet
-  Future<void> purchasePlanWithWallet(String planSlug) async {
-    try {
-      await _apiClient.dio.post(
-        '/subscriptions/me/purchase-with-wallet',
-        data: {'planSlug': planSlug},
-      );
-    } on DioException catch (e) {
-      throw Exception(_errorMessage(e, 'Thanh toán bằng ví thất bại'));
-    }
-  }
 }
+
