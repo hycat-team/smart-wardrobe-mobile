@@ -1,10 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
+import '../models/auth_models.dart';
 import '../providers/auth_provider.dart';
+import 'widgets/google_sign_in_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -58,9 +60,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // thông báo kết quả thanh toán từ deep-link/cold-start).
       final pending = ref.read(pendingRedirectProvider);
       ref.read(pendingRedirectProvider.notifier).state = null;
-      context.go((pending != null && pending.isNotEmpty) ? pending : '/wardrobe');
+      context.go((pending != null && pending.isNotEmpty) ? pending : kPostLoginRoute);
     } else {
       final error = authState.errorMessage ?? 'Sai tài khoản hoặc mật khẩu.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
+  void _handleGoogleOutcome(GoogleSignInOutcome outcome) {
+    if (!mounted) return;
+
+    if (outcome.success) {
+      final authState = ref.read(authStateProvider);
+      final user = authState.user;
+      final greeting = user?.fullName ?? _loginNameController.text.trim();
+
+      if (outcome.linkedExistingAccount) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              outcome.message ??
+                  'Tài khoản Google đã được liên kết với tài khoản Closy của bạn.',
+            ),
+            backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đăng nhập thành công! Chào mừng $greeting.'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+
+      final pending = ref.read(pendingRedirectProvider);
+      ref.read(pendingRedirectProvider.notifier).state = null;
+      context.go((pending != null && pending.isNotEmpty) ? pending : kPostLoginRoute);
+    } else {
+      if (outcome.errorCode == AuthErrorCode.cancelled) {
+        return;
+      }
+      final error = outcome.message ?? 'Đăng nhập Google thất bại.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(error),
@@ -260,6 +307,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
                           : const Text('Đăng nhập', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Divider HOẶC (Quiet Luxury)
+                    Row(
+                      children: [
+                        const Expanded(child: Divider(color: AppColors.border, thickness: 0.8)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'HOẶC',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                        const Expanded(child: Divider(color: AppColors.border, thickness: 0.8)),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Nút Đăng nhập bằng Google
+                    GoogleSignInButton(
+                      onOutcome: _handleGoogleOutcome,
                     ),
                     const SizedBox(height: 24),
 

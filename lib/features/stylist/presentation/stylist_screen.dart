@@ -403,9 +403,16 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
           // Nhóm Dịp sự kiện
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(
-              '✨ Dịp sự kiện',
-              style: GoogleFonts.playfairDisplay(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.auto_awesome_rounded, size: 16, color: AppColors.accentSandDark),
+                const SizedBox(width: 6),
+                Text(
+                  'Dịp sự kiện',
+                  style: GoogleFonts.playfairDisplay(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
@@ -413,11 +420,11 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildPromptChip('💼 Đi làm công sở thanh lịch'),
-              _buildPromptChip('☕ Dạo phố cuối tuần năng động'),
-              _buildPromptChip('🍷 Dự tiệc tối sang trọng'),
-              _buildPromptChip('🌹 Hẹn hò lãng mạn tinh tế'),
-              _buildPromptChip('✈️ Du lịch nghỉ dưỡng thoải mái'),
+              _buildPromptChip('Đi làm công sở thanh lịch', icon: Icons.work_outline_rounded),
+              _buildPromptChip('Dạo phố cuối tuần năng động', icon: Icons.local_cafe_outlined),
+              _buildPromptChip('Dự tiệc tối sang trọng', icon: Icons.wine_bar_outlined),
+              _buildPromptChip('Hẹn hò lãng mạn tinh tế', icon: Icons.favorite_border_rounded),
+              _buildPromptChip('Du lịch nghỉ dưỡng thoải mái', icon: Icons.flight_takeoff_rounded),
             ],
           ),
 
@@ -425,9 +432,16 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
           // Nhóm Phong cách
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(
-              '🎨 Phong cách thời trang',
-              style: GoogleFonts.playfairDisplay(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.palette_outlined, size: 16, color: AppColors.accentSandDark),
+                const SizedBox(width: 6),
+                Text(
+                  'Phong cách thời trang',
+                  style: GoogleFonts.playfairDisplay(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 10),
@@ -447,8 +461,11 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
     );
   }
 
-  Widget _buildPromptChip(String label) {
+  Widget _buildPromptChip(String label, {IconData? icon}) {
     return ActionChip(
+      avatar: icon != null
+          ? Icon(icon, size: 16, color: AppColors.accentSandDark)
+          : null,
       label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
       backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
@@ -463,12 +480,12 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
   }
 
   Widget _buildQuickChipsBar() {
-    final quickPrompts = [
-      '✨ Hôm nay mặc gì đẹp?',
-      '💼 Set đồ đi làm thanh lịch',
-      '👖 Phối đồ với quần âu',
-      '👠 Gợi ý trang phục dự tiệc',
-      '🎨 Mẹo phối màu trang phục',
+    final quickPrompts = <(IconData, String)>[
+      (Icons.auto_awesome_rounded, 'Hôm nay mặc gì đẹp?'),
+      (Icons.work_outline_rounded, 'Set đồ đi làm thanh lịch'),
+      (Icons.checkroom_outlined, 'Phối đồ với quần âu'),
+      (Icons.wine_bar_outlined, 'Gợi ý trang phục dự tiệc'),
+      (Icons.palette_outlined, 'Mẹo phối màu trang phục'),
     ];
 
     return Container(
@@ -480,9 +497,10 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
         itemCount: quickPrompts.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (ctx, idx) {
-          final prompt = quickPrompts[idx];
+          final (icon, prompt) = quickPrompts[idx];
           return ActionChip(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+            avatar: Icon(icon, size: 14, color: AppColors.accentSandDark),
             label: Text(
               prompt,
               style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.primary),

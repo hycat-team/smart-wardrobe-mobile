@@ -1,12 +1,15 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/otp_input.dart';
 import '../models/auth_models.dart';
 import '../providers/auth_provider.dart';
+import 'widgets/google_sign_in_button.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -175,6 +178,51 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (!_canResend) return;
     await ref.read(authStateProvider.notifier).resendRegisterOtp(_emailController.text.trim());
     _startTimer();
+  }
+
+  void _handleGoogleOutcome(GoogleSignInOutcome outcome) {
+    if (!mounted) return;
+
+    if (outcome.success) {
+      final authState = ref.read(authStateProvider);
+      final user = authState.user;
+      final greeting = user?.fullName ?? 'bạn';
+
+      if (outcome.linkedExistingAccount) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              outcome.message ??
+                  'Tài khoản Google đã được liên kết với tài khoản Closy của bạn.',
+            ),
+            backgroundColor: AppColors.primary,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đăng ký thành công! Chào mừng $greeting.'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+
+      final pending = ref.read(pendingRedirectProvider);
+      ref.read(pendingRedirectProvider.notifier).state = null;
+      context.go((pending != null && pending.isNotEmpty) ? pending : '/wardrobe');
+    } else {
+      if (outcome.errorCode == AuthErrorCode.cancelled) {
+        return;
+      }
+      final error = outcome.message ?? 'Đăng ký bằng Google thất bại.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
   }
 
   @override
@@ -437,7 +485,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   )
                 : const Text('Tiếp tục nhận mã OTP', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+
+          // Divider HOẶC (Quiet Luxury)
+          Row(
+            children: [
+              const Expanded(child: Divider(color: AppColors.border, thickness: 0.8)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'HOẶC',
+                  style: GoogleFonts.beVietnamPro(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider(color: AppColors.border, thickness: 0.8)),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Nút Đăng ký nhanh với Google
+          GoogleSignInButton(
+            isRegister: true,
+            onOutcome: _handleGoogleOutcome,
+          ),
+          const SizedBox(height: 20),
 
           // Quay lại Đăng nhập
           Center(
@@ -495,45 +571,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         if (authState.errorMessage != null) _buildErrorBanner(authState.errorMessage!),
 
         // 6 Ô nhập OTP
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(6, (index) {
-            return SizedBox(
-              width: 44,
-              height: 54,
-              child: TextFormField(
-                controller: _otpControllers[index],
-                focusNode: _otpFocusNodes[index],
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                maxLength: 1,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                  counterText: '',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
-                  ),
-                ),
-                onChanged: (val) {
-                  if (val.isNotEmpty && index < 5) {
-                    _otpFocusNodes[index + 1].requestFocus();
-                  } else if (val.isEmpty && index > 0) {
-                    _otpFocusNodes[index - 1].requestFocus();
-                  }
-                  if (index == 5 && val.isNotEmpty) {
-                    _handleVerifyOtp();
-                  }
-                },
-              ),
-            );
-          }),
+        OtpInput(
+          controllers: _otpControllers,
+          focusNodes: _otpFocusNodes,
+          onCompleted: _handleVerifyOtp,
         ),
         const SizedBox(height: 32),
 

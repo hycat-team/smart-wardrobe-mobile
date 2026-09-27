@@ -1,4 +1,4 @@
-﻿feat# Miscellaneous
+feat# Miscellaneous
 *.class
 *.log
 *.pyc
@@ -68,4 +68,5 @@ android/key.properties
 !.agents/skills/
 .agents/skills/*
 !.agents/skills/closy-mobile-flutter/
+!.agents/skills/speckit-*/
 .codegraph/

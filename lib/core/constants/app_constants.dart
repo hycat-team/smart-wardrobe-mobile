@@ -40,23 +40,50 @@ class AppConstants {
           if (definedUrl.isNotEmpty) return definedUrl;
           return dotenv.env['API_BASE_URL_ANDROID'] ??
               dotenv.env['API_BASE_URL'] ??
-              'http://[IP_ADDRESS]/api/v1';
+              'http://10.0.2.2:8080/api/v1';
         }
       } catch (_) {}
       if (definedUrl.isNotEmpty) return definedUrl;
-      return dotenv.env['API_BASE_URL'] ?? 'http://[IP_ADDRESS]/api/v1';
+      return dotenv.env['API_BASE_URL'] ?? 'http://localhost:8080/api/v1';
     }
 
     try {
       if (!kIsWeb && Platform.isAndroid) {
         if (definedAndroidUrl.isNotEmpty) return definedAndroidUrl;
         if (definedUrl.isNotEmpty) return definedUrl;
-        return 'http://[IP_ADDRESS]/api/v1';
+        return 'http://10.0.2.2:8080/api/v1';
       }
     } catch (_) {}
     if (definedUrl.isNotEmpty) return definedUrl;
 
-    return 'http://[IP_ADDRESS]/api/v1';
+    return 'http://localhost:8080/api/v1';
+  }
+
+  // Google Client ID (Web/Server client ID) theo môi trường:
+  // Thứ tự ưu tiên:
+  // 1. --dart-define=GOOGLE_CLIENT_ID
+  // 2. Theo host của baseUrl:
+  //    - api-v2.closy.hycat.online -> GOOGLE_CLIENT_ID_V2
+  //    - api.closy.hycat.online -> GOOGLE_CLIENT_ID_PROD
+  //    - localhost / 10.0.2.2 -> GOOGLE_CLIENT_ID (dev)
+  // 3. Fallback GOOGLE_CLIENT_ID từ .env
+  static String get googleClientId {
+    const defined = String.fromEnvironment('GOOGLE_CLIENT_ID');
+    if (defined.isNotEmpty) return defined;
+
+    final currentBase = baseUrl.toLowerCase();
+    if (dotenv.isInitialized) {
+      if (currentBase.contains('api-v2.closy.hycat.online')) {
+        final v2Id = dotenv.env['GOOGLE_CLIENT_ID_V2'];
+        if (v2Id != null && v2Id.isNotEmpty) return v2Id;
+      } else if (currentBase.contains('api.closy.hycat.online')) {
+        final prodId = dotenv.env['GOOGLE_CLIENT_ID_PROD'];
+        if (prodId != null && prodId.isNotEmpty) return prodId;
+      }
+      final devId = dotenv.env['GOOGLE_CLIENT_ID'];
+      if (devId != null && devId.isNotEmpty) return devId;
+    }
+    return '';
   }
 
   // Storage Keys
@@ -66,8 +93,15 @@ class AppConstants {
 
   // Endpoints
   static const String loginEndpoint = '/auth/login';
+  static const String googleAuthEndpoint = '/auth/google';
+
+  /// URL khởi động đăng nhập Google trên **Web** qua BE (luồng redirect —
+  /// guide §1). Không cần "Authorized JavaScript origins" như GIS.
+  static String googleWebRedirectUrl(String returnUrl) =>
+      '$baseUrl$googleAuthEndpoint?redirectUrl=${Uri.encodeComponent(returnUrl)}';
   static const String registerEndpoint = '/auth/register';
-  static const String refreshTokenEndpoint = '/auth/refresh';
+  static const String refreshTokenEndpoint = '/auth/refresh-token';
+  static const String logoutEndpoint = '/auth/logout';
   static const String wardrobeEndpoint = '/me/wardrobe-items';
   static const String categoriesEndpoint = '/categories';
   static const String uploadSignatureEndpoint =

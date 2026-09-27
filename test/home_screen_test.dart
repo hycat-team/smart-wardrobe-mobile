@@ -47,6 +47,16 @@ void main() {
           userProfileProvider.overrideWith((ref) => FakeUserProfileNotifier()),
           wardrobeProvider.overrideWith((ref) => FakeWardrobeNotifier()),
           outfitsListProvider.overrideWith((ref) => FakeOutfitsListNotifier()),
+          wardrobeStatsProvider.overrideWith(
+            (ref) async => const WardrobeStats(activeItemsCount: 48, outfitsCount: 3),
+          ),
+          categoriesProvider.overrideWith(
+            (ref) async => const [
+              CategoryModel(id: '1', name: 'Áo khoác', slug: 'ao-khoac'),
+              CategoryModel(id: '2', name: 'Đầm & Váy', slug: 'dam'),
+              CategoryModel(id: '3', name: 'Phụ kiện', slug: 'phu-kien'),
+            ],
+          ),
           categoryDistributionProvider.overrideWith(
             (ref) async => const WardrobeCategoryDistributionResult(
               totalItems: 48,
@@ -78,11 +88,46 @@ void main() {
     expect(find.text('Tủ đồ hiện có'), findsOneWidget);
     expect(find.text('Outfits đã lưu'), findsOneWidget);
 
-    // Verify Categories Section
+    // Verify Categories Section (động theo distribution)
     expect(find.text('TỦ ĐỒ CỦA BẠN'), findsOneWidget);
     expect(find.text('Xem tất cả'), findsOneWidget);
     expect(find.text('Áo khoác'), findsOneWidget);
     expect(find.text('Đầm & Váy'), findsOneWidget);
     expect(find.text('Phụ kiện'), findsOneWidget);
+    expect(find.text('8 món'), findsOneWidget);
+    expect(find.text('12 món'), findsOneWidget);
+    expect(find.text('15 món'), findsOneWidget);
+  });
+
+  testWidgets('HomeScreen shows empty wardrobe state without fake counts', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          userProfileProvider.overrideWith((ref) => FakeUserProfileNotifier()),
+          wardrobeProvider.overrideWith((ref) => FakeWardrobeNotifier()),
+          outfitsListProvider.overrideWith((ref) => FakeOutfitsListNotifier()),
+          wardrobeStatsProvider.overrideWith(
+            (ref) async => const WardrobeStats(activeItemsCount: 0, outfitsCount: 0),
+          ),
+          categoriesProvider.overrideWith((ref) async => const <CategoryModel>[]),
+          categoryDistributionProvider.overrideWith(
+            (ref) async => const WardrobeCategoryDistributionResult(
+              totalItems: 0,
+              categories: [],
+            ),
+          ),
+        ],
+        child: const MaterialApp(
+          home: HomeScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tủ đồ đang trống'), findsOneWidget);
+    // Không còn số giả 8/12/15.
+    expect(find.text('8 món'), findsNothing);
+    expect(find.text('12 món'), findsNothing);
+    expect(find.text('15 món'), findsNothing);
   });
 }

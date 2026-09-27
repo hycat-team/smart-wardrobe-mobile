@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/http_client_factory.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../models/stylist_models.dart';
 
@@ -120,13 +121,15 @@ class StylistRepository {
     required void Function(String fullText) onDone,
     required void Function(dynamic error) onError,
   }) async {
-    final client = http.Client();
+    final client = createHttpClient();
     bool isDone = false;
 
     try {
       final token = await _storage.getToken();
+      final hasBearer =
+          token != null && token.isNotEmpty && token != 'web_session_active';
       final urlStr = '${AppConstants.baseUrl}/ai/chat/sessions/$contextId/messages/stream'
-          '${token != null && token.isNotEmpty ? '?token=$token' : ''}';
+          '${hasBearer ? '?token=$token' : ''}';
       final uri = Uri.parse(urlStr);
 
       debugPrint('[StylistRepository] Connecting chat stream to: $uri');

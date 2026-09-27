@@ -18,11 +18,11 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider).user;
-    // Số liệu tổng quan lấy từ cùng nguồn API với trang Thống kê tủ đồ
-    // (US 006) — không đếm từ list phân trang.
-    final insightsAsync = ref.watch(wardrobeInsightsProvider);
+    // Số liệu tổng quan lấy từ endpoint stats (activeItemsCount / outfitsCount)
+    // — không đếm từ list phân trang (US 006).
     final statsAsync = ref.watch(wardrobeStatsProvider);
     final distributionAsync = ref.watch(categoryDistributionProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
 
     // Lấy tên hiển thị chào mừng
     final greetingName = _resolveGreetingName(userProfile?.firstName, userProfile?.displayName);
@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
             ref.invalidate(wardrobeProvider);
             ref.invalidate(outfitsListProvider);
             ref.invalidate(categoryDistributionProvider);
-            ref.invalidate(wardrobeInsightsProvider);
+            ref.invalidate(categoriesProvider);
             ref.invalidate(wardrobeStatsProvider);
           },
           child: SingleChildScrollView(
@@ -64,14 +64,14 @@ class HomeScreen extends ConsumerWidget {
                 _buildQuickStatsRow(
                   context,
                   ref,
-                  wardrobeCount: insightsAsync.whenData((i) => i.totalItems),
+                  wardrobeCount: statsAsync.whenData((s) => s.activeItemsCount),
                   outfitCount: statsAsync.whenData((s) => s.outfitsCount),
                 ),
 
                 const SizedBox(height: 28),
 
                 // 4. Mục "TỦ ĐỒ CỦA BẠN" với các thẻ danh mục
-                _buildWardrobeCategoriesSection(context, ref, distributionAsync),
+                _buildWardrobeCategoriesSection(context, ref, distributionAsync, categoriesAsync),
 
                 // Khoảng đệm an toàn dưới cùng để không bị che bởi BottomNavBar (76px)
                 const SizedBox(height: 100),
@@ -158,7 +158,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Text('✨', style: TextStyle(fontSize: 20)),
+                  const Icon(Icons.auto_awesome_rounded, size: 18, color: AppColors.accentSandDark),
                 ],
               ),
             ],
@@ -322,7 +322,7 @@ class HomeScreen extends ConsumerWidget {
             countAsync: wardrobeCount,
             unit: 'món',
             onTap: () => context.go('/wardrobe'),
-            onRetry: () => ref.invalidate(wardrobeInsightsProvider),
+            onRetry: () => ref.invalidate(wardrobeStatsProvider),
           ),
         ),
         const SizedBox(width: 14),
@@ -446,29 +446,28 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  /// Mục "TỦ ĐỒ CỦA BẠN" với các card danh mục trang phục
+  /// Mục "TỦ ĐỒ CỦA BẠN" — card danh mục động theo dữ liệu thật.
+  ///
+  /// Số món lấy từ `categoryDistributionProvider`; join `categoryId -> slug`
+  /// qua `categoriesProvider` để lọc đúng danh mục ở màn Tủ đồ. Không hiển
+  /// thị số giả khi chưa có dữ liệu (US 006).
   Widget _buildWardrobeCategoriesSection(
     BuildContext context,
     WidgetRef ref,
     AsyncValue<WardrobeCategoryDistributionResult> distributionAsync,
+    AsyncValue<List<CategoryModel>> categoriesAsync,
   ) {
-    // Trích xuất số lượng theo danh mục từ API nếu có
-    int coatCount = 8;
-    int dressCount = 12;
-    int accessoryCount = 15;
+    final categories = categoriesAsync.valueOrNull ?? const <CategoryModel>[];
+    final slugById = <String, String>{
+      for (final c in categories) c.id: c.slug,
+    };
 
-    distributionAsync.whenData((dist) {
-      for (final cat in dist.categories) {
-        final nameLower = cat.categoryName.toLowerCase();
-        if (nameLower.contains('khoác') || nameLower.contains('coat') || nameLower.contains('jacket')) {
-          coatCount = cat.itemCount;
-        } else if (nameLower.contains('đầm') || nameLower.contains('váy') || nameLower.contains('dress')) {
-          dressCount = cat.itemCount;
-        } else if (nameLower.contains('phụ kiện') || nameLower.contains('accessory') || nameLower.contains('giày')) {
-          accessoryCount = cat.itemCount;
-        }
-      }
-    });
+    final categoryCards = (distributionAsync.valueOrNull?.categories ??
+            const <CategoryDistributionModel>[])
+        .where((c) => c.itemCount > 0)
+        .toList();
+
+    final isLoading = distributionAsync.isLoading || categoriesAsync.isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,54 +505,133 @@ class HomeScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 14),
 
-        // 3 Cards danh mục: Áo khoác, Đầm & Váy, Phụ kiện
-        Row(
-          children: [
-            // 1. Áo khoác
-            Expanded(
-              child: _CategoryItemCard(
-                title: 'Áo khoác',
-                countText: '$coatCount món',
-                icon: Icons.layers_outlined,
-                iconColor: const Color(0xFFC29B38),
-                badgeBgColor: const Color(0xFFFBF6EC),
-                onTap: () => _navigateToWardrobeCategory(context, ref, 'ao-khoac'),
-              ),
+        if (isLoading && categoryCards.isEmpty)
+          _buildCategoryPlaceholderRow()
+        else if (categoryCards.isEmpty)
+          _buildEmptyWardrobeCard(context)
+        else
+          SizedBox(
+            height: 128,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: categoryCards.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, index) {
+                final cat = categoryCards[index];
+                final slug = slugById[cat.categoryId];
+                return SizedBox(
+                  width: 118,
+                  child: _CategoryItemCard(
+                    title: cat.categoryName,
+                    countText: '${cat.itemCount} món',
+                    icon: Icons.checkroom_outlined,
+                    iconColor: AppColors.accentSandDark,
+                    badgeBgColor: AppColors.surfaceSubtle,
+                    onTap: () => _navigateToWardrobeCategory(context, ref, slug),
+                  ),
+                );
+              },
             ),
-            const SizedBox(width: 10),
-
-            // 2. Đầm & Váy
-            Expanded(
-              child: _CategoryItemCard(
-                title: 'Đầm & Váy',
-                countText: '$dressCount món',
-                icon: Icons.checkroom_rounded,
-                iconColor: const Color(0xFF3B82F6),
-                badgeBgColor: const Color(0xFFEFF6FF),
-                onTap: () => _navigateToWardrobeCategory(context, ref, 'dam-vay'),
-              ),
-            ),
-            const SizedBox(width: 10),
-
-            // 3. Phụ kiện
-            Expanded(
-              child: _CategoryItemCard(
-                title: 'Phụ kiện',
-                countText: '$accessoryCount món',
-                icon: Icons.shopping_bag_outlined,
-                iconColor: const Color(0xFFE11D48),
-                badgeBgColor: const Color(0xFFFFF1F2),
-                onTap: () => _navigateToWardrobeCategory(context, ref, 'phu-kien'),
-              ),
-            ),
-          ],
-        ),
+          ),
       ],
     );
   }
 
-  /// Lọc danh mục trong wardrobe rồi điều hướng sang tab /wardrobe
-  void _navigateToWardrobeCategory(BuildContext context, WidgetRef ref, String categorySlug) {
+  /// Placeholder khi đang tải số liệu danh mục (không hiện số giả).
+  Widget _buildCategoryPlaceholderRow() {
+    return SizedBox(
+      height: 128,
+      child: Row(
+        children: List.generate(3, (index) {
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: index < 2 ? 10 : 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSubtle,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.border.withOpacity(0.6),
+                    width: 0.8,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  /// Empty state khi tủ đồ chưa có món.
+  Widget _buildEmptyWardrobeCard(BuildContext context) {
+    return InkWell(
+      onTap: () => context.go('/wardrobe'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceSubtle,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.border.withOpacity(0.6),
+            width: 0.8,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border, width: 0.8),
+              ),
+              child: const Center(
+                child: Icon(Icons.checkroom_outlined,
+                    size: 24, color: AppColors.accentSandDark),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tủ đồ đang trống',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Thêm món đầu tiên để bắt đầu phân loại theo danh mục.',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: AppColors.textSecondary,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Lọc danh mục trong wardrobe rồi điều hướng sang tab /wardrobe.
+  /// [categorySlug] null (không khớp danh mục nào) thì mở tủ đồ không lọc.
+  void _navigateToWardrobeCategory(
+      BuildContext context, WidgetRef ref, String? categorySlug) {
     ref.read(selectedCategorySlugProvider.notifier).state = categorySlug;
     context.go('/wardrobe');
   }

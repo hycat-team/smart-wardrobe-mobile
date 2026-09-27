@@ -422,7 +422,36 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                       );
                     },
                     loading: () => const SizedBox(height: 48),
-                    error: (_, __) => const SizedBox.shrink(),
+                    // Không ẩn cả bộ lọc khi API lỗi: hiện thông báo + thử lại.
+                    error: (_, __) => SizedBox(
+                      height: 48,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cloud_off_outlined,
+                                size: 18, color: AppColors.textSecondary),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'Không tải được danh mục',
+                                style: TextStyle(
+                                    fontSize: 13, color: AppColors.textSecondary),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => ref.invalidate(categoriesProvider),
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(44, 44),
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                              ),
+                              child: const Text('Thử lại'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
 

@@ -6,6 +6,7 @@ import 'package:smart_wardrobe/features/auth/presentation/login_screen.dart';
 import 'package:smart_wardrobe/features/auth/presentation/register_screen.dart';
 import 'package:smart_wardrobe/features/auth/presentation/preferences_screen.dart';
 import 'package:smart_wardrobe/features/auth/presentation/forgot_password_screen.dart';
+import 'package:smart_wardrobe/features/auth/presentation/auth_callback_screen.dart';
 import 'package:smart_wardrobe/features/auth/providers/auth_provider.dart';
 import 'package:smart_wardrobe/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:smart_wardrobe/features/home/presentation/home_screen.dart';
@@ -57,12 +58,17 @@ final appRouterNotifierProvider = Provider<AppRouterNotifier>((ref) {
 /// rơi về home làm mất thông báo kết quả.
 final pendingRedirectProvider = StateProvider<String?>((ref) => null);
 
+/// Đích mặc định sau khi đăng nhập thành công (khi không có pendingRedirect).
+/// Dùng chung cho mọi luồng đăng nhập (mật khẩu, Google mobile/web).
+const String kPostLoginRoute = '/home';
+
 bool _isAuthPath(String location) {
   final path = Uri.tryParse(location)?.path ?? location;
   return path == '/login' ||
       path == '/auth/register' ||
       path == '/auth/forgot-password' ||
-      path == '/auth/preferences';
+      path == '/auth/preferences' ||
+      path == '/auth/callback';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -80,21 +86,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthPage = path == '/login' ||
           path == '/auth/register' ||
           path == '/auth/forgot-password' ||
-          path == '/auth/preferences';
+          path == '/auth/preferences' ||
+          path == '/auth/callback';
 
       // 1. Chưa đăng nhập mà vào bất kỳ trang nào khác trang auth -> giữ lại
       // đích đến (kẻo deep-link kết quả thanh toán bị mất) rồi về /login.
       if (!isAuth && !isAuthPage) {
-        ref.read(pendingRedirectProvider.notifier).state =
-            state.uri.toString();
+        final destination = state.uri.toString();
+        // KHÔNG ghi provider trực tiếp trong `redirect`: callback này chạy
+        // khi widget tree đang build, ghi StateProvider sẽ làm Riverpod throw
+        // "Tried to modify a provider while the widget tree was building".
+        // Hẹn sang microtask để áp dụng sau khi build xong.
+        Future.microtask(() {
+          ref.read(pendingRedirectProvider.notifier).state = destination;
+        });
         return '/login';
       }
 
       // 2. Đã đăng nhập mà đang ở trang auth -> quay lại đích đến đã giữ,
-      // không có thì vào trang chính /wardrobe như cũ.
+      // không có thì vào trang chính /home như cũ.
       if (isAuth && isAuthPage) {
-        final pending = ref.read(pendingRedirectProvider.notifier).state;
-        ref.read(pendingRedirectProvider.notifier).state = null;
+        final pending = ref.read(pendingRedirectProvider);
+        if (pending != null) {
+          // Xoá pending cũng phải hoãn khỏi lúc build (cùng lý do trên).
+          Future.microtask(() {
+            ref.read(pendingRedirectProvider.notifier).state = null;
+          });
+        }
         if (pending != null &&
             pending.isNotEmpty &&
             !_isAuthPath(pending)) {
@@ -125,6 +143,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/auth/forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        // Callback luồng đăng nhập Google web (BE redirect về đây kèm cookie).
+        path: '/auth/callback',
+        builder: (context, state) => const AuthCallbackScreen(),
       ),
       GoRoute(
         path: '/onboarding',

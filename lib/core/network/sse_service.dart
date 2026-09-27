@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../constants/app_constants.dart';
 import '../storage/secure_storage_service.dart';
+import 'http_client_factory.dart';
 
 class SSESubscription {
   final void Function() _cancel;
@@ -26,7 +27,7 @@ class SSEService {
     required void Function() onDone,
     required void Function(dynamic error) onError,
   }) {
-    final client = http.Client();
+    final client = createHttpClient();
     bool isClosed = false;
 
     void cleanup() {
@@ -41,8 +42,10 @@ class SSEService {
     () async {
       try {
         final token = await _storage.getToken();
+        final hasBearer =
+            token != null && token.isNotEmpty && token != 'web_session_active';
         final urlStr = '${AppConstants.baseUrl}/wardrobe-items/tasks/$taskId/sse'
-            '${token != null && token.isNotEmpty ? '?token=$token' : ''}';
+            '${hasBearer ? '?token=$token' : ''}';
         final uri = Uri.parse(urlStr);
         debugPrint('[SSE] Connecting to: $uri');
 
