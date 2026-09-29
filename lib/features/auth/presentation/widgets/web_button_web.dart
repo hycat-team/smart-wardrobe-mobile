@@ -1,26 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:web/web.dart' as web;
-import '../../../../core/constants/app_constants.dart';
+import 'package:google_sign_in_platform_interface/google_sign_in_platform_interface.dart';
+import 'package:google_sign_in_web/google_sign_in_web.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'google_logo.dart';
 
-/// Bắt đầu đăng nhập Google trên **Web** qua luồng redirect của BE (guide §1):
-/// trình duyệt rời app sang Google → BE đặt cookie HttpOnly → quay về
-/// `/auth/callback`. Luồng này KHÔNG cần "Authorized JavaScript origins" (khác
-/// GIS) nên tránh được lỗi `400: origin_mismatch`.
-void startWebGoogleRedirect() {
-  final returnUrl = '${Uri.base.origin}/auth/callback';
-  web.window.location.href = AppConstants.googleWebRedirectUrl(returnUrl);
-}
+/// Web dùng **Google Identity Services (GIS)** để lấy ID token → gửi
+/// `POST /auth/google` → nhận Bearer token (giống mobile).
+///
+/// LƯU Ý: GIS bắt buộc origin của trang web phải nằm trong
+/// **Authorized JavaScript origins** của OAuth client trên Google Cloud,
+/// nếu thiếu sẽ gặp lỗi `400: origin_mismatch`.
+Widget buildWebGoogleButton({VoidCallback? onDisabledTap, double? width}) {
+  final platform = GoogleSignInPlatform.instance;
+  if (platform is GoogleSignInPlugin) {
+    // Đặt minimumWidth = bề rộng khung để nút Google render vừa khung
+    // (tránh bị cắt 2 mép khi nhãn tiếng Việt dài).
+    final minWidth = (width != null && width.isFinite && width > 0
+            ? width
+            : 320.0)
+        .clamp(200.0, 600.0)
+        .toDouble();
+    return platform.renderButton(
+      configuration: GSIButtonConfiguration(
+        type: GSIButtonType.standard,
+        theme: GSIButtonTheme.outline,
+        size: GSIButtonSize.large,
+        shape: GSIButtonShape.pill,
+        text: GSIButtonText.continueWith,
+        minimumWidth: minWidth,
+      ),
+    );
+  }
 
-/// Nút "Tiếp tục với Google" phong cách Quiet Luxury cho Web.
-Widget buildWebGoogleButton({VoidCallback? onDisabledTap}) {
+  // Fallback (không dùng được GIS): nút Quiet Luxury full width.
   return SizedBox(
     width: double.infinity,
     height: 50,
     child: OutlinedButton(
-      onPressed: onDisabledTap ?? startWebGoogleRedirect,
+      onPressed: onDisabledTap,
       style: OutlinedButton.styleFrom(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.primary,

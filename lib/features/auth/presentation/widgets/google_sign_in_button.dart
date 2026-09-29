@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,7 @@ class GoogleSignInButton extends ConsumerStatefulWidget {
 class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
   static bool _isSdkInitialized = false;
   bool _isLocallyLoading = false;
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _webAuthSubscription;
 
   @override
   void initState() {
@@ -34,18 +36,21 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
     _initGoogleSdk();
   }
 
-  Future<void> _initGoogleSdk() async {
-    // Web dùng luồng redirect của BE (guide §1) — KHÔNG dùng GIS nên không cần
-    // khởi tạo SDK Google ở đây.
-    if (kIsWeb) return;
+  @override
+  void dispose() {
+    _webAuthSubscription?.cancel();
+    super.dispose();
+  }
 
+  Future<void> _initGoogleSdk() async {
     if (!_isSdkInitialized) {
       _isSdkInitialized = true;
       final clientId = AppConstants.googleClientId;
       try {
         await GoogleSignIn.instance.initialize(
-          clientId: null,
-          serverClientId: clientId.isNotEmpty ? clientId : null,
+          clientId: kIsWeb ? (clientId.isNotEmpty ? clientId : null) : null,
+          serverClientId:
+              !kIsWeb ? (clientId.isNotEmpty ? clientId : null) : null,
         );
       } catch (e) {
         debugPrint('Google Sign-In SDK initialization warning: $e');
@@ -53,6 +58,36 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
       if (mounted) {
         setState(() {});
       }
+    }
+
+    // Web (GIS): lắng nghe sự kiện đăng nhập -> lấy ID token -> đổi Bearer.
+    if (kIsWeb) {
+      _webAuthSubscription ??=
+          GoogleSignIn.instance.authenticationEvents.listen((event) {
+        if (event is GoogleSignInAuthenticationEventSignIn) {
+          final idToken = event.user.authentication.idToken;
+          if (idToken != null && idToken.isNotEmpty) {
+            _exchangeIdToken(idToken);
+          }
+        }
+      });
+      // Xoá phiên Google cũ để GIS không tự chọn lại tài khoản trước đó.
+      await _clearPreviousGoogleSession();
+    }
+  }
+
+  /// Xoá phiên Google cục bộ và ngắt kết nối để lần đăng nhập kế tiếp luôn
+  /// hiển thị lại account chooser (spec 012 — FR-013). Không ném lỗi nếu chưa có phiên.
+  Future<void> _clearPreviousGoogleSession() async {
+    try {
+      await GoogleSignIn.instance.disconnect();
+    } catch (e) {
+      debugPrint('Google Sign-In disconnect warning: $e');
+    }
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (e) {
+      debugPrint('Google Sign-In signOut warning: $e');
     }
   }
 
@@ -67,6 +102,11 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
       if (!_isSdkInitialized) {
         await _initGoogleSdk();
       }
+
+      // Buộc hiện lại account chooser: xoá phiên Google cục bộ trước khi
+      // authenticate() để không tự động tái dùng tài khoản đã cấp quyền
+      // (spec 012 — FR-013).
+      await _clearPreviousGoogleSession();
 
       final account = await GoogleSignIn.instance.authenticate();
       final auth = account.authentication;
@@ -94,7 +134,8 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
       } else {
         final failedOutcome = GoogleSignInOutcome.failed(
           errorCode: AuthErrorCode.serverError,
-          customMessage: 'Đăng nhập Google thất bại: ${e.toString().replaceAll("Exception: ", "")}',
+          customMessage:
+              'Đăng nhập Google thất bại: ${e.toString().replaceAll("Exception: ", "")}',
         );
         widget.onOutcome?.call(failedOutcome);
       }
@@ -120,7 +161,8 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
     final isLoading = _isLocallyLoading || authState.isLoading;
 
     if (kIsWeb) {
-      if (isLoading) {
+      // Chờ GIS sẵn sàng + trạng thái loading.
+      if (isLoading || !_isSdkInitialized) {
         return const SizedBox(
           height: 50,
           child: Center(
@@ -135,7 +177,20 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
           ),
         );
       }
-      return buildWebGoogleButton();
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth.isFinite && constraints.maxWidth > 0
+              ? constraints.maxWidth
+              : 320.0;
+          return Center(
+            child: SizedBox(
+              width: w,
+              height: 48,
+              child: buildWebGoogleButton(width: w),
+            ),
+          );
+        },
+      );
     }
 
     // Quiet Luxury Custom Google Button for Android / Mobile

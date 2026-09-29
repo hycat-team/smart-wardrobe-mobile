@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
 
@@ -46,21 +47,11 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đổi mật khẩu thành công!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đổi mật khẩu thành công!');
       Navigator.of(context).pop();
     } else {
       final error = ref.read(userProfileProvider).errorMessage ?? 'Đổi mật khẩu thất bại';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      ClosyToast.error(context, error);
     }
   }
 

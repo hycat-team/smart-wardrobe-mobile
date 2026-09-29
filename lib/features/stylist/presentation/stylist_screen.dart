@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_network_image.dart';
 import '../models/stylist_models.dart';
 import '../providers/stylist_provider.dart';
+import '../../../shared/widgets/closy_toast.dart';
 
 class StylistScreen extends ConsumerStatefulWidget {
   const StylistScreen({super.key});
@@ -125,6 +126,16 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
       }
     });
 
+    // Thông báo lỗi / hết lượt Stylist AI dạng Pop-up Toast đỉnh màn hình 2 giây (SC-001)
+    ref.listen<String?>(
+      stylistProvider.select((s) => s.errorMessage),
+      (prev, next) {
+        if (next != null && next.isNotEmpty && next != prev && mounted) {
+          ClosyToast.error(context, next);
+        }
+      },
+    );
+
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: AppColors.background,
@@ -140,7 +151,7 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              currentSession?.title ?? 'AI Stylist',
+              currentSession?.title ?? 'Stylist AI',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.playfairDisplay(

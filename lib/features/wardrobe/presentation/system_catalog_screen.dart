@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/wardrobe_models.dart';
 import '../providers/wardrobe_provider.dart';
 import '../providers/system_catalog_provider.dart';
@@ -34,25 +35,14 @@ class _SystemCatalogScreenState extends ConsumerState<SystemCatalogScreen> {
     try {
       final added = await notifier.initSelected();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã thêm $added món từ tủ hệ thống vào tủ đồ của bạn.'),
-          backgroundColor: AppColors.primary,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      ClosyToast.success(context, 'Đã thêm $added món từ tủ hệ thống vào tủ đồ của bạn.');
       // Về lại Wardrobe (tủ cá nhân đã được refresh trong provider).
       if (mounted) context.pop();
     } catch (e) {
       if (!mounted) return;
       final message = ref.read(systemCatalogProvider).errorMessage ??
           'Không thể thêm đồ từ tủ hệ thống. Vui lòng thử lại (đã giữ nguyên $count lựa chọn).';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      ClosyToast.error(context, message);
     }
   }
 
@@ -173,9 +163,9 @@ class _SystemCatalogScreenState extends ConsumerState<SystemCatalogScreen> {
                           error: (_, __) => const SizedBox.shrink(),
                         ),
                         const SizedBox(height: 8),
-                        if (catalogState.total > 0)
+                        if (catalogState.visibleItems.isNotEmpty)
                           Text(
-                            '${catalogState.total} mẫu có sẵn',
+                            '${catalogState.visibleItems.length} mẫu có sẵn',
                             style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -269,14 +259,16 @@ class _SystemCatalogScreenState extends ConsumerState<SystemCatalogScreen> {
   }
 
   Widget _buildGridSliver(SystemCatalogState catalogState) {
-    if (catalogState.isLoading && catalogState.items.isEmpty) {
+    // Ẩn mẫu thiếu ảnh — chỉ hiển thị mẫu có ảnh (FR-009).
+    final items = catalogState.visibleItems;
+    if (catalogState.isLoading && items.isEmpty) {
       return const SliverFillRemaining(
         child: Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
-    if (catalogState.errorMessage != null && catalogState.items.isEmpty) {
+    if (catalogState.errorMessage != null && items.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
         child: Center(
@@ -305,14 +297,14 @@ class _SystemCatalogScreenState extends ConsumerState<SystemCatalogScreen> {
         ),
       );
     }
-    if (catalogState.items.isEmpty) {
+    if (items.isEmpty) {
       return const SliverFillRemaining(
         hasScrollBody: false,
         child: Center(
           child: Padding(
             padding: EdgeInsets.all(32),
             child: Text(
-              'Không có trang phục nào trong catalog.',
+              'Hiện chưa có mẫu trang phục nào có ảnh để hiển thị.',
               style:
                   TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
@@ -332,14 +324,14 @@ class _SystemCatalogScreenState extends ConsumerState<SystemCatalogScreen> {
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             // Load-more khi chạm gần cuối (giữ lại 4 item dự phòng).
-            if (index >= catalogState.items.length - 4 &&
+            if (index >= items.length - 4 &&
                 catalogState.hasMore &&
                 !catalogState.isLoadingMore) {
               Future.microtask(() => ref
                   .read(systemCatalogProvider.notifier)
                   .loadCatalog());
             }
-            final item = catalogState.items[index];
+            final item = items[index];
             final isSelected =
                 catalogState.selectedIds.contains(item.id);
             final alreadyOwned = ref
@@ -354,7 +346,7 @@ class _SystemCatalogScreenState extends ConsumerState<SystemCatalogScreen> {
                   .toggleSelect(item.id),
             );
           },
-          childCount: catalogState.items.length,
+          childCount: items.length,
         ),
       ),
     );

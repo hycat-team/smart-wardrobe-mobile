@@ -120,6 +120,33 @@ class WardrobeRepository {
     }
   }
 
+  /// Gửi yêu cầu phân tích lại trang phục AI (Spec 023-analyze-status-handling).
+  /// Món `needsReview` bắt buộc kèm `categoryId`.
+  /// Trả về món đồ với status = 3 (processing) kèm taskId để subscribe SSE.
+  Future<WardrobeItemModel> retryAnalysis({
+    required String id,
+    String? categoryId,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (categoryId != null && categoryId.isNotEmpty) {
+        data['categoryId'] = categoryId;
+      }
+
+      final response = await _apiClient.dio.post(
+        '/wardrobe-items/$id/retry-analysis',
+        data: data.isNotEmpty ? data : null,
+      );
+
+      final body = response.data;
+      final resData = _extractMap(body['data']) ?? _extractMap(body) ?? {};
+      return WardrobeItemModel.fromJson(resData);
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? e.message ?? 'Không thể gửi yêu cầu phân tích lại';
+      throw Exception(message);
+    }
+  }
+
   Future<void> deleteWardrobeItem(String id) async {
     await deleteWardrobeItems([id]);
   }

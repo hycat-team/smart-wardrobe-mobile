@@ -316,11 +316,22 @@ class AuthRepository {
   Future<void> logout() async {
     try {
       final refreshToken = await _storage.getRefreshToken();
+      final token = await _storage.getToken();
       await _apiClient.dio.post(
         AppConstants.logoutEndpoint,
         data: refreshToken != null && refreshToken.isNotEmpty
             ? {'refreshToken': refreshToken}
             : null,
+        options: Options(
+          headers: {
+            if (token != null && token.isNotEmpty && token != 'web_session_active')
+              'Authorization': 'Bearer $token',
+            if (!kIsWeb) 'Accept-Encoding': 'identity',
+          },
+          extra: {
+            if (kIsWeb) 'withCredentials': true,
+          },
+        ),
       );
     } catch (_) {}
     await _storage.clearAll();

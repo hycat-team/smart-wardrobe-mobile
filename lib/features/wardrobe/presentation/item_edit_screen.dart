@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/wardrobe_models.dart';
 import '../providers/wardrobe_provider.dart';
 
@@ -55,21 +56,11 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
     setState(() => _isSaving = false);
 
     if (updated != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã cập nhật thông tin món đồ.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đã cập nhật thông tin món đồ.');
       Navigator.pop(context, updated);
     } else {
       final error = ref.read(wardrobeProvider).errorMessage ?? 'Không thể cập nhật món đồ.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      ClosyToast.error(context, error);
     }
   }
 

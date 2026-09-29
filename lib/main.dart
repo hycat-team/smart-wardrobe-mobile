@@ -27,48 +27,70 @@ Future<void> main() async {
     // Fallback constants used if .env is missing
   }
 
-  // Pre-initialize Google Sign-In SDK (chỉ Android/iOS). Web dùng luồng
-  // redirect của BE (guide §1) nên KHÔNG cần Google Identity Services.
-  if (!kIsWeb) {
-    try {
-      final clientId = AppConstants.googleClientId;
-      if (clientId.isNotEmpty) {
-        await GoogleSignIn.instance.initialize(
-          clientId: null,
-          serverClientId: clientId,
-        );
-      }
-    } catch (e) {
-      debugPrint('Google Sign-In pre-initialization notice: $e');
+  // Pre-initialize Google Sign-In SDK: Web (GIS) dùng clientId; Android dùng
+  // serverClientId. Giúp GIS sẵn sàng ngay khi màn login render.
+  try {
+    final clientId = AppConstants.googleClientId;
+    if (clientId.isNotEmpty) {
+      await GoogleSignIn.instance.initialize(
+        clientId: kIsWeb ? clientId : null,
+        serverClientId: !kIsWeb ? clientId : null,
+      );
     }
+  } catch (e) {
+    debugPrint('Google Sign-In pre-initialization notice: $e');
   }
 
   runApp(
-    const ProviderScope(
-      child: SmartWardrobeApp(),
-    ),
+    const SmartWardrobeRoot(),
   );
 }
 
-class SmartWardrobeApp extends ConsumerWidget {
-  const SmartWardrobeApp({super.key});
+class SmartWardrobeRoot extends StatefulWidget {
+  const SmartWardrobeRoot({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Mỗi khi session đổi (đăng xuất), ProviderScope lồng bên trong bị
-    // dispose toàn bộ: mọi state của tài khoản cũ biến mất, tài khoản
-    // mới đăng nhập vào container sạch.
-    final session = ref.watch(sessionProvider);
+  State<SmartWardrobeRoot> createState() => _SmartWardrobeRootState();
+}
 
+class _SmartWardrobeRootState extends State<SmartWardrobeRoot> {
+  int _session = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    appSessionNotifier.addListener(_onSessionChanged);
+  }
+
+  @override
+  void dispose() {
+    appSessionNotifier.removeListener(_onSessionChanged);
+    super.dispose();
+  }
+
+  void _onSessionChanged() {
+    if (mounted) {
+      setState(() {
+        _session = appSessionNotifier.value;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ProviderScope ở gốc ứng dụng được gán key theo _session.
+    // Khi đăng xuất hoặc chuyển tài khoản, _session tăng khiến toàn bộ
+    // ProviderContainer gốc bị dispose sạch: mọi state trong RAM (tủ đồ,
+    // stylist, hạn mức, profile...) bị hủy triệt để và khởi tạo mới.
     return ProviderScope(
-      key: ValueKey<int>(session),
-      child: const _SessionShell(),
+      key: ValueKey<int>(_session),
+      child: const SmartWardrobeApp(),
     );
   }
 }
 
-class _SessionShell extends ConsumerWidget {
-  const _SessionShell();
+class SmartWardrobeApp extends ConsumerWidget {
+  const SmartWardrobeApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

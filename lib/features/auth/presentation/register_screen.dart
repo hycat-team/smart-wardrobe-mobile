@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../../../shared/widgets/otp_input.dart';
 import '../models/auth_models.dart';
 import '../providers/auth_provider.dart';
@@ -140,21 +141,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (success && mounted) {
       setState(() => _isOtpStep = true);
       _startTimer();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Mã OTP đã được gửi đến ${_emailController.text.trim()}'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.info(context, 'Mã OTP đã được gửi đến ${_emailController.text.trim()}');
     }
   }
 
   Future<void> _handleVerifyOtp() async {
     final otp = _otpControllers.map((c) => c.text).join();
     if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đủ 6 chữ số mã OTP')),
-      );
+      ClosyToast.warning(context, 'Vui lòng nhập đủ 6 chữ số mã OTP');
       return;
     }
 
@@ -164,12 +158,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kích hoạt tài khoản thành công!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Kích hoạt tài khoản thành công!');
       context.go('/auth/preferences');
     }
   }
@@ -189,23 +178,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final greeting = user?.fullName ?? 'bạn';
 
       if (outcome.linkedExistingAccount) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              outcome.message ??
-                  'Tài khoản Google đã được liên kết với tài khoản Closy của bạn.',
-            ),
-            backgroundColor: AppColors.primary,
-            duration: const Duration(seconds: 4),
-          ),
+        ClosyToast.info(
+          context,
+          outcome.message ??
+              'Tài khoản Google đã được liên kết với tài khoản Closy của bạn.',
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đăng ký thành công! Chào mừng $greeting.'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
+        ClosyToast.success(context, 'Đăng ký thành công! Chào mừng $greeting.');
       }
 
       final pending = ref.read(pendingRedirectProvider);
@@ -216,12 +195,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return;
       }
       final error = outcome.message ?? 'Đăng ký bằng Google thất bại.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      ClosyToast.error(context, error);
     }
   }
 
@@ -280,7 +254,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               height: 120,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.high,
-              semanticLabel: 'Closy logo',
+                          semanticLabel: 'Logo Closy',
               errorBuilder: (context, error, stackTrace) => Text(
                 'CLOSY',
                 style: GoogleFonts.playfairDisplay(

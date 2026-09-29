@@ -1,8 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/services/cloudinary_service.dart';
 import '../../wardrobe/models/wardrobe_models.dart';
+import '../../wardrobe/providers/wardrobe_provider.dart';
 import '../layout/canvas_layout.dart';
 import '../models/outfit_models.dart';
 import 'ai_outfit_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class OutfitStudioState {
   final List<CanvasItem> canvasItems;
@@ -25,6 +30,10 @@ class OutfitStudioState {
   final double? canvasWidth;
   final double? canvasHeight;
 
+  /// true khi bộ phối vừa được nạp theo kích thước fallback (chưa đo được
+  /// canvas thật) và cần bố trí lại ngay khi màn hình báo kích thước.
+  final bool pendingRelayout;
+
   const OutfitStudioState({
     this.canvasItems = const [],
     this.selectedIndex,
@@ -38,6 +47,7 @@ class OutfitStudioState {
     this.openCanvasRequested = false,
     this.canvasWidth,
     this.canvasHeight,
+    this.pendingRelayout = false,
   }) : _drawerSearchQuery = drawerSearchQuery;
 
   String get drawerSearchQuery => _drawerSearchQuery ?? '';
@@ -101,6 +111,8 @@ class OutfitStudioState {
     bool clearSuccess = false,
     double? canvasWidth,
     double? canvasHeight,
+    bool? pendingRelayout,
+    bool clearPendingRelayout = false,
   }) {
     return OutfitStudioState(
       canvasItems: canvasItems ?? this.canvasItems,
@@ -115,6 +127,8 @@ class OutfitStudioState {
       openCanvasRequested: openCanvasRequested ?? this.openCanvasRequested,
       canvasWidth: canvasWidth ?? this.canvasWidth,
       canvasHeight: canvasHeight ?? this.canvasHeight,
+      pendingRelayout:
+          clearPendingRelayout ? false : (pendingRelayout ?? this.pendingRelayout),
     );
   }
 }
@@ -123,24 +137,99 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
   final Ref _ref;
 
   OutfitStudioNotifier(this._ref) : super(const OutfitStudioState()) {
-    loadWardrobe();
+    // Khởi tạo ngay với dữ liệu tủ đồ hiện có nếu có sẵn
+    final initialWardrobe = _ref.read(wardrobeProvider).items;
+    if (initialWardrobe.isNotEmpty) {
+      state = state.copyWith(wardrobeItems: initialWardrobe);
+    }
+
+    // Lắng nghe thay đổi từ wardrobeProvider để tủ đồ Studio luôn đồng bộ realtime
+    _ref.listen<WardrobeState>(wardrobeProvider, (previous, next) {
+      if (next.items.isNotEmpty) {
+        state = state.copyWith(wardrobeItems: next.items);
+      }
+    });
+
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        state = const OutfitStudioState();
+      } else if (previous?.user?.id != next.user?.id) {
+        state = const OutfitStudioState();
+        if (next.isAuthenticated) {
+          loadWardrobe();
+        }
+      }
+    });
+
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      loadWardrobe();
+    }
   }
 
   Future<void> loadWardrobe() async {
-    state = state.copyWith(isLoadingWardrobe: true);
+    final cached = _ref.read(wardrobeProvider).items;
+    if (cached.isNotEmpty) {
+      state = state.copyWith(wardrobeItems: cached);
+    }
+
+    state = state.copyWith(isLoadingWardrobe: state.wardrobeItems.isEmpty);
     try {
       final repo = _ref.read(outfitRepositoryProvider);
       final items = await repo.getUserWardrobeItems();
-      state = state.copyWith(
-        isLoadingWardrobe: false,
-        wardrobeItems: items,
-      );
+      if (items.isNotEmpty) {
+        state = state.copyWith(
+          isLoadingWardrobe: false,
+          wardrobeItems: items,
+        );
+      } else if (cached.isNotEmpty) {
+        state = state.copyWith(
+          isLoadingWardrobe: false,
+          wardrobeItems: cached,
+        );
+      } else {
+        // Dự phòng: yêu cầu wardrobeProvider nạp đồ
+        await _ref.read(wardrobeProvider.notifier).loadItems();
+        final refreshed = _ref.read(wardrobeProvider).items;
+        state = state.copyWith(
+          isLoadingWardrobe: false,
+          wardrobeItems: refreshed,
+        );
+      }
     } catch (e) {
+      final fallback = _ref.read(wardrobeProvider).items;
       state = state.copyWith(
         isLoadingWardrobe: false,
-        errorMessage: 'Không thể tải tủ đồ cá nhân: ${e.toString()}',
+        wardrobeItems: fallback.isNotEmpty ? fallback : state.wardrobeItems,
       );
     }
+  }
+
+  /// Thay thế món đồ đang chọn trên canvas bằng một món đồ mới từ tủ đồ
+  void replaceItemOnCanvas(int index, WardrobeItemModel newItem) {
+    if (index < 0 || index >= state.canvasItems.length) return;
+    final fashionItem = newItem.fashionItem;
+    if (fashionItem == null) return;
+
+    final oldItem = state.canvasItems[index];
+    final role = normalizeRole(
+      null,
+      categorySlug: newItem.category?.slug ?? fashionItem.category?.slug,
+      categoryName: newItem.category?.name ?? fashionItem.category?.name,
+    );
+    final boxRatio = roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
+
+    final replaced = oldItem.copyWith(
+      fashionItemId: fashionItem.id,
+      imageUrl: newItem.displayImageUrl,
+      name: newItem.displayTitle,
+      role: role.name,
+      boxRatioW: boxRatio.widthRatio,
+      boxRatioH: boxRatio.heightRatio,
+    );
+
+    final updated = List<CanvasItem>.from(state.canvasItems);
+    updated[index] = replaced;
+    state = state.copyWith(canvasItems: updated, selectedIndex: index);
   }
 
   void setDrawerCategory(String category) {
@@ -171,6 +260,21 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       return;
     }
     state = state.copyWith(canvasWidth: width, canvasHeight: height);
+
+    // Bộ phối nạp từ ngoài được bố trí theo kích thước canvas TẠI LÚC NẠP.
+    // Lần đầu mở Studio kích thước thật chưa có nên phải dùng fallback
+    // 360x520 → vị trí lệch so với khung nhìn. Khi đo được kích thước thật
+    // thì bố trí lại một lần (guard ≤1px phía trên chặn vòng rebuild).
+    if (state.pendingRelayout) {
+      state = state.copyWith(
+        canvasItems: layoutCanvasItems(
+          state.canvasItems,
+          canvasWidth: width,
+          canvasHeight: height,
+        ),
+        clearPendingRelayout: true,
+      );
+    }
   }
 
   void addItemToCanvas(WardrobeItemModel item) {
@@ -178,40 +282,34 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     if (fashionItem == null) return;
 
     final items = List<CanvasItem>.from(state.canvasItems);
+    final role = normalizeRole(
+      null,
+      categorySlug: item.category?.slug ?? fashionItem.category?.slug,
+      categoryName: item.category?.name ?? fashionItem.category?.name,
+    );
 
-    final catSlug = fashionItem.category?.slug.toLowerCase() ?? '';
-    double defaultY = 0;
-    double defaultX = 0;
-    String role = 'item';
+    final hasFullbody = items.any((it) => it.role == CanvasRole.fullbody.name);
+    final coordinateMap = hasFullbody ? roleCoordinatesFullbody : roleCoordinatesSeparate;
+    final placement = coordinateMap[role] ?? coordinateMap[CanvasRole.other]!;
+    final boxRatio = roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
 
-    if (catSlug.contains('ao') || catSlug.contains('top') || catSlug.contains('shirt') || catSlug.contains('jacket')) {
-      defaultY = -120;
-      role = 'top';
-    } else if (catSlug.contains('quan') || catSlug.contains('pant') || catSlug.contains('jean') || catSlug.contains('bottom')) {
-      defaultY = 80;
-      role = 'bottom';
-    } else if (catSlug.contains('dam') || catSlug.contains('dress') || catSlug.contains('vay')) {
-      defaultY = -20;
-      role = 'fullbody';
-    } else if (catSlug.contains('giay') || catSlug.contains('shoe') || catSlug.contains('sneaker')) {
-      defaultY = 220;
-      role = 'footwear';
-    } else if (catSlug.contains('phu-kien') || catSlug.contains('non') || catSlug.contains('mu') || catSlug.contains('accessory')) {
-      defaultX = -130;
-      defaultY = -90;
-      role = 'accessory';
-    }
+    final initialScale = items.isNotEmpty
+        ? (items.map((it) => it.scale).reduce((a, b) => a + b) / items.length)
+        : 1.0;
 
     final newItem = CanvasItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       fashionItemId: fashionItem.id,
-      imageUrl: fashionItem.imageUrl,
+      imageUrl: item.displayImageUrl,
       name: item.displayTitle,
-      role: role,
-      positionX: defaultX,
-      positionY: defaultY,
-      scale: 1.0,
-      layerOrder: items.length + 1,
+      role: role.name,
+      positionX: placement.x,
+      positionY: placement.y,
+      scale: initialScale,
+      layerOrder: placement.zIndex,
+      baseScale: placement.scale,
+      boxRatioW: boxRatio.widthRatio,
+      boxRatioH: boxRatio.heightRatio,
     );
 
     items.add(newItem);
@@ -222,12 +320,11 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
   }
 
   /// Nạp các món được AI gợi ý trực tiếp vào Studio Canvas để user tinh chỉnh.
-  /// Vị trí theo vai trò BE trả về (chuẩn hóa đủ 7 role + slug Việt),
-  /// món trùng role lệch cascade, sau đó kẹp vào khung + tách chồng lấn (US 005).
+  /// Bố cục chuẩn giải phẫu cơ thể học tương thích với Web FE:
+  /// Loại trừ top/bottom khi có fullbody, dedupe vai trò chính,
+  /// phụ kiện 2+ so le, gắn baseScale và bounding box ratio theo vai trò.
   void loadFromAIRecommendation(RecommendedOutfitRes res) {
-    final items = <CanvasItem>[];
-    final occurrence = <CanvasRole, int>{};
-
+    final normalized = <({dynamic group, CanvasRole role})>[];
     for (final group in res.items) {
       final primary = group.primary;
       if (primary == null || primary.fashionItem == null) continue;
@@ -238,9 +335,48 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
         categorySlug: fashionItem.category?.slug,
         categoryName: fashionItem.category?.name,
       );
-      final occ = occurrence[role] ?? 0;
-      occurrence[role] = occ + 1;
-      final slot = roleSlot(role, occ);
+      normalized.add((group: group, role: role));
+    }
+
+    // 1. Nếu có đầm liền thân (fullbody), loại bỏ áo (top) và quần (bottom)
+    final hasFullbody = normalized.any((i) => i.role == CanvasRole.fullbody);
+    final filtered = hasFullbody
+        ? normalized.where((i) => i.role != CanvasRole.top && i.role != CanvasRole.bottom).toList()
+        : normalized;
+
+    // 2. Khử trùng lặp: mỗi vai trò chính chỉ xuất hiện tối đa 1 lần (trừ accessory và other)
+    final seenRoles = <CanvasRole>{};
+    final deduped = <({dynamic group, CanvasRole role})>[];
+    for (final item in filtered) {
+      if (item.role != CanvasRole.accessory &&
+          item.role != CanvasRole.other &&
+          item.role != CanvasRole.unknown) {
+        if (seenRoles.contains(item.role)) continue;
+        seenRoles.add(item.role);
+      }
+      deduped.add(item);
+    }
+
+    // 3. Chọn bảng tọa độ theo loại cấu trúc
+    final coordinateMap = hasFullbody ? roleCoordinatesFullbody : roleCoordinatesSeparate;
+    var accessoryCount = 0;
+    final items = <CanvasItem>[];
+
+    for (final entry in deduped) {
+      final group = entry.group;
+      final role = entry.role;
+      final primary = group.primary!;
+      final fashionItem = primary.fashionItem!;
+
+      RolePlacement placement;
+      if (role == CanvasRole.accessory) {
+        placement = getAccessoryPlacement(accessoryCount, hasFullbody: hasFullbody);
+        accessoryCount++;
+      } else {
+        placement = coordinateMap[role] ?? coordinateMap[CanvasRole.other]!;
+      }
+
+      final boxRatio = roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
 
       items.add(
         CanvasItem(
@@ -249,10 +385,13 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
           imageUrl: fashionItem.imageUrl,
           name: primary.displayName,
           role: role.name,
-          positionX: slot.x,
-          positionY: slot.y,
+          positionX: placement.x,
+          positionY: placement.y,
           scale: 1.0,
-          layerOrder: slot.layer,
+          layerOrder: placement.zIndex,
+          baseScale: placement.scale,
+          boxRatioW: boxRatio.widthRatio,
+          boxRatioH: boxRatio.heightRatio,
         ),
       );
     }
@@ -282,7 +421,7 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
   void updateItemScale(int index, double newScale) {
     if (index < 0 || index >= state.canvasItems.length) return;
     final items = List<CanvasItem>.from(state.canvasItems);
-    items[index] = items[index].copyWith(scale: newScale.clamp(0.4, 2.5));
+    items[index] = items[index].copyWith(scale: newScale.clamp(0.15, 3.0));
     state = state.copyWith(canvasItems: items);
   }
 
@@ -319,7 +458,11 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     state = state.copyWith(canvasItems: [], clearSelection: true);
   }
 
-  Future<bool> saveOutfit(String name, {String? description}) async {
+  Future<bool> saveOutfit(
+    String name, {
+    String? description,
+    Uint8List? canvasBytes,
+  }) async {
     if (state.canvasItems.isEmpty) {
       state = state.copyWith(errorMessage: 'Vui lòng thêm ít nhất 1 món đồ lên canvas.');
       return false;
@@ -341,12 +484,35 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
           )
           .toList();
 
-      final firstImageUrl = state.canvasItems.first.imageUrl;
+      String? coverUrl;
+      String? coverPublicId;
+
+      if (canvasBytes != null && canvasBytes.isNotEmpty) {
+        try {
+          final sig = await repo.getUploadSignatureOutfit();
+          final cloudService = CloudinaryService();
+          final uploadRes = await cloudService.uploadImage(
+            file: XFile.fromData(canvasBytes, name: 'outfit_canvas.png', mimeType: 'image/png'),
+            signature: sig,
+            applyBgRemoval: false,
+          );
+          coverUrl = uploadRes.secureUrl;
+          coverPublicId = uploadRes.publicId;
+        } catch (e) {
+          debugPrint('Upload canvas snapshot failed, falling back to item image: $e');
+        }
+      }
+
+      if (coverUrl == null || coverUrl.isEmpty) {
+        final firstImageUrl = state.canvasItems.first.imageUrl;
+        coverUrl = firstImageUrl.isNotEmpty ? firstImageUrl : null;
+      }
 
       final req = SaveOutfitReq(
-        name: name.trim().isNotEmpty ? name.trim() : 'Outfit ${DateTime.now().day}/${DateTime.now().month}',
+        name: name.trim().isNotEmpty ? name.trim() : 'Bộ phối ${DateTime.now().day}/${DateTime.now().month}',
         description: description,
-        coverImageUrl: firstImageUrl.isNotEmpty ? firstImageUrl : null,
+        coverImageUrl: coverUrl,
+        coverPublicId: coverPublicId,
         items: saveItems,
       );
 

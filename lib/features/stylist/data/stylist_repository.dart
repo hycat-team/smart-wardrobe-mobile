@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/app_constants.dart';
@@ -234,6 +235,11 @@ class StylistRepository {
           if (occasion != null) 'occasion': occasion,
           if (temperature != null) 'temperature': temperature,
         },
+        options: Options(
+          connectTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 120),
+        ),
       );
 
       final body = response.data;

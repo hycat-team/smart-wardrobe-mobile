@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_provider.dart';
 import '../data/auth_repository.dart';
@@ -81,6 +82,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<bool> login(String loginName, String password) async {
+    if (state.isAuthenticated) {
+      await _repository.logout();
+      bumpAppSession();
+      _ref.read(sessionProvider.notifier).state++;
+      state = const AuthState();
+    }
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
       final tokenResponse = await _repository.login(LoginRequest(loginName: loginName, password: password));
@@ -88,6 +95,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         throw Exception('Sai tài khoản hoặc mật khẩu.');
       }
       final user = await _repository.getCurrentUser();
+      PaintingBinding.instance.imageCache.clear();
       state = state.copyWith(isLoading: false, isAuthenticated: true, user: user);
       return true;
     } catch (e) {
@@ -103,11 +111,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<GoogleSignInOutcome> loginWithGoogle(String idToken, {String? deviceName}) async {
+    // Xoá phiên cũ (token + state) TRƯỚC khi đăng nhập để mỗi tài khoản Google
+    // vào đúng tài khoản Closy, không kế thừa state/dữ liệu tài khoản trước
+    // (spec 012 — FR-012, FR-013).
+    if (state.isAuthenticated) {
+      await _repository.logout();
+      try {
+        await GoogleSignIn.instance.disconnect();
+      } catch (_) {}
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
+      bumpAppSession();
+      _ref.read(sessionProvider.notifier).state++;
+      state = const AuthState();
+    }
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
       final outcome = await _repository.loginWithGoogle(idToken, deviceName: deviceName);
       if (outcome.success) {
         final user = await _repository.getCurrentUser();
+        PaintingBinding.instance.imageCache.clear();
         state = state.copyWith(
           isLoading: false,
           isAuthenticated: true,
@@ -147,6 +171,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, clearError: true, clearSuccess: true);
     try {
       final user = await _repository.completeWebSession();
+      PaintingBinding.instance.imageCache.clear();
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
@@ -279,16 +304,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (_isLoggingOut) return;
     _isLoggingOut = true;
     try {
-      // Chỉ bump session khi thực sự có phiên: tránh rebuild scope thừa
-      // lúc cold-start với token invalid (khi đó scope vốn đã sạch).
-      final hadSession = state.isAuthenticated;
       await _repository.logout();
+      // Ngắt kết nối và xoá phiên Google để lần đăng nhập kế tiếp luôn
+      // hiển thị lại Account Chooser cho phép chọn tài khoản Google khác.
+      try {
+        await GoogleSignIn.instance.disconnect();
+      } catch (_) {}
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {}
       // Xóa cache ảnh trong RAM để avatar/ảnh của A không lóe lên ở B.
       PaintingBinding.instance.imageCache.clear();
       state = const AuthState(isAuthenticated: false, user: null);
-      if (hadSession) {
-        _ref.read(sessionProvider.notifier).state++;
-      }
+      bumpAppSession();
+      _ref.read(sessionProvider.notifier).state++;
     } finally {
       _isLoggingOut = false;
     }

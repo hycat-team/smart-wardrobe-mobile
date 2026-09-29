@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../../auth/models/auth_models.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
@@ -64,20 +65,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       if (!mounted) return;
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cập nhật ảnh đại diện thành công!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
+        ClosyToast.success(context, 'Cập nhật ảnh đại diện thành công!');
       } else {
         final error = ref.read(userProfileProvider).errorMessage ?? 'Lỗi tải ảnh đại diện';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
+        ClosyToast.error(context, error);
       }
     }
   }
@@ -138,21 +129,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã cập nhật thông tin cá nhân thành công!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đã cập nhật thông tin cá nhân thành công!');
       Navigator.of(context).pop();
     } else {
       final error = ref.read(userProfileProvider).errorMessage ?? 'Cập nhật thất bại';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      ClosyToast.error(context, error);
     }
   }
 

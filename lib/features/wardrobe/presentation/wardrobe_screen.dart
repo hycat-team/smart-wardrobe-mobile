@@ -6,9 +6,11 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/bulk_deletion_result.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/wardrobe_models.dart';
 import '../providers/wardrobe_provider.dart';
 import '../providers/upload_wardrobe_provider.dart';
+import '../utils/analysis_status.dart';
 
 class WardrobeScreen extends ConsumerStatefulWidget {
   const WardrobeScreen({super.key});
@@ -19,6 +21,11 @@ class WardrobeScreen extends ConsumerStatefulWidget {
 
 class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   void _showUploadPicker() {
+    // Khoá thao tác trùng khi đang tải (FR-007).
+    if (ref.read(uploadWardrobeProvider).isUploading) {
+      ClosyToast.info(context, 'Đang tải ảnh, vui lòng đợi hoàn tất...');
+      return;
+    }
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
@@ -91,6 +98,23 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 onTap: () {
                   Navigator.pop(ctx);
                   _handleUpload(ImageSource.gallery);
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceSubtle,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.collections_outlined, color: AppColors.primary),
+                ),
+                title: const Text('Chọn nhiều ảnh cùng lúc', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                subtitle: const Text('Thêm nhiều món đồ một lần, AI xử lý từng ảnh', style: TextStyle(fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _handleUploadMultiple(ImageSource.gallery);
                 },
               ),
               const SizedBox(height: 8),
@@ -185,12 +209,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     if (!mounted) return;
 
     if (result.isAllSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã xóa ${result.deletedCount} món khỏi tủ đồ.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đã xóa ${result.deletedCount} món khỏi tủ đồ.');
     } else {
       _showBulkDeleteFailure(result);
     }
@@ -236,28 +255,94 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     );
   }
 
-  Future<void> _handleUpload(ImageSource source) async {    final success = await ref.read(uploadWardrobeProvider.notifier).pickAndUpload(source: source);
+  Future<void> _handleUpload(ImageSource source) async {
+    final success = await ref.read(uploadWardrobeProvider.notifier).pickAndUpload(source: source);
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã tải ảnh lên thành công. AI đang phân tích trang phục...'),
-          backgroundColor: AppColors.primary,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      ClosyToast.success(context, 'Đã tải ảnh lên thành công. AI đang phân tích trang phục...');
     } else {
       final error = ref.read(uploadWardrobeProvider).errorMessage;
       if (error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        ClosyToast.error(context, error);
       }
     }
+  }
+
+  Future<void> _handleUploadMultiple(ImageSource source) async {
+    final count = await ref
+        .read(uploadWardrobeProvider.notifier)
+        .pickAndUploadMultiple(source: source);
+    if (!mounted) return;
+
+    if (count > 0) {
+      ClosyToast.success(context, 'Đã tải $count ảnh lên. AI đang phân tích trang phục...');
+    }
+
+    final failed = ref.read(uploadWardrobeProvider).batchFailed;
+    if (failed > 0) {
+      final msg = ref.read(uploadWardrobeProvider).errorMessage ??
+          '$failed ảnh tải lên thất bại. Nhấn "Thử lại" để thử lại.';
+      ClosyToast.error(context, msg);
+    }
+  }
+
+  Widget _buildBatchProgress(UploadWardrobeState s) {
+    final total = s.batchTotal;
+    final done = s.batchCompleted;
+    final failed = s.batchFailed;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cloud_upload_outlined,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  s.isUploading
+                      ? 'Đang tải $done/$total ảnh...'
+                      : (failed > 0
+                          ? '$failed/$total ảnh tải lên thất bại.'
+                          : 'Đã tải $done/$total ảnh.'),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              if (!s.isUploading && failed > 0)
+                TextButton(
+                  onPressed: () => ref
+                      .read(uploadWardrobeProvider.notifier)
+                      .retryFailedUploads(),
+                  child: const Text('Thử lại'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: total == 0 ? null : s.progress,
+              minHeight: 6,
+              backgroundColor: AppColors.border,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -265,14 +350,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     // Listen for SSE completion notifications
     ref.listen<WardrobeState>(wardrobeProvider, (prev, next) {
       if (next.notificationMessage != null && next.notificationMessage != prev?.notificationMessage) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.notificationMessage!),
-            backgroundColor: AppColors.primary,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 4),
-          ),
-        );
+        ClosyToast.info(context, next.notificationMessage!);
         ref.read(wardrobeProvider.notifier).clearNotification();
       }
     });
@@ -320,7 +398,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   title: Text(
                     wardrobeState.isSelecting
                         ? '${wardrobeState.selectedCount} đã chọn'
-                        : 'Digital Closet',
+                        : 'Tủ đồ số',
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
@@ -355,10 +433,17 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                             icon: const Icon(Icons.add_circle_outline,
                                 color: AppColors.primary),
                             tooltip: 'Thêm đồ',
-                            onPressed: _showUploadPicker,
+                            onPressed:
+                                uploadState.isUploading ? null : _showUploadPicker,
                           ),
                         ],
                 ),
+
+                if (uploadState.isUploading ||
+                    uploadState.failedFiles.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildBatchProgress(uploadState),
+                  ),
 
                 // Category Chips Selector
                 SliverToBoxAdapter(
@@ -545,12 +630,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                                 return;
                               }
                               if (item.isProcessing) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Trang phục đang được AI phân tích chi tiết. Vui lòng đợi trong giây lát!'),
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
+                                ClosyToast.info(context, 'Trang phục đang được AI phân tích chi tiết. Vui lòng đợi trong giây lát!');
                                 return;
                               }
                               context.push('/wardrobe/item/${item.id}', extra: item);
@@ -823,7 +903,7 @@ class _WardrobeItemCardState extends State<WardrobeItemCard> with AutomaticKeepA
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  'AI xử lý',
+                                  'Đang phân tích',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 9,
@@ -844,14 +924,14 @@ class _WardrobeItemCardState extends State<WardrobeItemCard> with AutomaticKeepA
                               color: const Color(0xFFD97706).withOpacity(0.92),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.info_outline, size: 10, color: Colors.white),
-                                SizedBox(width: 3),
+                                const Icon(Icons.info_outline, size: 10, color: Colors.white),
+                                const SizedBox(width: 3),
                                 Text(
-                                  'Cần xem lại',
-                                  style: TextStyle(
+                                  getAnalysisStatusInfo(item).badgeLabel,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 9,
                                     fontWeight: FontWeight.w600,
@@ -868,17 +948,17 @@ class _WardrobeItemCardState extends State<WardrobeItemCard> with AutomaticKeepA
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.85),
+                              color: const Color(0xFFB91C1C).withOpacity(0.90),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.warning_amber_rounded, size: 10, color: Colors.white),
-                                SizedBox(width: 3),
+                                const Icon(Icons.warning_amber_rounded, size: 10, color: Colors.white),
+                                const SizedBox(width: 3),
                                 Text(
-                                  'Lỗi phân tích',
-                                  style: TextStyle(
+                                  getAnalysisStatusInfo(item).badgeLabel,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 9,
                                     fontWeight: FontWeight.w600,

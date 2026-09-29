@@ -53,7 +53,7 @@ class OnboardingScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Refine your signature wardrobe',
+                    'Định hình phong cách riêng của bạn',
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 34,
                       fontWeight: FontWeight.w600,
@@ -63,7 +63,7 @@ class OnboardingScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'AI-curated styling and closet digitization tailored to your personal aesthetic.',
+                    'AI tuyển chọn phong cách và số hoá tủ đồ theo gu thẩm mỹ riêng của bạn.',
                     style: GoogleFonts.beVietnamPro(
                       fontSize: 15,
                       color: const Color(0xFFD4D4D4),
@@ -79,7 +79,7 @@ class OnboardingScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       shape: const StadiumBorder(),
                     ),
-                    child: const Text('Get Started', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: const Text('Bắt đầu', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                   const SizedBox(height: 12),
                   // OutlinedButton(

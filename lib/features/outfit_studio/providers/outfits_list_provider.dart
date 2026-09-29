@@ -4,6 +4,7 @@ import '../layout/canvas_layout.dart';
 import '../models/outfit_models.dart';
 import 'ai_outfit_provider.dart';
 import 'outfit_studio_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class OutfitsListState {
   final bool isLoading;
@@ -88,7 +89,19 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
   final Ref _ref;
 
   OutfitsListNotifier(this._ref) : super(const OutfitsListState()) {
-    fetchOutfits();
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        state = const OutfitsListState();
+      } else if (previous?.user?.id != next.user?.id) {
+        state = const OutfitsListState();
+        if (next.isAuthenticated) {
+          fetchOutfits();
+        }
+      }
+    });
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      fetchOutfits();
+    }
   }
 
   Future<void> fetchOutfits() async {
@@ -242,22 +255,46 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
   }
 
   /// Nạp các món đồ của một outfit đã lưu vào Studio Canvas để chỉnh sửa.
-  /// Giữ đúng vị trí/tỉ lệ/lớp đã lưu; outfit legacy (mọi món ở gốc tọa độ)
-  /// thì tự dàn theo vai trò; mọi trường hợp đều kẹp vào khung + tách
-  /// chồng lấn, 1 món ra giữa (US 005).
+  /// Khôi phục vị trí chuẩn hóa qua restoreCanvasPlacement() (khắc phục lỗi dữ liệu cũ legacy),
+  /// gán baseScale và bounding box ratio theo vai trò, kẹp vào khung + căn tâm.
   void loadIntoStudio(UserOutfitModel outfit) {
-    var canvasItems = <CanvasItem>[];
-    int layer = 1;
+    final compositionType = detectCompositionType(
+      outfit.items.map((it) {
+        final fItem = it.fashionItem;
+        return normalizeRole(
+          null,
+          categorySlug: fItem?.category?.slug,
+          categoryName: fItem?.category?.name,
+        );
+      }),
+    );
 
+    final coordinateMap = compositionType == OutfitCompositionType.fullbody
+        ? roleCoordinatesFullbody
+        : roleCoordinatesSeparate;
+
+    var canvasItems = <CanvasItem>[];
     for (final item in outfit.items) {
       final fItem = item.fashionItem;
       if (fItem == null) continue;
 
       final role = normalizeRole(
-        '',
+        null,
         categorySlug: fItem.category?.slug,
         categoryName: fItem.category?.name,
       );
+
+      final restored = restoreCanvasPlacement(
+        role: role,
+        positionX: item.positionX,
+        positionY: item.positionY,
+        layerOrder: item.layerOrder,
+        compositionType: compositionType,
+      );
+
+      final placement = coordinateMap[role] ?? coordinateMap[CanvasRole.other]!;
+      final boxRatio = roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
+
       canvasItems.add(
         CanvasItem(
           id: '${item.id}_${DateTime.now().millisecondsSinceEpoch}',
@@ -265,35 +302,21 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
           imageUrl: fItem.imageUrl,
           name: fItem.category?.name ?? 'Món đồ',
           role: role.name,
-          positionX: item.positionX,
-          positionY: item.positionY,
-          scale: item.scale,
-          layerOrder: item.layerOrder > 0 ? item.layerOrder : layer++,
+          positionX: restored.x,
+          positionY: restored.y,
+          scale: item.scale > 0 ? item.scale : 1.0,
+          layerOrder: restored.layerOrder,
+          baseScale: placement.scale,
+          boxRatioW: boxRatio.widthRatio,
+          boxRatioH: boxRatio.heightRatio,
         ),
       );
     }
 
-    // Legacy: outfit lưu trước khi có tọa độ → tự dàn theo vai trò.
-    final hasStoredLayout =
-        canvasItems.any((c) => c.positionX != 0 || c.positionY != 0);
-    if (!hasStoredLayout && canvasItems.isNotEmpty) {
-      final occurrence = <CanvasRole, int>{};
-      final relaid = <CanvasItem>[];
-      for (final c in canvasItems) {
-        final role = normalizeRole(c.role);
-        final occ = occurrence[role] ?? 0;
-        occurrence[role] = occ + 1;
-        final slot = roleSlot(role, occ);
-        relaid.add(c.copyWith(
-          positionX: slot.x,
-          positionY: slot.y,
-          layerOrder: slot.layer,
-        ));
-      }
-      canvasItems = relaid;
-    }
-
     final studio = _ref.read(outfitStudioProvider);
+    // Chưa đo được canvas thật (lần đầu mở Studio) → bố trí theo fallback
+    // rồi đánh dấu để setCanvasSize() bố trí lại khi có kích thước thật.
+    final sizeKnown = studio.canvasWidth != null && studio.canvasHeight != null;
     final laidOut = layoutCanvasItems(
       canvasItems,
       canvasWidth: studio.canvasWidth ?? 360,
@@ -304,6 +327,7 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
         _ref.read(outfitStudioProvider.notifier).state.copyWith(
               canvasItems: laidOut,
               clearSelection: true,
+              pendingRelayout: !sizeKnown,
               successMessage: 'Đã nạp "${outfit.name}" vào Studio để chỉnh sửa!',
             );
     // Báo màn Studio nhảy sang đúng tab canvas, bất kể đang ở tab nào.

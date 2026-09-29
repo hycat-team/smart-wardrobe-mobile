@@ -35,7 +35,7 @@ class MarketplaceRepository {
       final allItems = [
         const MarketProductModel(
           id: 'm1',
-          name: 'Tailored oversized trench',
+          name: 'Áo khoác trench dáng rộng',
           brand: 'THE ROW',
           price: 1900,
           category: 'Outerwear',
@@ -43,7 +43,7 @@ class MarketplaceRepository {
         ),
         const MarketProductModel(
           id: 'm2',
-          name: 'Ivory silk shirt',
+          name: 'Áo sơ mi lụa màu ngà',
           brand: 'LEMAIRE',
           price: 620,
           category: 'Knitwear',
@@ -51,7 +51,7 @@ class MarketplaceRepository {
         ),
         const MarketProductModel(
           id: 'm3',
-          name: 'Pleated wool trousers',
+          name: 'Quần âu xếp ly len',
           brand: 'LEMAIRE',
           price: 750,
           category: 'Tailoring',
@@ -59,7 +59,7 @@ class MarketplaceRepository {
         ),
         const MarketProductModel(
           id: 'm4',
-          name: 'Park leather tote bag',
+          name: 'Túi tote da',
           brand: 'THE ROW',
           price: 2100,
           category: 'Footwear',
@@ -67,7 +67,7 @@ class MarketplaceRepository {
         ),
         const MarketProductModel(
           id: 'm5',
-          name: 'Structured Wool Coat',
+          name: 'Áo khoác dạ dáng hộp',
           brand: 'STUDIO NICHOLSON',
           price: 450,
           category: 'Outerwear',
@@ -75,7 +75,7 @@ class MarketplaceRepository {
         ),
         const MarketProductModel(
           id: 'm6',
-          name: 'Ecru Twill Trousers',
+          name: 'Quần âu vải twill màu chàm',
           brand: 'JIL SANDER',
           price: 320,
           category: 'Tailoring',

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/auth_models.dart';
 import '../providers/auth_provider.dart';
 
@@ -40,9 +41,7 @@ class _AuthCallbackScreenState extends ConsumerState<AuthCallbackScreen> {
       if (code != AuthErrorCode.cancelled) {
         final msg = code.defaultMessage;
         setState(() => _error = msg);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg), backgroundColor: Colors.red.shade700),
-        );
+        ClosyToast.error(context, msg);
         await Future.delayed(const Duration(milliseconds: 1500));
       }
       if (mounted) context.go('/login');
@@ -56,12 +55,9 @@ class _AuthCallbackScreenState extends ConsumerState<AuthCallbackScreen> {
       // FR-006: thông báo nhẹ khi tài khoản được auto-link (nếu BE gắn cờ).
       final linked = params['linked'];
       if (linked == '1' || linked == 'true') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Tài khoản Google đã được liên kết với tài khoản Closy hiện có.'),
-            backgroundColor: AppColors.primary,
-          ),
+        ClosyToast.info(
+          context,
+          'Tài khoản Google đã được liên kết với tài khoản Closy hiện có.',
         );
       }
       final pending = ref.read(pendingRedirectProvider);
@@ -74,9 +70,7 @@ class _AuthCallbackScreenState extends ConsumerState<AuthCallbackScreen> {
     final err = ref.read(authStateProvider).errorMessage ??
         'Đăng nhập Google thất bại, vui lòng thử lại.';
     setState(() => _error = err);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(err), backgroundColor: Colors.red.shade700),
-    );
+    ClosyToast.error(context, err);
     await Future.delayed(const Duration(milliseconds: 1500));
     if (mounted) context.go('/login');
   }

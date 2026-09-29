@@ -1,8 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../providers/auth_provider.dart';
 
 class PreferencesScreen extends ConsumerStatefulWidget {
@@ -26,24 +27,42 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
     'Gorpcore',
   ];
 
+  // Nhãn hiển thị tiếng Việt; value tiếng Anh vẫn gửi BE (FR-017, FR-018).
+  static const Map<String, String> _styleLabels = {
+    'Minimalist': 'Tối giản',
+    'Y2K': 'Y2K',
+    'Streetwear': 'Đường phố',
+    'Vintage': 'Cổ điển',
+    'Workwear': 'Trang phục công sở',
+    'Boho': 'Boho',
+    'Casual': 'Thường ngày',
+    'Formal': 'Trang trọng',
+    'Academia': 'Học viện',
+    'Gorpcore': 'Dã ngoại',
+  };
+
   static const List<Map<String, dynamic>> _colorPalettes = [
     {
       'name': 'Neutral',
+      'label': 'Trung tính',
       'subtitle': 'Thanh lịch & Nhã nhặn',
       'colors': [Color(0xFFFAF7F2), Color(0xFF1A1A1A), Color(0xFFB0A9A0)],
     },
     {
       'name': 'Earth',
+      'label': 'Tông đất',
       'subtitle': 'Tông đất & Thiên nhiên',
       'colors': [Color(0xFF7A8C6E), Color(0xFFC9714A), Color(0xFFF0EBE1)],
     },
     {
       'name': 'Monochrome',
+      'label': 'Đơn sắc',
       'subtitle': 'Đen, Trắng & Xám',
       'colors': [Color(0xFF000000), Color(0xFF666666), Color(0xFFCCCCCC)],
     },
     {
       'name': 'Vibrant',
+      'label': 'Rực rỡ',
       'subtitle': 'Nổi bật & Đầy năng lượng',
       'colors': [Color(0xFFC9504A), Color(0xFF4A6E8C), Color(0xFFC9A44A)],
     },
@@ -70,12 +89,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
           _selectedPalette,
         );
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hồ sơ phong cách của bạn đã được thiết lập!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Hồ sơ phong cách của bạn đã được thiết lập!');
       context.go('/wardrobe');
     }
   }
@@ -124,7 +138,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
                         Icon(Icons.auto_awesome, size: 14, color: AppColors.primary),
                         SizedBox(width: 6),
                         Text(
-                          'AI Stylist Profile',
+                          'Hồ sơ phong cách AI',
                           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
                         ),
                       ],
@@ -174,7 +188,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
                 children: _stylePrefs.map((style) {
                   final isSelected = _selectedStyles.contains(style);
                   return FilterChip(
-                    label: Text(style),
+                    label: Text(_styleLabels[style] ?? style),
                     selected: isSelected,
                     onSelected: (_) => _toggleStyle(style),
                     backgroundColor: AppColors.surface,
@@ -219,6 +233,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
                 itemBuilder: (context, index) {
                   final palette = _colorPalettes[index];
                   final name = palette['name'] as String;
+                  final label = palette['label'] as String? ?? name;
                   final colors = palette['colors'] as List<Color>;
                   final isSelected = _selectedPalette == name;
 
@@ -252,7 +267,7 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                name,
+                                label,
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,

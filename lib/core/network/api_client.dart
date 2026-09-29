@@ -18,8 +18,8 @@ class ApiClient {
             Dio(
               BaseOptions(
                 baseUrl: AppConstants.baseUrl,
-                connectTimeout: const Duration(seconds: 15),
-                receiveTimeout: const Duration(seconds: 15),
+                connectTimeout: const Duration(seconds: 60),
+                receiveTimeout: const Duration(seconds: 60),
                 extra: {
                   'withCredentials': true, // Sends cookies across origins on Web
                 },
@@ -44,9 +44,22 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          final isLogout = options.path.contains('/auth/logout');
           final token = await storage.getToken();
           if (token != null && token.isNotEmpty && token != 'web_session_active') {
             options.headers['Authorization'] = 'Bearer $token';
+            if (kIsWeb) {
+              // Khi mobile app đã có Bearer token hợp lệ, tắt withCredentials
+              // để browser không gửi kèm cookie HttpOnly cũ của tài khoản trước đó,
+              // tránh việc Backend ưu tiên cookie đè lên Bearer token gây lỗi đa tài khoản.
+              // NGOẠI TRỪ khi gọi /auth/logout: cần bật withCredentials = true để browser
+              // gửi cookie và xử lý Set-Cookie xóa cookie HttpOnly từ Backend.
+              options.extra['withCredentials'] = isLogout;
+            }
+          } else if (kIsWeb) {
+            if (token == 'web_session_active' || isLogout) {
+              options.extra['withCredentials'] = true;
+            }
           }
           return handler.next(options);
         },
@@ -123,8 +136,8 @@ class ApiClient {
     final refreshDio = Dio(
       BaseOptions(
         baseUrl: dio.options.baseUrl.isNotEmpty ? dio.options.baseUrl : AppConstants.baseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

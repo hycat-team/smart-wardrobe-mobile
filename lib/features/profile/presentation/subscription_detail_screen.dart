@@ -200,7 +200,7 @@ class _SubscriptionDetailScreenState
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isPremium ? 'CLOSY VIP' : 'FREE TIER',
+                  isPremium ? 'CLOSY VIP' : 'GÓI MIỄN PHÍ',
                   style: TextStyle(
                     color: isPremium ? Colors.black : AppColors.textSecondary,
                     fontSize: 11,
@@ -248,7 +248,7 @@ class _SubscriptionDetailScreenState
               ),
               _buildMetricItem(
                 'Lưu trữ Outfit',
-                '${sub.maxOutfits} set',
+                '${sub.maxOutfits} bộ',
                 isPremium: isPremium,
               ),
               _buildMetricItem(
@@ -265,7 +265,7 @@ class _SubscriptionDetailScreenState
               child: ElevatedButton.icon(
                 onPressed: () => context.push('/profile/subscription/upgrade'),
                 icon: Icon(Icons.flash_on_rounded, size: 18, color: goldColor),
-                label: const Text('Nâng cấp lên Premium ngay (59k)'),
+                label: const Text('Nâng cấp lên Premium ngay'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -451,9 +451,27 @@ class _SubscriptionDetailScreenState
                 foregroundColor: isCurrent ? AppColors.textSecondary : Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 13),
               ),
-              child: Text(isCurrent ? 'Gói hiện tại của bạn' : 'Nâng cấp lên ${plan.name}'),
+              child: Text(isCurrent ? 'Gói hiện tại của bạn' : 'Xem quyền lợi ${plan.name}'),
             ),
           ),
+          if (!isCurrent) ...[
+            const SizedBox(height: 10),
+            // Thanh toán chuyển lên website (spec 009): nâng cấp gói thực hiện
+            // trên web, không có nút/link trong app.
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.language_rounded, size: 14, color: AppColors.textSecondary),
+                SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'Thực hiện nâng cấp gói trên web',
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

@@ -1,9 +1,10 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../../../shared/widgets/otp_input.dart';
 import '../providers/auth_provider.dart';
 
@@ -66,9 +67,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _handleSendEmail() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập địa chỉ email hợp lệ')),
-      );
+      ClosyToast.error(context, 'Vui lòng nhập địa chỉ email hợp lệ');
       return;
     }
 
@@ -82,9 +81,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _handleVerifyOtp() async {
     final otp = _otpControllers.map((c) => c.text).join();
     if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đủ 6 chữ số mã OTP')),
-      );
+      ClosyToast.warning(context, 'Vui lòng nhập đủ 6 chữ số mã OTP');
       return;
     }
 
@@ -102,26 +99,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final confirmPass = _confirmPasswordController.text;
 
     if (newPass.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mật khẩu mới phải có tối thiểu 8 ký tự')),
-      );
+      ClosyToast.error(context, 'Mật khẩu mới phải có tối thiểu 8 ký tự');
       return;
     }
     if (newPass != confirmPass) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mật khẩu xác nhận không khớp')),
-      );
+      ClosyToast.error(context, 'Mật khẩu xác nhận không khớp');
       return;
     }
 
     final success = await ref.read(authStateProvider.notifier).resetPassword(newPass, confirmPass);
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.');
       context.go('/login');
     }
   }
@@ -160,7 +148,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   height: 120,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
-                  semanticLabel: 'Closy logo',
+                          semanticLabel: 'Logo Closy',
                   errorBuilder: (context, error, stackTrace) => Text(
                     'CLOSY',
                     style: GoogleFonts.playfairDisplay(

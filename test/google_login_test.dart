@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:smart_wardrobe/core/network/api_client.dart';
 import 'package:smart_wardrobe/core/constants/app_constants.dart';
 import 'package:smart_wardrobe/core/storage/secure_storage_service.dart';
+import 'package:smart_wardrobe/core/session/session_provider.dart';
 import 'package:smart_wardrobe/features/auth/data/auth_repository.dart';
 import 'package:smart_wardrobe/features/auth/models/auth_models.dart';
 import 'package:smart_wardrobe/features/auth/presentation/widgets/google_sign_in_button.dart';
@@ -372,6 +373,66 @@ void main() {
       final msg = AuthErrorCode.cancelled.defaultMessage;
       expect(msg.isNotEmpty, true);
       expect(msg.toLowerCase().contains('huỷ'), true);
+    });
+  });
+
+  group('US5 - Google multi-account (012)', () {
+    test(
+        'đăng nhập Google B khi đang ở tài khoản A -> clear phiên cũ, user = B',
+        () async {
+      final mockRepo = MockAuthRepository()
+        ..isAuth = true
+        ..mockUser = const UserModel(
+          id: '1',
+          username: 'user_a',
+          email: 'a@x.com',
+        );
+      mockRepo.mockOutcome = GoogleSignInOutcome.succeeded();
+
+      final container = ProviderContainer(
+        overrides: [authRepositoryProvider.overrideWithValue(mockRepo)],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(authStateProvider.notifier);
+      await notifier.checkAuthStatus();
+      expect(container.read(authStateProvider).user?.username, 'user_a');
+
+      final sessionBefore = container.read(sessionProvider);
+
+      mockRepo.mockUser = const UserModel(
+        id: '2',
+        username: 'user_b',
+        email: 'b@x.com',
+      );
+      final outcome = await notifier.loginWithGoogle('token-b');
+
+      expect(outcome.success, true);
+      expect(container.read(authStateProvider).isAuthenticated, true);
+      expect(container.read(authStateProvider).user?.username, 'user_b');
+      expect(mockRepo.logoutCallCount, greaterThanOrEqualTo(1));
+      expect(container.read(sessionProvider), sessionBefore + 1);
+    });
+
+    test('đăng nhập Google khi chưa có phiên -> không gọi logout', () async {
+      final mockRepo = MockAuthRepository()
+        ..mockUser = const UserModel(
+          id: '3',
+          username: 'fresh',
+          email: 'f@x.com',
+        );
+      mockRepo.mockOutcome = GoogleSignInOutcome.succeeded();
+
+      final container = ProviderContainer(
+        overrides: [authRepositoryProvider.overrideWithValue(mockRepo)],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(authStateProvider.notifier);
+      await notifier.loginWithGoogle('token-f');
+
+      expect(mockRepo.logoutCallCount, 0);
+      expect(container.read(authStateProvider).user?.username, 'fresh');
     });
   });
 }

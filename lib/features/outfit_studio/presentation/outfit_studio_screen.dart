@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,12 @@ import '../models/outfit_models.dart';
 import '../providers/ai_outfit_provider.dart';
 import '../providers/outfit_studio_provider.dart';
 import '../providers/outfits_list_provider.dart';
+import '../../../shared/widgets/closy_toast.dart';
+import '../../wardrobe/providers/wardrobe_provider.dart';
+import '../layout/canvas_layout.dart';
+import '../utils/outfit_canvas_exporter.dart';
+import '../utils/outfit_name_check.dart';
+import 'widgets/floating_save_button.dart';
 
 class OutfitStudioScreen extends ConsumerStatefulWidget {
   const OutfitStudioScreen({super.key});
@@ -25,7 +32,20 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   final TextEditingController _styleCustomController = TextEditingController();
   final TextEditingController _colorCustomController = TextEditingController();
   final ScrollController _aiScrollController = ScrollController();
+  final DraggableScrollableController _sheetController = DraggableScrollableController();
   bool _isDrawerSearchOpen = false;
+  bool _isDrawerExpanded = false;
+
+  /// Tỉ lệ chiều cao hiện tại của khay outfit thay thế (DraggableScrollableSheet).
+  /// Chỉ dùng để theo dõi trạng thái gập/mở; vị trí nút lưu đọc trực tiếp
+  /// `_sheetController` trong `ListenableBuilder` để bám khay tuyệt đối.
+  static const double _kDrawerSnapCollapsed = 0.065;
+  static const double _kDrawerSnapExpanded = 0.42;
+  static const double _kDrawerSnapMax = 0.70;
+
+  double _gestureItemStartScale = 1.0;
+  int? _replacingCanvasIndex;
+  final GlobalKey _canvasRepaintKey = GlobalKey();
 
   // 3 options cố định mỗi nhóm (CHK008) + ô tự nhập phía dưới cho giá trị khác.
   final List<Map<String, String>> _occasions = [
@@ -50,10 +70,47 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _sheetController.addListener(_onSheetScrolled);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(outfitStudioProvider.notifier).loadWardrobe();
+      ref.read(wardrobeProvider.notifier).loadItems();
+    });
+  }
+
+  void _onSheetScrolled() {
+    if (!_sheetController.isAttached) return;
+    final size = _sheetController.size;
+    final expanded = size > 0.15;
+    // Vị trí nút lưu nổi do `ListenableBuilder` đọc trực tiếp
+    // `_sheetController` nên không cần setState theo từng frame ở đây.
+    if (expanded != _isDrawerExpanded) {
+      setState(() {
+        _isDrawerExpanded = expanded;
+      });
+    }
+  }
+
+  void _toggleDrawer() {
+    if (!_sheetController.isAttached) return;
+    if (_isDrawerExpanded) {
+      _sheetController.animateTo(
+        0.065,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _sheetController.animateTo(
+        0.42,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   @override
   void dispose() {
+    _sheetController.removeListener(_onSheetScrolled);
+    _sheetController.dispose();
     _tabController.dispose();
     _promptController.dispose();
     _outfitNameController.dispose();
@@ -116,16 +173,32 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   void _showSaveLookDialog() {
     final studioState = ref.read(outfitStudioProvider);
     if (studioState.canvasItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng thêm ít nhất 1 món đồ lên Canvas trước khi lưu.'),
-          backgroundColor: Colors.orange,
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Bàn phối đang trống',
+            style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w600, fontSize: 18),
+          ),
+          content: const Text(
+            'Vui lòng thêm ít nhất 1 món đồ lên Canvas trước khi lưu.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đã hiểu', style: TextStyle(color: AppColors.primary)),
+            ),
+          ],
         ),
       );
       return;
     }
 
-    _outfitNameController.text = 'Outfit ${DateTime.now().day}/${DateTime.now().month}';
+    // Bỏ chọn món đồ trên canvas để không chụp viền xanh selection box
+    ref.read(outfitStudioProvider.notifier).selectItem(null);
+    _outfitNameController.text = 'Bộ phối ${DateTime.now().day}/${DateTime.now().month}';
 
     showDialog(
       context: context,
@@ -165,32 +238,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             child: const Text('Huỷ', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
-            onPressed: () async {
-              final name = _outfitNameController.text.trim();
-              Navigator.of(dialogCtx).pop();
-
-              final success = await ref.read(outfitStudioProvider.notifier).saveOutfit(name);
-              if (mounted) {
-                if (success) {
-                  ref.read(outfitsListProvider.notifier).fetchOutfits();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Đã lưu outfit thành công! Đang chuyển đến tủ đồ...'),
-                      backgroundColor: AppColors.primary,
-                    ),
-                  );
-                  context.push('/outfits');
-                } else {
-                  final error = ref.read(outfitStudioProvider).errorMessage;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(error ?? 'Không thể lưu outfit'),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              }
-            },
+            onPressed: () => _saveOutfitWithNameCheck(dialogCtx),
             child: const Text('Lưu vào Tủ đồ'),
           ),
         ],
@@ -198,104 +246,422 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
     );
   }
 
+  /// Lưu outfit, có chặn tên rỗng và cảnh báo khi trùng tên đã lưu.
+  ///
+  /// BE (`POST /outfits`) không validate trùng tên nên kiểm tra hoàn toàn
+  /// phía client. Đây chỉ là **cảnh báo** — người dùng vẫn có thể lưu.
+  Future<void> _saveOutfitWithNameCheck(BuildContext dialogCtx) async {
+    final name = _outfitNameController.text.trim();
+    if (name.isEmpty) {
+      Navigator.of(dialogCtx).pop();
+      ClosyToast.error(context, 'Vui lòng đặt tên cho bộ phối trước khi lưu.');
+      return;
+    }
+
+    final notifier = ref.read(outfitsListProvider.notifier);
+    if (ref.read(outfitsListProvider).outfits.isEmpty) {
+      await notifier.fetchOutfits();
+      if (!mounted) return;
+    }
+
+    final duplicate = findDuplicateOutfitByName(
+      name,
+      ref.read(outfitsListProvider).outfits,
+    );
+
+    if (duplicate != null && mounted) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (warnCtx) => AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Bộ phối đã tồn tại',
+            style: GoogleFonts.playfairDisplay(
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
+          ),
+          content: Text(
+            'Bạn đã có một bộ phối tên "${duplicate.name}" trong tủ. '
+            'Vẫn lưu bộ phối này?',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(warnCtx).pop(false),
+              child: const Text('Đổi tên',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(warnCtx).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('Vẫn lưu'),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) {
+        // Mở lại hộp thoại đặt tên để người dùng sửa tên ngay.
+        if (mounted) _showSaveLookDialog();
+        return;
+      }
+    }
+
+    if (!mounted || !dialogCtx.mounted) return;
+    Navigator.of(dialogCtx).pop();
+
+    final canvasBytes = await _captureCanvasBytes();
+    final success =
+        await ref.read(outfitStudioProvider.notifier).saveOutfit(
+              name,
+              canvasBytes: canvasBytes,
+            );
+    if (mounted && success) {
+      notifier.fetchOutfits();
+      context.push('/outfits');
+    }
+  }
+
+  Future<Uint8List?> _captureCanvasBytes() async {
+    final studioState = ref.read(outfitStudioProvider);
+    ref.read(outfitStudioProvider.notifier).selectItem(null);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    await WidgetsBinding.instance.endOfFrame;
+
+    return await OutfitCanvasExporter.captureFullOutfit(
+      boundaryKey: _canvasRepaintKey,
+      items: studioState.canvasItems,
+      canvasWidth: (studioState.canvasWidth ?? 0) > 0 ? studioState.canvasWidth! : 400.0,
+      canvasHeight: (studioState.canvasHeight ?? 0) > 0 ? studioState.canvasHeight! : 500.0,
+    );
+  }
+
   void _showAlternativePicker(int groupIndex, RecommendedItemGroup group) {
+    final wardrobe = ref.read(outfitStudioProvider).wardrobeItems.isNotEmpty
+        ? ref.read(outfitStudioProvider).wardrobeItems
+        : ref.read(wardrobeProvider).items;
+
+    final targetRole = normalizeRole(group.role);
+    final matchingWardrobe = wardrobe.where((w) {
+      if (w.isProcessing) return false;
+      if (group.primary != null && w.id == group.primary!.id) return false;
+      final role = normalizeRole(
+        null,
+        categorySlug: w.category?.slug ?? w.fashionItem?.category?.slug,
+        categoryName: w.category?.name ?? w.fashionItem?.category?.name,
+      );
+      if (targetRole == CanvasRole.unknown || targetRole == CanvasRole.other) {
+        return true;
+      }
+      return role == targetRole;
+    }).toList();
+
+    final otherWardrobe = wardrobe.where((w) {
+      if (w.isProcessing) return false;
+      if (group.primary != null && w.id == group.primary!.id) return false;
+      return !matchingWardrobe.contains(w);
+    }).toList();
+
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (bottomSheetCtx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Chọn món thay thế cho ${group.roleDisplay}',
-                      style: GoogleFonts.playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Đổi món cho ${group.roleDisplay}',
+                        style: GoogleFonts.playfairDisplay(fontSize: 18, fontWeight: FontWeight.w600),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                            size: 20, color: AppColors.primary),
+                        tooltip: 'Quay lại',
+                        onPressed: () => Navigator.of(bottomSheetCtx).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Chạm vào món bạn muốn hoán đổi vào set đồ:',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (group.alternatives.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        const Icon(Icons.auto_awesome, size: 14, color: AppColors.accentSandDark),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Gợi ý tương tự từ AI (${group.alternatives.length})',
+                          style: GoogleFonts.beVietnamPro(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: () => Navigator.of(bottomSheetCtx).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Chạm vào món bạn ưng ý để hoán đổi vào set đồ:',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 140,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: group.alternatives.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      final alt = group.alternatives[index];
-                      return GestureDetector(
-                        onTap: () {
-                          ref.read(aiOutfitProvider.notifier).swapAlternative(groupIndex, alt);
-                          Navigator.of(bottomSheetCtx).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Đã đổi sang: ${alt.displayName}'),
-                              duration: const Duration(seconds: 1),
-                              backgroundColor: AppColors.primary,
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 135,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: group.alternatives.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final alt = group.alternatives[index];
+                          return GestureDetector(
+                            onTap: () {
+                              ref.read(aiOutfitProvider.notifier).swapAlternative(groupIndex, alt);
+                              Navigator.of(bottomSheetCtx).pop();
+                            },
+                            child: Container(
+                              width: 105,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border, width: 0.8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: alt.imageUrl.isNotEmpty
+                                        ? ClosyNetworkImage(
+                                            imageUrl: alt.imageUrl,
+                                            fit: BoxFit.contain,
+                                            memCacheWidth: 200,
+                                          )
+                                        : const Icon(Icons.checkroom, size: 30, color: AppColors.accentSandDark),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    alt.displayName,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
-                        child: Container(
-                          width: 110,
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border, width: 0.8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: alt.imageUrl.isNotEmpty
-                                    ? ClosyNetworkImage(
-                                        imageUrl: alt.imageUrl,
-                                        fit: BoxFit.contain,
-                                        memCacheWidth: 250,
-                                      )
-                                    : const Icon(Icons.checkroom, size: 32, color: AppColors.accentSandDark),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                alt.displayName,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  Row(
+                    children: [
+                      const Icon(Icons.checkroom_rounded, size: 14, color: AppColors.accentSandDark),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Từ tủ đồ của bạn (${matchingWardrobe.length})',
+                        style: GoogleFonts.beVietnamPro(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 10),
-              ],
+                  const SizedBox(height: 10),
+                  if (matchingWardrobe.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceSubtle,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border, width: 0.5),
+                      ),
+                      child: Text(
+                        otherWardrobe.isNotEmpty
+                            ? 'Không có món đồ cùng loại (${group.roleDisplay}) trong tủ đồ. Bạn có thể chọn các món khác bên dưới.'
+                            : 'Tủ đồ chưa có món nào khác để thay thế.',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      height: 135,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: matchingWardrobe.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final item = matchingWardrobe[index];
+                          return GestureDetector(
+                            onTap: () {
+                              final selectedRes = RecommendedItemRes(
+                                id: item.id,
+                                itemContext: 'user_wardrobe',
+                                fashionItem: RecommendedFashionItemBrief(
+                                  id: item.fashionItem?.id ?? item.id,
+                                  imageUrl: item.displayImageUrl,
+                                  color: item.fashionItem?.color,
+                                  category: item.category != null
+                                      ? RecommendedCategoryBrief(
+                                          id: item.category!.id,
+                                          name: item.category!.name,
+                                          slug: item.category!.slug,
+                                        )
+                                      : null,
+                                ),
+                              );
+                              ref.read(aiOutfitProvider.notifier).swapAlternative(groupIndex, selectedRes);
+                              Navigator.of(bottomSheetCtx).pop();
+                            },
+                            child: Container(
+                              width: 105,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border, width: 0.8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: item.displayImageUrl.isNotEmpty
+                                        ? ClosyNetworkImage(
+                                            imageUrl: item.displayImageUrl,
+                                            fit: BoxFit.contain,
+                                            memCacheWidth: 200,
+                                          )
+                                        : const Icon(Icons.checkroom, size: 30, color: AppColors.accentSandDark),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    item.displayTitle,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                  if (matchingWardrobe.isEmpty && otherWardrobe.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Tất cả món khác trong tủ (${otherWardrobe.length})',
+                      style: GoogleFonts.beVietnamPro(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 135,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: otherWardrobe.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final item = otherWardrobe[index];
+                          return GestureDetector(
+                            onTap: () {
+                              final selectedRes = RecommendedItemRes(
+                                id: item.id,
+                                itemContext: 'user_wardrobe',
+                                fashionItem: RecommendedFashionItemBrief(
+                                  id: item.fashionItem?.id ?? item.id,
+                                  imageUrl: item.displayImageUrl,
+                                  color: item.fashionItem?.color,
+                                  category: item.category != null
+                                      ? RecommendedCategoryBrief(
+                                          id: item.category!.id,
+                                          name: item.category!.name,
+                                          slug: item.category!.slug,
+                                        )
+                                      : null,
+                                ),
+                              );
+                              ref.read(aiOutfitProvider.notifier).swapAlternative(groupIndex, selectedRes);
+                              Navigator.of(bottomSheetCtx).pop();
+                            },
+                            child: Container(
+                              width: 105,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.border, width: 0.8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: item.displayImageUrl.isNotEmpty
+                                        ? ClosyNetworkImage(
+                                            imageUrl: item.displayImageUrl,
+                                            fit: BoxFit.contain,
+                                            memCacheWidth: 200,
+                                          )
+                                        : const Icon(Icons.checkroom, size: 30, color: AppColors.accentSandDark),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    item.displayTitle,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                ],
+              ),
             ),
           ),
         );
@@ -338,13 +704,24 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
       },
     );
 
+    // Khi AI gặp lỗi (ví dụ: hết lượt tạo trang phục hôm nay):
+    // Hiển thị Pop-up Toast ở đỉnh màn hình trong 2 giây rồi tự ẩn (SC-001).
+    ref.listen<String?>(
+      aiOutfitProvider.select((s) => s.errorMessage),
+      (prev, next) {
+        if (next != null && next.isNotEmpty && next != prev && mounted) {
+          ClosyToast.error(context, next);
+        }
+      },
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
         title: Text(
-          'Outfit Studio',
+          'Phối đồ AI',
           style: GoogleFonts.playfairDisplay(
             fontSize: 22,
             fontWeight: FontWeight.w600,
@@ -408,29 +785,59 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             tooltip: 'Tủ Outfit của tôi',
             onPressed: () => context.push('/outfits'),
           ),
-          if (_tabController.index == 1)
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: ElevatedButton.icon(
-                onPressed: _showSaveLookDialog,
-                icon: const Icon(Icons.bookmark_border_rounded, size: 16),
-                label: const Text('Lưu Look', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  shape: const StadiumBorder(),
-                  elevation: 0,
+        ],
+      ),
+      body: Stack(
+        children: [
+          TabBarView(
+            controller: _tabController,
+            children: [
+              _buildAIGeneratorTab(aiState),
+              _buildManualStudioTab(studioState),
+            ],
+          ),
+          if (studioState.isSaving)
+            Container(
+              color: Colors.black.withOpacity(0.4),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 16,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Đang hoàn tất và lưu bộ phối...',
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Đang chụp và tối ưu hình ảnh toàn bộ outfit',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-        ],
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildAIGeneratorTab(aiState),
-          _buildManualStudioTab(studioState),
         ],
       ),
     );
@@ -525,7 +932,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'AI Fashion Stylist',
+                        'Stylist AI',
                         style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 2),
@@ -715,28 +1122,6 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
           ),
           const SizedBox(height: 24),
 
-          if (state.errorMessage != null)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline_rounded, color: Colors.redAccent),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      state.errorMessage!,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
           if (state.recommendation != null) ...[
             const Divider(height: 36),
             _buildRecommendationResult(state.recommendation!),
@@ -890,21 +1275,20 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                     ),
                   ),
 
-                  if (hasAlternatives)
-                    OutlinedButton.icon(
-                      onPressed: () => _showAlternativePicker(groupIndex, group),
-                      icon: const Icon(Icons.swap_horiz_rounded, size: 14),
-                      label: Text(
-                        'Đổi (${group.alternatives.length})',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.border),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        shape: const StadiumBorder(),
-                      ),
+                  OutlinedButton.icon(
+                    onPressed: () => _showAlternativePicker(groupIndex, group),
+                    icon: const Icon(Icons.swap_horiz_rounded, size: 14),
+                    label: Text(
+                      hasAlternatives ? 'Đổi (${group.alternatives.length})' : 'Đổi món',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                     ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.border),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      shape: const StadiumBorder(),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -919,12 +1303,6 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                 onPressed: () {
                   _loadAISetWithConfirm(res, afterLoad: () {
                     _tabController.animateTo(1);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Đã nạp set đồ vào Studio thủ công để bạn tùy chỉnh toạ độ/layer!'),
-                        backgroundColor: AppColors.primary,
-                      ),
-                    );
                   });
                 },
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
@@ -949,25 +1327,9 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                       .read(outfitStudioProvider.notifier)
                       .saveOutfit(res.title, description: res.explanation);
 
-                  if (mounted) {
-                    if (success) {
-                      ref.read(outfitsListProvider.notifier).fetchOutfits();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đã lưu outfit vào tủ đồ của bạn! Đang chuyển hướng...'),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
-                      context.push('/outfits');
-                    } else {
-                      final error = ref.read(outfitStudioProvider).errorMessage;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(error ?? 'Không thể lưu outfit'),
-                          backgroundColor: Colors.redAccent,
-                        ),
-                      );
-                    }
+                  if (mounted && success) {
+                    ref.read(outfitsListProvider.notifier).fetchOutfits();
+                    context.push('/outfits');
                   }
                 },
                 icon: const Icon(Icons.bookmark_added_rounded, size: 16),
@@ -993,6 +1355,12 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   Widget _buildManualStudioTab(OutfitStudioState state) {
     final filteredItems = state.filteredWardrobeItems;
 
+    // LayoutBuilder để nút "Lưu Look" nổi neo đúng theo chiều cao thật của
+    // vùng vẽ — khớp chính xác mép trên của khay outfit thay thế.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportHeight = constraints.maxHeight;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -1009,7 +1377,12 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => ref.read(outfitStudioProvider.notifier).selectItem(null),
+                    onTap: () {
+                      ref.read(outfitStudioProvider.notifier).selectItem(null);
+                      if (_replacingCanvasIndex != null) {
+                        setState(() => _replacingCanvasIndex = null);
+                      }
+                    },
                     child: state.canvasItems.isEmpty
                         ? Center(
                             child: Column(
@@ -1044,32 +1417,57 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                     .setCanvasSize(constraints.maxWidth,
                                         constraints.maxHeight);
                               });
-                              final canvasWidth = constraints.maxWidth;
+                               final canvasWidth = constraints.maxWidth;
                               final canvasHeight = constraints.maxHeight;
                               final centerX = canvasWidth / 2;
                               final centerY = canvasHeight / 2;
-                              const baseItemSize = 200.0;
 
-                              return Stack(
-                                children: state.canvasItems.asMap().entries.map((entry) {
+                              // Render theo thứ tự layerOrder (món lớp dưới render trước, lớp trên render sau)
+                              final indexedItems = state.canvasItems.asMap().entries.toList()
+                                ..sort((a, b) => a.value.layerOrder.compareTo(b.value.layerOrder));
+
+                              return RepaintBoundary(
+                                key: _canvasRepaintKey,
+                                child: Container(
+                                  width: canvasWidth,
+                                  height: canvasHeight,
+                                  color: const Color(0xFFFAFAFA),
+                                  child: Stack(
+                                    children: indexedItems.map((entry) {
                                   final index = entry.key;
                                   final item = entry.value;
                                   final isSelected = state.selectedIndex == index;
-                                  final itemSize = baseItemSize * item.scale;
+                                  const double itemScaleMultiplier = 1.25;
+                                  final baseS = item.baseScale > 0 ? item.baseScale : 100.0;
+                                  final ratioW = item.boxRatioW > 0 ? item.boxRatioW : 2.0;
+                                  final ratioH = item.boxRatioH > 0 ? item.boxRatioH : 2.0;
+                                  final itemW = baseS * ratioW * item.scale * itemScaleMultiplier;
+                                  final itemH = baseS * ratioH * item.scale * itemScaleMultiplier;
 
                                   return Positioned(
-                                    left: centerX + item.positionX - (itemSize / 2),
-                                    top: centerY + item.positionY - (itemSize / 2),
+                                    left: centerX + item.positionX - (itemW / 2),
+                                    top: centerY + item.positionY - (itemH / 2),
                                     child: GestureDetector(
                                       onTap: () => ref.read(outfitStudioProvider.notifier).selectItem(index),
-                                      onPanUpdate: (details) {
-                                        ref
-                                            .read(outfitStudioProvider.notifier)
-                                            .updateItemPosition(index, details.delta.dx, details.delta.dy);
+                                      onScaleStart: (details) {
+                                        ref.read(outfitStudioProvider.notifier).selectItem(index);
+                                        _gestureItemStartScale = item.scale;
+                                      },
+                                      onScaleUpdate: (details) {
+                                        if (details.pointerCount > 1) {
+                                          final newScale = (_gestureItemStartScale * details.scale).clamp(0.15, 3.0);
+                                          ref
+                                              .read(outfitStudioProvider.notifier)
+                                              .updateItemScale(index, newScale);
+                                        } else {
+                                          ref
+                                              .read(outfitStudioProvider.notifier)
+                                              .updateItemPosition(index, details.focalPointDelta.dx, details.focalPointDelta.dy);
+                                        }
                                       },
                                       child: Container(
-                                        width: itemSize,
-                                        height: itemSize,
+                                        width: itemW,
+                                        height: itemH,
                                         decoration: BoxDecoration(
                                           border: isSelected
                                               ? Border.all(color: AppColors.primary, width: 2.0)
@@ -1118,7 +1516,9 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                     ),
                                   );
                                 }).toList(),
-                              );
+                              ),
+                            ),
+                          );
                             },
                           ),
                   ),
@@ -1146,13 +1546,13 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                         children: [
                           IconButton(
                             icon: const Icon(Icons.flip_to_front_rounded, size: 20, color: AppColors.primary),
-                            tooltip: 'Đưa lên trên',
+                            tooltip: 'Đưa lên lớp trên',
                             onPressed: () =>
                                 ref.read(outfitStudioProvider.notifier).bringForward(state.selectedIndex!),
                           ),
                           IconButton(
                             icon: const Icon(Icons.flip_to_back_rounded, size: 20, color: AppColors.primary),
-                            tooltip: 'Hạ xuống dưới',
+                            tooltip: 'Hạ xuống lớp dưới',
                             onPressed: () =>
                                 ref.read(outfitStudioProvider.notifier).sendBackward(state.selectedIndex!),
                           ),
@@ -1163,7 +1563,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                               final curScale = state.canvasItems[state.selectedIndex!].scale;
                               ref
                                   .read(outfitStudioProvider.notifier)
-                                  .updateItemScale(state.selectedIndex!, curScale + 0.15);
+                                  .updateItemScale(state.selectedIndex!, (curScale * 1.15).clamp(0.15, 3.0));
                             },
                           ),
                           IconButton(
@@ -1173,7 +1573,40 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                               final curScale = state.canvasItems[state.selectedIndex!].scale;
                               ref
                                   .read(outfitStudioProvider.notifier)
-                                  .updateItemScale(state.selectedIndex!, curScale - 0.15);
+                                  .updateItemScale(state.selectedIndex!, (curScale * 0.85).clamp(0.15, 3.0));
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.swap_horiz_rounded, size: 20, color: AppColors.primary),
+                            tooltip: 'Đổi món này từ tủ đồ',
+                            onPressed: () {
+                              final selIdx = state.selectedIndex!;
+                              final selItem = state.canvasItems[selIdx];
+                              final selRole = normalizeRole(selItem.role);
+                              String cat = 'All';
+                              if (selRole == CanvasRole.top || selRole == CanvasRole.outerwear) {
+                                cat = 'Áo';
+                              } else if (selRole == CanvasRole.bottom) {
+                                cat = 'Quần';
+                              } else if (selRole == CanvasRole.fullbody) {
+                                cat = 'Váy';
+                              } else if (selRole == CanvasRole.footwear) {
+                                cat = 'Giày';
+                              } else if (selRole == CanvasRole.accessory || selRole == CanvasRole.headwear) {
+                                cat = 'Phụ kiện';
+                              }
+                              ref.read(outfitStudioProvider.notifier).setDrawerCategory(cat);
+                              setState(() {
+                                _replacingCanvasIndex = selIdx;
+                                _isDrawerExpanded = true;
+                              });
+                              if (_sheetController.isAttached) {
+                                _sheetController.animateTo(
+                                  0.42,
+                                  duration: const Duration(milliseconds: 320),
+                                  curve: Curves.easeOutCubic,
+                                );
+                              }
                             },
                           ),
                           const Divider(height: 10),
@@ -1194,11 +1627,16 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
 
         // Bottom Wardrobe Drawer with Sticky Header & Search
         DraggableScrollableSheet(
-          initialChildSize: 0.32,
-          minChildSize: 0.14,
-          maxChildSize: 0.70,
+          controller: _sheetController,
+          initialChildSize: _kDrawerSnapCollapsed,
+          minChildSize: _kDrawerSnapCollapsed,
+          maxChildSize: _kDrawerSnapMax,
           snap: true,
-          snapSizes: const [0.14, 0.32, 0.70],
+          snapSizes: const [
+            _kDrawerSnapCollapsed,
+            _kDrawerSnapExpanded,
+            _kDrawerSnapMax,
+          ],
           builder: (context, scrollController) {
             return Container(
               decoration: BoxDecoration(
@@ -1219,10 +1657,47 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                   SliverPersistentHeader(
                     pinned: true,
                     delegate: _StickyDrawerHeaderDelegate(
-                      height: 108.0,
+                      height: _isDrawerExpanded ? 108.0 : 48.0,
                       child: _buildStickyDrawerHeader(state, filteredItems.length),
                     ),
                   ),
+
+                  if (_replacingCanvasIndex != null && _replacingCanvasIndex! < state.canvasItems.length)
+                    SliverToBoxAdapter(
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF7F4EE),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.accentSand, width: 0.8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Chọn món thay thế cho "${state.canvasItems[_replacingCanvasIndex!].name}"',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () => setState(() => _replacingCanvasIndex = null),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                child: Text(
+                                  'Huỷ',
+                                  style: TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
                   // Wardrobe Items Grid
                   if (state.isLoadingWardrobe)
@@ -1276,44 +1751,78 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                           (context, index) {
                             final item = filteredItems[index];
                             final imgUrl = item.displayImageUrl;
+                            final isProcessing = item.isProcessing;
 
                             return GestureDetector(
-                              onTap: () {
-                                ref.read(outfitStudioProvider.notifier).addItemToCanvas(item);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Đã thêm ${item.displayTitle} lên Canvas!'),
-                                    duration: const Duration(milliseconds: 900),
-                                    backgroundColor: AppColors.primary,
+                              onTap: isProcessing
+                                  ? null
+                                  : () {
+                                      if (_replacingCanvasIndex != null &&
+                                          _replacingCanvasIndex! < state.canvasItems.length) {
+                                        ref
+                                            .read(outfitStudioProvider.notifier)
+                                            .replaceItemOnCanvas(_replacingCanvasIndex!, item);
+                                        setState(() => _replacingCanvasIndex = null);
+                                        ClosyToast.success(context, 'Đã đổi món trên canvas');
+                                      } else {
+                                        ref.read(outfitStudioProvider.notifier).addItemToCanvas(item);
+                                      }
+                                    },
+                              child: Opacity(
+                                opacity: isProcessing ? 0.5 : 1.0,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.border, width: 0.6),
                                   ),
-                                );
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.border, width: 0.6),
-                                ),
-                                padding: const EdgeInsets.all(4),
-                                child: Column(
-                                  children: [
-                                    Expanded(
-                                      child: imgUrl.isNotEmpty
-                                          ? ClosyNetworkImage(
-                                              imageUrl: imgUrl,
-                                              fit: BoxFit.contain,
-                                              memCacheWidth: 200,
-                                            )
-                                          : const Icon(Icons.checkroom, size: 24, color: AppColors.accentSandDark),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      item.displayTitle,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
-                                    ),
-                                  ],
+                                  padding: const EdgeInsets.all(4),
+                                  child: Stack(
+                                    children: [
+                                      Column(
+                                        children: [
+                                          Expanded(
+                                            child: imgUrl.isNotEmpty
+                                                ? ClosyNetworkImage(
+                                                    imageUrl: imgUrl,
+                                                    fit: BoxFit.contain,
+                                                    memCacheWidth: 200,
+                                                  )
+                                                : const Icon(Icons.checkroom, size: 24, color: AppColors.accentSandDark),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            item.displayTitle,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                                          ),
+                                        ],
+                                      ),
+                                      if (isProcessing)
+                                        Positioned(
+                                          top: 2,
+                                          left: 2,
+                                          right: 2,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withOpacity(0.65),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Text(
+                                              'Đang phân tích',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 8,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
@@ -1328,25 +1837,131 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             );
           },
         ),
+
+        // Nút "Lưu" dính liền và di chuyển CÙNG khay outfit thay thế: đọc
+        // trực tiếp `_sheetController.size` trong cùng frame với khay nên
+        // lệch 0px (không "đuổi" như `AnimatedPositioned` trước đây).
+        // `Align` chỉ hit-test đúng vùng nút nên không chặn kéo/thả trên canvas.
+        if (state.canvasItems.isNotEmpty)
+          Positioned.fill(
+            child: ListenableBuilder(
+              listenable: _sheetController,
+              builder: (context, _) {
+                final lift =
+                    _sheetController.size * viewportHeight + kSaveButtonGap;
+                return Transform.translate(
+                  offset: Offset(0, -lift),
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: FloatingSaveLookButton(
+                        isSaving: state.isSaving,
+                        hasItems: state.canvasItems.isNotEmpty,
+                        onPressed: _showSaveLookDialog,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
       ],
+    );
+      },
     );
   }
 
   Widget _buildStickyDrawerHeader(OutfitStudioState state, int count) {
+    if (!_isDrawerExpanded) {
+      return Material(
+        color: Colors.white,
+        child: InkWell(
+          onTap: _toggleDrawer,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle Bar
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 8, bottom: 6),
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.checkroom_rounded, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Tủ quần áo cá nhân',
+                          style: GoogleFonts.playfairDisplay(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceSubtle,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border, width: 0.5),
+                          ),
+                          child: Text(
+                            '$count món',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Row(
+                      children: [
+                        Text(
+                          'Mở tủ đồ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        SizedBox(width: 2),
+                        Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppColors.primary),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       color: Colors.white,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle Bar
-          Center(
-            child: Container(
-              margin: const EdgeInsets.only(top: 8, bottom: 6),
-              width: 38,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+          // Handle Bar (tap to collapse)
+          GestureDetector(
+            onTap: _toggleDrawer,
+            behavior: HitTestBehavior.opaque,
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 8, bottom: 6),
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
           ),
@@ -1410,9 +2025,26 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Tủ quần áo cá nhân',
-                        style: GoogleFonts.playfairDisplay(fontSize: 16, fontWeight: FontWeight.w700),
+                      Row(
+                        children: [
+                          Text(
+                            'Tủ quần áo cá nhân',
+                            style: GoogleFonts.playfairDisplay(fontSize: 16, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceSubtle,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border, width: 0.6),
+                            ),
+                            child: Text(
+                              '$count món',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ],
                       ),
                       Row(
                         children: [
@@ -1444,18 +2076,13 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceSubtle,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border, width: 0.6),
-                            ),
-                            child: Text(
-                              '$count món',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-                            ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 24, color: AppColors.primary),
+                            tooltip: 'Thu gọn tủ đồ',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            onPressed: _toggleDrawer,
                           ),
                         ],
                       ),
@@ -1476,7 +2103,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     selected: isSel,
-                    label: Text(cat),
+                    label: Text(cat == 'All' ? 'Tất cả' : cat),
                     selectedColor: AppColors.accentSand,
                     backgroundColor: AppColors.surfaceSubtle,
                     labelStyle: TextStyle(

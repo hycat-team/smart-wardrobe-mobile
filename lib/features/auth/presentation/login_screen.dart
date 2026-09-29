@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/router/app_router.dart';
 import '../models/auth_models.dart';
 import '../providers/auth_provider.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import 'widgets/google_sign_in_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -50,12 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && authState.isAuthenticated) {
       final user = authState.user;
       final greeting = user?.fullName ?? _loginNameController.text.trim();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đăng nhập thành công! Chào mừng $greeting.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đăng nhập thành công! Chào mừng $greeting.');
       // Quay lại đích đến đã giữ trước khi bị đá về /login (ví dụ trang
       // thông báo kết quả thanh toán từ deep-link/cold-start).
       final pending = ref.read(pendingRedirectProvider);
@@ -63,12 +59,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context.go((pending != null && pending.isNotEmpty) ? pending : kPostLoginRoute);
     } else {
       final error = authState.errorMessage ?? 'Sai tài khoản hoặc mật khẩu.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      ClosyToast.error(context, error);
     }
   }
 
@@ -81,23 +72,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final greeting = user?.fullName ?? _loginNameController.text.trim();
 
       if (outcome.linkedExistingAccount) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              outcome.message ??
-                  'Tài khoản Google đã được liên kết với tài khoản Closy của bạn.',
-            ),
-            backgroundColor: AppColors.primary,
-            duration: const Duration(seconds: 4),
-          ),
+        ClosyToast.info(
+          context,
+          outcome.message ??
+              'Tài khoản Google đã được liên kết với tài khoản Closy của bạn.',
+          duration: const Duration(seconds: 4),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Đăng nhập thành công! Chào mừng $greeting.'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
+        ClosyToast.success(context, 'Đăng nhập thành công! Chào mừng $greeting.');
       }
 
       final pending = ref.read(pendingRedirectProvider);
@@ -108,12 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       final error = outcome.message ?? 'Đăng nhập Google thất bại.';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      ClosyToast.error(context, error);
     }
   }
 
@@ -154,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         height: 168,
                         fit: BoxFit.contain,
                         filterQuality: FilterQuality.high,
-                        semanticLabel: 'Closy logo',
+                          semanticLabel: 'Logo Closy',
                         errorBuilder: (context, error, stackTrace) => Text(
                           'CLOSY',
                           style: GoogleFonts.playfairDisplay(
@@ -175,16 +152,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fontWeight: FontWeight.w600,
                         color: AppColors.primary,
                         letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Đăng nhập để quản lý tủ đồ số và nhận gợi ý trang phục thông minh từ AI Stylist.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -215,6 +182,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _loginNameController,
                       keyboardType: TextInputType.emailAddress,
+                      // Enter ở ô tài khoản → chuyển sang ô mật khẩu.
+                      textInputAction: TextInputAction.next,
+                      onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                       decoration: InputDecoration(
                         labelText: 'Email hoặc Tên đăng nhập',
                         hintText: 'user hoặc user@smartwardrobe.com',
@@ -243,6 +213,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      // Enter ở ô mật khẩu → đăng nhập luôn.
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) {
+                        if (authState.isLoading) return;
+                        _handleLogin();
+                      },
                       decoration: InputDecoration(
                         labelText: 'Mật khẩu',
                         labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),

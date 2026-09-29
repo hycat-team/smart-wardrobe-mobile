@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/profile_provider.dart';
-import '../../../../core/config/release_flags.dart';
 
 class ClosyWalletCard extends ConsumerStatefulWidget {
   const ClosyWalletCard({super.key});
@@ -17,10 +16,8 @@ class _ClosyWalletCardState extends ConsumerState<ClosyWalletCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Ẩn toàn bộ thẻ ví ở bản phát hành Play (spec 008, FR-021).
-    if (!ReleaseFlags.enablePaidFeatures) {
-      return const SizedBox.shrink();
-    }
+    // Thẻ ví chỉ hiển thị SỐ DƯ + LỊCH SỬ giao dịch (đọc, không thu tiền).
+    // Việc nạp/nâng cấp vẫn thực hiện trên web — không phụ thuộc cờ paid.
     final walletState = ref.watch(walletProvider);
     final wallet = walletState.wallet;
     const goldColor = Color(0xFFD4AF37);
@@ -143,7 +140,7 @@ class _ClosyWalletCardState extends ConsumerState<ClosyWalletCard> {
                   children: [
                     Expanded(
                       // Nạp ví thực hiện trên website — văn bản thuần túy,
-                      // không nút mở link (FR-004/FR-006).
+                      // không nút mở link (spec 009, FR-004/FR-006).
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                         decoration: BoxDecoration(
