@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
 import '../utils/payment_link_opener.dart';
@@ -145,7 +146,7 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen>
 
   /// Nút "Tôi đã thanh toán" — kiểm tra ngay thay vì đợi lượt poll tiếp theo.
   /// [silent] dùng cho auto-check khi resume: success thì direct về trang
-  /// thông báo, fail thì im lặng để poll tiếp, không spam SnackBar.
+  /// thông báo, fail thì im lặng để poll tiếp, không spam toast.
   Future<void> _checkNow({bool silent = false}) async {
     if (_isChecking || _isSuccess || _isExpired || _navigatedToResult) return;
     setState(() => _isChecking = true);
@@ -155,10 +156,9 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen>
     if (done) {
       _onSuccess();
     } else if (!silent) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Chưa ghi nhận thanh toán. Nếu bạn vừa chuyển khoản, vui lòng đợi thêm ít phút rồi thử lại.'),
-        ),
+      ClosyToast.warning(
+        context,
+        'Chưa ghi nhận thanh toán. Nếu bạn vừa chuyển khoản, vui lòng đợi thêm ít phút rồi thử lại.',
       );
     }
   }
@@ -330,7 +330,7 @@ class _PaymentWaitingScreenState extends ConsumerState<PaymentWaitingScreen>
                     else
                       _buildInfoRow('Gói đăng ký', pending.label),
                     const Divider(height: 24),
-                    _buildInfoRow('Phương thức', 'VietQR / Banking'),
+                    _buildInfoRow('Phương thức', 'VietQR / Chuyển khoản'),
                   ],
                 ),
               ),

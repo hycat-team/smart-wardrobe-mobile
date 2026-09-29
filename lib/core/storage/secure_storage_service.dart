@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_constants.dart';
+import 'web_storage_cleaner.dart';
 
 class SecureStorageService {
   final FlutterSecureStorage _storage;
@@ -28,6 +30,13 @@ class SecureStorageService {
       if (token != null && token.isNotEmpty) return token;
     } catch (_) {}
     return _memoryFallback[AppConstants.tokenKey];
+  }
+
+  Future<void> clearToken() async {
+    try {
+      await _storage.delete(key: AppConstants.tokenKey);
+    } catch (_) {}
+    _memoryFallback.remove(AppConstants.tokenKey);
   }
 
   Future<void> saveRefreshToken(String token) async {
@@ -63,9 +72,37 @@ class SecureStorageService {
   }
 
   Future<void> clearAll() async {
+    // 1. Explicitly delete known keys to avoid platform deleteAll iteration issues
+    try {
+      await _storage.delete(key: AppConstants.tokenKey);
+    } catch (_) {}
+    try {
+      await _storage.delete(key: AppConstants.refreshTokenKey);
+    } catch (_) {}
+    try {
+      await _storage.delete(key: AppConstants.userProfileKey);
+    } catch (_) {}
+    try {
+      await _storage.delete(key: 'user_style_prefs');
+    } catch (_) {}
+    try {
+      await _storage.delete(key: 'user_color_palette');
+    } catch (_) {}
+    try {
+      await _storage.delete(key: 'web_session');
+    } catch (_) {}
+
+    // 2. Storage deleteAll
     try {
       await _storage.deleteAll();
     } catch (_) {}
+
+    // 3. Clear memory fallback
     _memoryFallback.clear();
+
+    // 4. On web, completely clean localStorage, sessionStorage, and document cookies
+    if (kIsWeb) {
+      clearWebBrowserStorage();
+    }
   }
 }

@@ -89,7 +89,7 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
           ),
           premiumPlan: const SubscriptionPlanModel(
             id: 'premium-monthly',
-            name: 'Premium Plan',
+            name: 'Gói Premium',
             slug: 'premium-monthly',
             price: 59000,
             maxWardrobeItems: 300,
@@ -112,7 +112,7 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
           );
           SubscriptionPlanModel premiumPlan = const SubscriptionPlanModel(
             id: 'premium-monthly',
-            name: 'Premium Plan',
+            name: 'Gói Premium',
             slug: 'premium-monthly',
             price: 59000,
             maxWardrobeItems: 300,
@@ -334,7 +334,7 @@ class _SubscriptionUpgradeScreenState extends ConsumerState<SubscriptionUpgradeS
                 const Divider(height: 1, color: AppColors.border),
                 _buildComparisonRow('Sức chứa tủ đồ', '${freePlan.maxWardrobeItems} món', '${premiumPlan.maxWardrobeItems} món', isHighlight: true),
                 const Divider(height: 1, color: AppColors.divider),
-                _buildComparisonRow('Lưu trữ Outfit', '${freePlan.maxOutfits} set', '${premiumPlan.maxOutfits} set', isHighlight: true),
+                _buildComparisonRow('Lưu trữ Outfit', '${freePlan.maxOutfits} bộ', '${premiumPlan.maxOutfits} bộ', isHighlight: true),
                 const Divider(height: 1, color: AppColors.divider),
                 _buildComparisonRow('Phối đồ AI tự động', '${freePlan.aiOutfitDailyQuota} lượt/ngày', '${premiumPlan.aiOutfitDailyQuota} lượt/ngày', isHighlight: true),
                 const Divider(height: 1, color: AppColors.divider),

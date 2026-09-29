@@ -248,6 +248,9 @@ class CanvasItem {
   double positionY;
   double scale;
   int layerOrder;
+  final double baseScale;
+  final double boxRatioW;
+  final double boxRatioH;
 
   CanvasItem({
     required this.id,
@@ -259,6 +262,9 @@ class CanvasItem {
     this.positionY = 0,
     this.scale = 1.0,
     this.layerOrder = 1,
+    this.baseScale = 100.0,
+    this.boxRatioW = 2.0,
+    this.boxRatioH = 2.0,
   });
 
   CanvasItem copyWith({
@@ -271,6 +277,9 @@ class CanvasItem {
     double? positionY,
     double? scale,
     int? layerOrder,
+    double? baseScale,
+    double? boxRatioW,
+    double? boxRatioH,
   }) {
     return CanvasItem(
       id: id ?? this.id,
@@ -282,6 +291,9 @@ class CanvasItem {
       positionY: positionY ?? this.positionY,
       scale: scale ?? this.scale,
       layerOrder: layerOrder ?? this.layerOrder,
+      baseScale: baseScale ?? this.baseScale,
+      boxRatioW: boxRatioW ?? this.boxRatioW,
+      boxRatioH: boxRatioH ?? this.boxRatioH,
     );
   }
 }
@@ -352,7 +364,7 @@ class UserOutfitModel {
   factory UserOutfitModel.fromJson(Map<String, dynamic> json) {
     return UserOutfitModel(
       id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'Outfit',
+      name: json['name']?.toString() ?? 'Bộ phối',
       description: json['description']?.toString(),
       coverImageUrl: json['coverImageUrl']?.toString() ?? json['cover_image_url']?.toString(),
       status: json['status'] is int ? json['status'] : 1,

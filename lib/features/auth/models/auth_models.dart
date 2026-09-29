@@ -197,3 +197,166 @@ class UserModel {
     );
   }
 }
+
+class GoogleLoginRequest {
+  final String idToken;
+  final String deviceName;
+
+  const GoogleLoginRequest({
+    required this.idToken,
+    this.deviceName = 'Android',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'idToken': idToken,
+        'deviceName': deviceName,
+      };
+}
+
+class RefreshTokenRequest {
+  final String oldRefreshToken;
+  final String deviceName;
+
+  const RefreshTokenRequest({
+    required this.oldRefreshToken,
+    this.deviceName = 'Android',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'oldRefreshToken': oldRefreshToken,
+        'deviceName': deviceName,
+      };
+}
+
+enum AuthErrorCode {
+  cancelled,
+  emailUnverified,
+  emailRegistered,
+  accountLinked,
+  accountDisabled,
+  exchangeFailed,
+  invalidToken,
+  serverError,
+  network;
+
+  String get defaultMessage {
+    switch (this) {
+      case AuthErrorCode.cancelled:
+        return 'Đăng nhập đã bị huỷ.';
+      case AuthErrorCode.emailUnverified:
+        return 'Email Google chưa được xác thực.';
+      case AuthErrorCode.emailRegistered:
+        return 'Email đã được đăng ký. Vui lòng đăng nhập bằng mật khẩu.';
+      case AuthErrorCode.accountLinked:
+        return 'Email đã liên kết với tài khoản Google khác.';
+      case AuthErrorCode.accountDisabled:
+        return 'Tài khoản đã bị khoá. Vui lòng liên hệ CSKH.';
+      case AuthErrorCode.exchangeFailed:
+        return 'Không hoàn tất được đăng nhập, vui lòng thử lại.';
+      case AuthErrorCode.invalidToken:
+        return 'Phiên Google không hợp lệ, thử đăng nhập lại.';
+      case AuthErrorCode.serverError:
+        return 'Có lỗi xảy ra, vui lòng thử lại sau.';
+      case AuthErrorCode.network:
+        return 'Không thể kết nối đến máy chủ.';
+    }
+  }
+
+  static AuthErrorCode fromErrorAndStatus({
+    String? rawError,
+    int? statusCode,
+    String? message,
+  }) {
+    final err = (rawError ?? '').toLowerCase().trim();
+    final msg = (message ?? '').toLowerCase().trim();
+
+    if (err.contains('access_denied') ||
+        err.contains('canceled') ||
+        err.contains('cancelled') ||
+        msg.contains('huỷ') ||
+        msg.contains('hủy')) {
+      return AuthErrorCode.cancelled;
+    }
+    if (err.contains('email_unverified') ||
+        msg.contains('email google chưa được xác thực') ||
+        msg.contains('chưa được xác thực')) {
+      return AuthErrorCode.emailUnverified;
+    }
+    if (err.contains('email_registered') ||
+        msg.contains('email đã được đăng ký') ||
+        msg.contains('đăng nhập bằng mật khẩu')) {
+      return AuthErrorCode.emailRegistered;
+    }
+    if (statusCode == 409 ||
+        err.contains('account_linked') ||
+        msg.contains('liên kết')) {
+      return AuthErrorCode.accountLinked;
+    }
+    if (statusCode == 403 ||
+        err.contains('account_disabled') ||
+        msg.contains('khoá') ||
+        msg.contains('khóa') ||
+        msg.contains('vô hiệu')) {
+      return AuthErrorCode.accountDisabled;
+    }
+    if (err.contains('exchange_failed')) {
+      return AuthErrorCode.exchangeFailed;
+    }
+    if (err.contains('invalid_token') ||
+        msg.contains('token') ||
+        msg.contains('không hợp lệ')) {
+      return AuthErrorCode.invalidToken;
+    }
+    if (statusCode != null && statusCode >= 500) {
+      return AuthErrorCode.serverError;
+    }
+    if (statusCode == 400) {
+      return AuthErrorCode.exchangeFailed;
+    }
+    return AuthErrorCode.network;
+  }
+}
+
+class GoogleSignInOutcome {
+  final bool success;
+  final bool linkedExistingAccount;
+  final AuthErrorCode? errorCode;
+  final String? message;
+
+  const GoogleSignInOutcome({
+    required this.success,
+    this.linkedExistingAccount = false,
+    this.errorCode,
+    this.message,
+  });
+
+  factory GoogleSignInOutcome.succeeded({
+    bool linkedExistingAccount = false,
+    String? message,
+  }) {
+    return GoogleSignInOutcome(
+      success: true,
+      linkedExistingAccount: linkedExistingAccount,
+      message: message,
+    );
+  }
+
+  factory GoogleSignInOutcome.failed({
+    required AuthErrorCode errorCode,
+    String? customMessage,
+  }) {
+    return GoogleSignInOutcome(
+      success: false,
+      errorCode: errorCode,
+      message: customMessage ?? errorCode.defaultMessage,
+    );
+  }
+
+  factory GoogleSignInOutcome.cancelled() {
+    return const GoogleSignInOutcome(
+      success: false,
+      errorCode: AuthErrorCode.cancelled,
+      message: null,
+    );
+  }
+}

@@ -55,16 +55,28 @@ class WardrobeRepository {
       final body = response.data;
       final data = body['data'] is Map<String, dynamic> ? body['data'] : body;
       final rawList = (data['data'] ?? data['items'] ?? data) as List<dynamic>? ?? [];
+      final metadata = data['metadata'] is Map<String, dynamic>
+          ? data['metadata'] as Map<String, dynamic>
+          : const <String, dynamic>{};
 
       final items = rawList
           .map((item) => WardrobeItemModel.fromJson(item as Map<String, dynamic>))
           .toList();
 
+      int asInt(dynamic v, int fallback) {
+        if (v is int) return v;
+        if (v is num) return v.toInt();
+        return int.tryParse(v?.toString() ?? '') ?? fallback;
+      }
+
       return WardrobePaginationResult(
         items: items,
-        page: data['page'] is int ? data['page'] : page,
-        limit: data['limit'] is int ? data['limit'] : limit,
-        total: data['total'] is int ? data['total'] : items.length,
+        page: asInt(metadata['page'] ?? data['page'], page),
+        limit: asInt(metadata['limit'] ?? data['limit'], limit),
+        total: asInt(
+          metadata['totalItems'] ?? data['total'] ?? data['totalItems'],
+          items.length,
+        ),
       );
     } on DioException catch (e) {
       final message = e.response?.data?['message'] ?? e.message ?? 'Không thể tải tủ đồ';
@@ -104,6 +116,33 @@ class WardrobeRepository {
       return WardrobeItemModel.fromJson(resData);
     } on DioException catch (e) {
       final message = e.response?.data?['message'] ?? e.message ?? 'Không thể cập nhật món đồ';
+      throw Exception(message);
+    }
+  }
+
+  /// Gửi yêu cầu phân tích lại trang phục AI (Spec 023-analyze-status-handling).
+  /// Món `needsReview` bắt buộc kèm `categoryId`.
+  /// Trả về món đồ với status = 3 (processing) kèm taskId để subscribe SSE.
+  Future<WardrobeItemModel> retryAnalysis({
+    required String id,
+    String? categoryId,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (categoryId != null && categoryId.isNotEmpty) {
+        data['categoryId'] = categoryId;
+      }
+
+      final response = await _apiClient.dio.post(
+        '/wardrobe-items/$id/retry-analysis',
+        data: data.isNotEmpty ? data : null,
+      );
+
+      final body = response.data;
+      final resData = _extractMap(body['data']) ?? _extractMap(body) ?? {};
+      return WardrobeItemModel.fromJson(resData);
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? e.message ?? 'Không thể gửi yêu cầu phân tích lại';
       throw Exception(message);
     }
   }
@@ -316,16 +355,28 @@ class WardrobeRepository {
       final body = response.data;
       final data = body['data'] is Map<String, dynamic> ? body['data'] : body;
       final rawList = (data['data'] ?? data['items'] ?? data) as List<dynamic>? ?? [];
+      final metadata = data['metadata'] is Map<String, dynamic>
+          ? data['metadata'] as Map<String, dynamic>
+          : const <String, dynamic>{};
 
       final items = rawList
           .map((item) => WardrobeItemModel.fromJson(item as Map<String, dynamic>))
           .toList();
 
+      int asInt(dynamic v, int fallback) {
+        if (v is int) return v;
+        if (v is num) return v.toInt();
+        return int.tryParse(v?.toString() ?? '') ?? fallback;
+      }
+
       return WardrobePaginationResult(
         items: items,
-        page: data['page'] is int ? data['page'] : page,
-        limit: data['limit'] is int ? data['limit'] : limit,
-        total: data['total'] is int ? data['total'] : items.length,
+        page: asInt(metadata['page'] ?? data['page'], page),
+        limit: asInt(metadata['limit'] ?? data['limit'], limit),
+        total: asInt(
+          metadata['totalItems'] ?? data['total'] ?? data['totalItems'],
+          items.length,
+        ),
       );
     } on DioException catch (e) {
       final message = e.response?.data?['message'] ?? e.message ?? 'Không thể tải tủ đồ hệ thống';

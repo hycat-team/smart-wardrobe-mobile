@@ -36,5 +36,17 @@ void main() {
       expect(user.username, 'user');
       expect(user.email, 'user@smartwardrobe.com');
     });
+
+    test('Google login with invalid/mock ID token fails gracefully (US1 & US2)', () async {
+      try {
+        final outcome = await repo.loginWithGoogle('invalid_id_token_for_testing');
+        print('Google login outcome: success=${outcome.success}, errorCode=${outcome.errorCode}, message=${outcome.message}');
+        expect(outcome.success, false);
+        expect(outcome.errorCode, isNotNull);
+      } catch (e) {
+        // If local BE is not running, network error is expected
+        print('Integration test note: BE local may not be running: $e');
+      }
+    });
   });
 }

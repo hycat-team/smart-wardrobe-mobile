@@ -53,7 +53,21 @@ class UserProfileNotifier extends StateNotifier<UserProfileState> {
   final Ref _ref;
 
   UserProfileNotifier(this._repository, this._ref) : super(const UserProfileState()) {
-    loadUserProfile();
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        state = const UserProfileState();
+      } else if (next.user != null && previous?.user?.id != next.user?.id) {
+        state = UserProfileState(user: next.user);
+        loadUserProfile();
+      }
+    });
+    final currentUser = _ref.read(authStateProvider).user;
+    if (currentUser != null) {
+      state = state.copyWith(user: currentUser);
+    }
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      loadUserProfile();
+    }
   }
 
   Future<void> loadUserProfile() async {
@@ -181,9 +195,22 @@ class SubscriptionOverviewState {
 
 class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewState> {
   final ProfileRepository _repository;
+  final Ref _ref;
 
-  SubscriptionOverviewNotifier(this._repository) : super(const SubscriptionOverviewState()) {
-    loadOverview();
+  SubscriptionOverviewNotifier(this._repository, this._ref) : super(const SubscriptionOverviewState()) {
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        state = const SubscriptionOverviewState();
+      } else if (previous?.user?.id != next.user?.id) {
+        state = const SubscriptionOverviewState();
+        if (next.isAuthenticated) {
+          loadOverview();
+        }
+      }
+    });
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      loadOverview();
+    }
   }
 
   Future<void> loadOverview() async {
@@ -227,7 +254,7 @@ class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewSta
 final subscriptionOverviewProvider =
     StateNotifierProvider<SubscriptionOverviewNotifier, SubscriptionOverviewState>((ref) {
   final repo = ref.watch(profileRepositoryProvider);
-  return SubscriptionOverviewNotifier(repo);
+  return SubscriptionOverviewNotifier(repo, ref);
 });
 
 final subscriptionPlansProvider = FutureProvider<List<SubscriptionPlanModel>>((ref) async {
@@ -275,9 +302,22 @@ class BodyProfileState {
 
 class BodyProfileNotifier extends StateNotifier<BodyProfileState> {
   final ProfileRepository _repository;
+  final Ref _ref;
 
-  BodyProfileNotifier(this._repository) : super(const BodyProfileState()) {
-    loadProfile();
+  BodyProfileNotifier(this._repository, this._ref) : super(const BodyProfileState()) {
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        state = const BodyProfileState();
+      } else if (previous?.user?.id != next.user?.id) {
+        state = const BodyProfileState();
+        if (next.isAuthenticated) {
+          loadProfile();
+        }
+      }
+    });
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      loadProfile();
+    }
   }
 
   Future<void> loadProfile() async {
@@ -316,7 +356,7 @@ class BodyProfileNotifier extends StateNotifier<BodyProfileState> {
 final bodyProfileProvider =
     StateNotifierProvider<BodyProfileNotifier, BodyProfileState>((ref) {
   final repo = ref.watch(profileRepositoryProvider);
-  return BodyProfileNotifier(repo);
+  return BodyProfileNotifier(repo, ref);
 });
 
 
@@ -350,9 +390,22 @@ class WalletState {
 
 class WalletNotifier extends StateNotifier<WalletState> {
   final ProfileRepository _repository;
+  final Ref _ref;
 
-  WalletNotifier(this._repository) : super(const WalletState()) {
-    loadWallet();
+  WalletNotifier(this._repository, this._ref) : super(const WalletState()) {
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        state = const WalletState();
+      } else if (previous?.user?.id != next.user?.id) {
+        state = const WalletState();
+        if (next.isAuthenticated) {
+          loadWallet();
+        }
+      }
+    });
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      loadWallet();
+    }
   }
 
   Future<void> loadWallet() async {
@@ -368,7 +421,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
 
 final walletProvider = StateNotifierProvider<WalletNotifier, WalletState>((ref) {
   final repo = ref.watch(profileRepositoryProvider);
-  return WalletNotifier(repo);
+  return WalletNotifier(repo, ref);
 });
 
 final walletStatementsProvider = FutureProvider.autoDispose<List<WalletStatementModel>>((ref) async {

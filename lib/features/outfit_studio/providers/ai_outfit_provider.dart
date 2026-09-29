@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/outfit_repository.dart';
 import '../models/outfit_models.dart';
+import '../../auth/providers/auth_provider.dart';
 
 final outfitRepositoryProvider = Provider<OutfitRepository>((ref) {
   return OutfitRepository();
@@ -58,8 +59,15 @@ class AIOutfitState {
 
 class AIOutfitNotifier extends StateNotifier<AIOutfitState> {
   final OutfitRepository _repository;
+  final Ref? _ref;
 
-  AIOutfitNotifier(this._repository) : super(const AIOutfitState());
+  AIOutfitNotifier(this._repository, [this._ref]) : super(const AIOutfitState()) {
+    _ref?.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated || previous?.user?.id != next.user?.id) {
+        state = const AIOutfitState();
+      }
+    });
+  }
 
   void setOccasion(String occasion) => state = state.copyWith(selectedOccasion: occasion);
   void setStyle(String style) => state = state.copyWith(selectedStyle: style);
@@ -134,5 +142,5 @@ class AIOutfitNotifier extends StateNotifier<AIOutfitState> {
 
 final aiOutfitProvider = StateNotifierProvider<AIOutfitNotifier, AIOutfitState>((ref) {
   final repo = ref.watch(outfitRepositoryProvider);
-  return AIOutfitNotifier(repo);
+  return AIOutfitNotifier(repo, ref);
 });

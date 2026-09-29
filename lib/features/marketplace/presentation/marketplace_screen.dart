@@ -13,7 +13,14 @@ class MarketplaceScreen extends ConsumerStatefulWidget {
 }
 
 class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
-  final List<String> _categories = ['All', 'Outerwear', 'Knitwear', 'Tailoring', 'Footwear'];
+  // Giữ value tiếng Anh để gửi BE; chỉ đổi nhãn hiển thị sang tiếng Việt (FR-017).
+  static const Map<String, String> _categoryLabels = {
+    'All': 'Tất cả',
+    'Outerwear': 'Áo khoác',
+    'Knitwear': 'Áo len',
+    'Tailoring': 'May đo',
+    'Footwear': 'Giày dép',
+  };
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -56,7 +63,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                                   ref.read(marketplaceProvider.notifier).setSearchQuery(val);
                                 },
                                 decoration: const InputDecoration(
-                                  hintText: 'Search curate pieces, brands...',
+                                  hintText: 'Tìm sản phẩm, thương hiệu...',
                                   hintStyle: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                                   border: InputBorder.none,
                                   isDense: true,
@@ -90,15 +97,16 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _categories.length,
+                  itemCount: _categoryLabels.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 8),
                   itemBuilder: (context, index) {
-                    final cat = _categories[index];
+                    final cat = _categoryLabels.keys.elementAt(index);
+                    final label = _categoryLabels[cat]!;
                     final isSelected = marketState.selectedCategory == cat;
 
                     return ChoiceChip(
                       selected: isSelected,
-                      label: Text(cat),
+                      label: Text(label),
                       selectedColor: AppColors.accentSand,
                       backgroundColor: AppColors.surfaceSubtle,
                       labelStyle: TextStyle(
@@ -133,7 +141,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
                       const SizedBox(height: 12),
                       ElevatedButton(
                         onPressed: () => ref.read(marketplaceProvider.notifier).loadProducts(),
-                        child: const Text('Retry'),
+                        child: const Text('Thử lại'),
                       ),
                     ],
                   ),
@@ -142,7 +150,7 @@ class _MarketplaceScreenState extends ConsumerState<MarketplaceScreen> {
             else if (marketState.products.isEmpty)
               const SliverFillRemaining(
                 child: Center(
-                  child: Text('No curated items found.', style: TextStyle(color: AppColors.textSecondary)),
+                  child: Text('Chưa có sản phẩm nào.', style: TextStyle(color: AppColors.textSecondary)),
                 ),
               )
             else

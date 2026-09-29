@@ -40,6 +40,8 @@ class FashionItemModel {
   final String? description;
   final String? brandName;
   final CategoryModel? category;
+  final String? reviewReason;
+  final String? processingErrorReason;
 
   const FashionItemModel({
     required this.id,
@@ -54,6 +56,8 @@ class FashionItemModel {
     this.description,
     this.brandName,
     this.category,
+    this.reviewReason,
+    this.processingErrorReason,
   });
 
   factory FashionItemModel.fromJson(Map<String, dynamic> json) {
@@ -75,6 +79,9 @@ class FashionItemModel {
       description: json['description'],
       brandName: brand ?? json['brandName'] ?? json['brand_name'],
       category: json['category'] != null ? CategoryModel.fromJson(json['category']) : null,
+      reviewReason: json['reviewReason']?.toString() ?? json['review_reason']?.toString(),
+      processingErrorReason:
+          json['processingErrorReason']?.toString() ?? json['processing_error_reason']?.toString(),
     );
   }
 
@@ -91,6 +98,8 @@ class FashionItemModel {
     String? description,
     String? brandName,
     CategoryModel? category,
+    String? reviewReason,
+    String? processingErrorReason,
   }) {
     return FashionItemModel(
       id: id ?? this.id,
@@ -105,6 +114,8 @@ class FashionItemModel {
       description: description ?? this.description,
       brandName: brandName ?? this.brandName,
       category: category ?? this.category,
+      reviewReason: reviewReason ?? this.reviewReason,
+      processingErrorReason: processingErrorReason ?? this.processingErrorReason,
     );
   }
 }
@@ -140,6 +151,9 @@ class WardrobeItemModel {
   bool get isInWardrobe => status == 0;
   bool get isSelling => status == 1;
   bool get isSold => status == 2;
+
+  String? get reviewReason => fashionItem?.reviewReason;
+  String? get processingErrorReason => fashionItem?.processingErrorReason;
 
   String get displayTitle {
     if (isProcessing) {
@@ -339,6 +353,8 @@ class UploadSignatureModel {
   final String? publicId;
   final String signature;
   final int timestamp;
+  final String? resourceType;
+  final String? allowedFormats;
 
   const UploadSignatureModel({
     required this.apiKey,
@@ -346,6 +362,8 @@ class UploadSignatureModel {
     this.publicId,
     required this.signature,
     required this.timestamp,
+    this.resourceType,
+    this.allowedFormats,
   });
 
   factory UploadSignatureModel.fromJson(Map<String, dynamic> json) {
@@ -358,6 +376,8 @@ class UploadSignatureModel {
       timestamp: data['timestamp'] is int
           ? data['timestamp']
           : int.tryParse(data['timestamp']?.toString() ?? '0') ?? 0,
+      resourceType: data['resourceType']?.toString() ?? data['resource_type']?.toString(),
+      allowedFormats: data['allowedFormats']?.toString() ?? data['allowed_formats']?.toString(),
     );
   }
 }

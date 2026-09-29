@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_wardrobe/shared/widgets/scaffold_with_nav_bar.dart';
+import 'package:smart_wardrobe/core/router/app_router.dart';
 
 GoRouter _createTestRouter({int initialIndex = 0}) {
+  const locations = <String>[
+    '/wardrobe',
+    '/community',
+    '/studio',
+    '/stylist',
+    '/profile',
+  ];
   return GoRouter(
-    initialLocation: initialIndex == 0
-        ? '/home'
-        : initialIndex == 1
-            ? '/wardrobe'
-            : initialIndex == 2
-                ? '/studio'
-                : initialIndex == 3
-                    ? '/stylist'
-                    : '/profile',
+    initialLocation: locations[initialIndex],
     routes: [
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -23,16 +23,18 @@ GoRouter _createTestRouter({int initialIndex = 0}) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/home',
-                builder: (context, state) => const Scaffold(body: Text('Home Page')),
+                path: '/wardrobe',
+                builder: (context, state) =>
+                    const Scaffold(body: Text('Wardrobe Page')),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/wardrobe',
-                builder: (context, state) => const Scaffold(body: Text('Wardrobe Page')),
+                path: '/community',
+                builder: (context, state) =>
+                    const Scaffold(body: Text('Community Page')),
               ),
             ],
           ),
@@ -40,7 +42,8 @@ GoRouter _createTestRouter({int initialIndex = 0}) {
             routes: [
               GoRoute(
                 path: '/studio',
-                builder: (context, state) => const Scaffold(body: Text('AI Outfit Page')),
+                builder: (context, state) =>
+                    const Scaffold(body: Text('AI Outfit Page')),
               ),
             ],
           ),
@@ -48,7 +51,8 @@ GoRouter _createTestRouter({int initialIndex = 0}) {
             routes: [
               GoRoute(
                 path: '/stylist',
-                builder: (context, state) => const Scaffold(body: Text('AI Chat Page')),
+                builder: (context, state) =>
+                    const Scaffold(body: Text('Stylist Page')),
               ),
             ],
           ),
@@ -56,7 +60,8 @@ GoRouter _createTestRouter({int initialIndex = 0}) {
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (context, state) => const Scaffold(body: Text('Profile Page')),
+                builder: (context, state) =>
+                    const Scaffold(body: Text('Profile Page')),
               ),
             ],
           ),
@@ -68,96 +73,87 @@ GoRouter _createTestRouter({int initialIndex = 0}) {
 
 void main() {
   group('ScaffoldWithNavBar Tests', () {
-    testWidgets('renders all 5 tabs matching Image 2 and Home is initially selected', (tester) async {
+    testWidgets('renders 5 tabs with Wardrobe initially selected (spec 012)',
+        (tester) async {
       final router = _createTestRouter(initialIndex: 0);
 
-      await tester.pumpWidget(
-        MaterialApp.router(
-          routerConfig: router,
-        ),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
 
-      // Verify all 5 tab labels exist according to Image 2
-      expect(find.text('Home'), findsOneWidget);
-      expect(find.text('Wardrobe'), findsOneWidget);
-      expect(find.text('AI Outfit'), findsOneWidget);
-      expect(find.text('AI Chat'), findsOneWidget);
-      expect(find.text('Profile'), findsOneWidget);
+      // 5 nhãn tab theo spec 012: Tủ đồ, Cộng đồng, Phối đồ AI, Stylist AI, Hồ sơ.
+      expect(find.text('Tủ đồ'), findsOneWidget);
+      expect(find.text('Cộng đồng'), findsOneWidget);
+      expect(find.text('Phối đồ AI'), findsOneWidget);
+      expect(find.text('Stylist AI'), findsOneWidget);
+      expect(find.text('Hồ sơ'), findsOneWidget);
+      // Home đã ẩn hoàn toàn.
+      expect(find.text('Home'), findsNothing);
+      expect(find.text('Wardrobe'), findsNothing);
 
-      // Verify body content of branch 0 (Home Page)
-      expect(find.text('Home Page'), findsOneWidget);
+      // Body của branch 0.
+      expect(find.text('Wardrobe Page'), findsOneWidget);
 
-      // When Home is active (index 0), Home icon is active
-      expect(find.byIcon(Icons.home_rounded), findsOneWidget);
-      // Center hero AI Outfit has sparkle star icon
+      // Wardrobe active -> icon đặc; Community inactive -> icon outline.
+      expect(find.byIcon(Icons.checkroom_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.public_outlined), findsOneWidget);
+      // Center hero AI Outfit có icon ngôi sao.
       expect(find.byIcon(Icons.auto_awesome_rounded), findsOneWidget);
-      // Wardrobe is inactive, shows checkroom_outlined
-      expect(find.byIcon(Icons.checkroom_outlined), findsOneWidget);
-      // AI Chat is inactive, shows chat_bubble_outline_rounded
-      expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsOneWidget);
     });
 
-    testWidgets('active center AI Outfit tab displays active state and body', (tester) async {
+    testWidgets('active center AI Outfit tab displays active state and body',
+        (tester) async {
       final router = _createTestRouter(initialIndex: 2);
 
-      await tester.pumpWidget(
-        MaterialApp.router(
-          routerConfig: router,
-        ),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
 
-      // Verify body content of branch 2 (AI Outfit Page)
       expect(find.text('AI Outfit Page'), findsOneWidget);
-
-      // Center hero button shows auto_awesome_rounded
       expect(find.byIcon(Icons.auto_awesome_rounded), findsOneWidget);
-      // Home is inactive, shows home_outlined
-      expect(find.byIcon(Icons.home_outlined), findsOneWidget);
+      // Wardrobe inactive -> outline.
+      expect(find.byIcon(Icons.checkroom_outlined), findsOneWidget);
     });
 
-    testWidgets('tapping tabs navigates to correct branch and updates UI', (tester) async {
+    testWidgets('tapping tabs navigates to correct branch and updates UI',
+        (tester) async {
       final router = _createTestRouter(initialIndex: 0);
 
-      await tester.pumpWidget(
-        MaterialApp.router(
-          routerConfig: router,
-        ),
-      );
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
 
-      // Initially on Home Page
-      expect(find.text('Home Page'), findsOneWidget);
-
-      // Tap Wardrobe (Tab 1)
-      await tester.tap(find.text('Wardrobe'));
-      await tester.pumpAndSettle();
       expect(find.text('Wardrobe Page'), findsOneWidget);
-      expect(find.byIcon(Icons.checkroom_rounded), findsOneWidget);
 
-      // Tap AI Outfit (Center Hero Tab 2)
-      await tester.tap(find.text('AI Outfit'));
+      // Community (Tab 1)
+      await tester.tap(find.text('Cộng đồng'));
+      await tester.pumpAndSettle();
+      expect(find.text('Community Page'), findsOneWidget);
+      expect(find.byIcon(Icons.public), findsOneWidget);
+
+      // AI Outfit (Center Hero Tab 2)
+      await tester.tap(find.text('Phối đồ AI'));
       await tester.pumpAndSettle();
       expect(find.text('AI Outfit Page'), findsOneWidget);
       expect(find.byIcon(Icons.auto_awesome_rounded), findsOneWidget);
 
-      // Tap AI Chat (Tab 3)
-      await tester.tap(find.text('AI Chat'));
+      // Stylist AI (Tab 3)
+      await tester.tap(find.text('Stylist AI'));
       await tester.pumpAndSettle();
-      expect(find.text('AI Chat Page'), findsOneWidget);
+      expect(find.text('Stylist Page'), findsOneWidget);
       expect(find.byIcon(Icons.chat_bubble_rounded), findsOneWidget);
 
-      // Tap Profile (Tab 4)
-      await tester.tap(find.text('Profile'));
+      // Hồ sơ (Tab 4)
+      await tester.tap(find.text('Hồ sơ'));
       await tester.pumpAndSettle();
       expect(find.text('Profile Page'), findsOneWidget);
       expect(find.byIcon(Icons.person_rounded), findsOneWidget);
 
-      // Tap Home back (Tab 0)
-      await tester.tap(find.text('Home'));
+      // Quay lại Tủ đồ (Tab 0)
+      await tester.tap(find.text('Tủ đồ'));
       await tester.pumpAndSettle();
-      expect(find.text('Home Page'), findsOneWidget);
+      expect(find.text('Wardrobe Page'), findsOneWidget);
+    });
+
+    test('kPostLoginRoute defaults to /wardrobe (spec 013)', () {
+      expect(kPostLoginRoute, equals('/wardrobe'));
     });
   });
 }

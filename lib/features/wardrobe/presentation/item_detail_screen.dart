@@ -1,11 +1,13 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/wardrobe_models.dart';
 import '../providers/wardrobe_provider.dart';
+import '../utils/analysis_status.dart';
 import 'item_edit_screen.dart';
 
 class ItemDetailScreen extends ConsumerStatefulWidget {
@@ -24,11 +26,47 @@ class ItemDetailScreen extends ConsumerStatefulWidget {
 
 class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
   WardrobeItemModel? _currentItem;
+  String? _selectedReviewCategoryId;
+  bool _isActionSubmitting = false;
 
   @override
   void initState() {
     super.initState();
     _currentItem = widget.initialItem;
+  }
+
+  Future<void> _submitReviewCategory(WardrobeItemModel item) async {
+    if (_selectedReviewCategoryId == null) return;
+    setState(() => _isActionSubmitting = true);
+    final success = await ref.read(wardrobeProvider.notifier).submitNeedsReview(
+          id: item.id,
+          categoryId: _selectedReviewCategoryId!,
+        );
+    if (!mounted) return;
+    setState(() => _isActionSubmitting = false);
+    if (success) {
+      ClosyToast.success(context, 'Đã gửi yêu cầu phân tích lại với danh mục đã chọn.');
+      ref.invalidate(wardrobeItemDetailProvider(widget.itemId));
+    } else {
+      final err = ref.read(wardrobeProvider).errorMessage ?? 'Không thể gửi yêu cầu.';
+      ClosyToast.error(context, err);
+    }
+  }
+
+  Future<void> _retryFailed(WardrobeItemModel item) async {
+    setState(() => _isActionSubmitting = true);
+    final success = await ref.read(wardrobeProvider.notifier).retryFailedAnalysis(
+          id: item.id,
+        );
+    if (!mounted) return;
+    setState(() => _isActionSubmitting = false);
+    if (success) {
+      ClosyToast.success(context, 'Đang tiến hành phân tích lại...');
+      ref.invalidate(wardrobeItemDetailProvider(widget.itemId));
+    } else {
+      final err = ref.read(wardrobeProvider).errorMessage ?? 'Không thể thử lại.';
+      ClosyToast.error(context, err);
+    }
   }
 
   Color _parseColorHex(String? hexString) {
@@ -78,20 +116,10 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               if (!mounted) return;
 
               if (success) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Đã xóa món đồ khỏi tủ đồ thành công.'),
-                    backgroundColor: AppColors.primary,
-                  ),
-                );
+                ClosyToast.success(context, 'Đã xóa món đồ khỏi tủ đồ thành công.');
                 context.pop();
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Không thể xóa món đồ. Vui lòng thử lại sau.'),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
+                ClosyToast.error(context, 'Không thể xóa món đồ. Vui lòng thử lại sau.');
               }
             },
             child: const Text('Xóa'),
@@ -178,6 +206,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
     final fItem = item.fashionItem;
     final colorHex = fItem?.colorHex;
     final parsedColor = _parseColorHex(colorHex);
+    final statusInfo = getAnalysisStatusInfo(item);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -292,7 +321,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                               border: Border.all(color: AppColors.border, width: 0.6),
                             ),
                             child: Text(
-                              item.statusLabel,
+                              statusInfo.badgeLabel,
                               style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -335,6 +364,8 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                           ),
                         ),
                       ],
+
+                      _buildAnalysisStatusSection(context, item, statusInfo),
 
                       const SizedBox(height: 24),
                       const Divider(color: AppColors.border, height: 1),
@@ -392,7 +423,7 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                           _buildAttributeTile(
                             icon: Icons.accessibility_new_outlined,
                             label: 'Kiểu dáng (Fit)',
-                            value: fItem?.fit ?? 'Regular Fit',
+                            value: fItem?.fit ?? 'Vừa vặn',
                           ),
                           _buildAttributeTile(
                             icon: Icons.wb_sunny_outlined,
@@ -468,9 +499,11 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
                     Expanded(
                       flex: 3,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          context.push('/studio');
-                        },
+                        onPressed: (item.isProcessing || item.needsReview || item.isFailed)
+                            ? null
+                            : () {
+                                context.push('/studio');
+                              },
                         icon: const Icon(Icons.auto_awesome_rounded, size: 18),
                         label: const Text('Phối đồ Studio'),
                         style: ElevatedButton.styleFrom(
@@ -483,6 +516,202 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalysisStatusSection(
+    BuildContext context,
+    WardrobeItemModel item,
+    AnalysisStatusInfo statusInfo,
+  ) {
+    if (!item.isProcessing && !item.needsReview && !item.isFailed) {
+      return const SizedBox.shrink();
+    }
+
+    final isRetrying = ref.watch(wardrobeProvider.notifier).isItemRetrying(item.id) || _isActionSubmitting;
+
+    Color bg;
+    Color border;
+    Color iconColor;
+    IconData iconData;
+
+    if (item.isProcessing) {
+      bg = const Color(0xFFF7F5F0);
+      border = const Color(0xFFE8E3DC);
+      iconColor = AppColors.primary;
+      iconData = Icons.auto_awesome;
+    } else if (item.needsReview) {
+      bg = const Color(0xFFFAF6EB);
+      border = const Color(0xFFE5DAC8);
+      iconColor = const Color(0xFF9E7B3B);
+      iconData = Icons.help_outline_rounded;
+    } else if (statusInfo.isInvalidImage) {
+      bg = const Color(0xFFFDF2F0);
+      border = const Color(0xFFE8C8C4);
+      iconColor = const Color(0xFFB04A4A);
+      iconData = Icons.warning_amber_rounded;
+    } else {
+      bg = const Color(0xFFFAF6EB);
+      border = const Color(0xFFE5DAC8);
+      iconColor = const Color(0xFF9E7B3B);
+      iconData = Icons.error_outline_rounded;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (item.isProcessing)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                )
+              else
+                Icon(iconData, size: 20, color: iconColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  statusInfo.badgeLabel,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: iconColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            statusInfo.detailMessage,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+              height: 1.45,
+            ),
+          ),
+          if (statusInfo.suggestion != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              statusInfo.suggestion!,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+          if (item.needsReview) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Chọn danh mục trang phục:',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ref.watch(categoriesProvider).when(
+                  data: (categories) {
+                    _selectedReviewCategoryId ??=
+                        item.category?.id ?? item.fashionItem?.category?.id;
+                    return DropdownButtonFormField<String>(
+                      value: categories.any((c) => c.id == _selectedReviewCategoryId)
+                          ? _selectedReviewCategoryId
+                          : null,
+                      decoration: InputDecoration(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      hint: const Text('Chọn một danh mục', style: TextStyle(fontSize: 13)),
+                      items: categories
+                          .map((cat) => DropdownMenuItem(
+                                value: cat.id,
+                                child: Text(cat.name, style: const TextStyle(fontSize: 13)),
+                              ))
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() => _selectedReviewCategoryId = val);
+                      },
+                    );
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    ),
+                  ),
+                  error: (_, __) => const Text(
+                    'Không thể tải danh sách danh mục.',
+                    style: TextStyle(fontSize: 12, color: Colors.redAccent),
+                  ),
+                ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: (isRetrying || _selectedReviewCategoryId == null)
+                    ? null
+                    : () => _submitReviewCategory(item),
+                icon: isRetrying
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(isRetrying ? 'Đang gửi...' : 'Gửi phân tích lại'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ] else if (item.isFailed && statusInfo.canRetry) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: isRetrying ? null : () => _retryFailed(item),
+                icon: isRetrying
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      )
+                    : const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(isRetrying ? 'Đang gửi...' : 'Thử lại phân tích'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

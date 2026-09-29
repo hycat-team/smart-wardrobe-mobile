@@ -6,9 +6,9 @@ import 'package:smart_wardrobe/features/auth/presentation/login_screen.dart';
 import 'package:smart_wardrobe/features/auth/presentation/register_screen.dart';
 import 'package:smart_wardrobe/features/auth/presentation/preferences_screen.dart';
 import 'package:smart_wardrobe/features/auth/presentation/forgot_password_screen.dart';
+import 'package:smart_wardrobe/features/auth/presentation/auth_callback_screen.dart';
 import 'package:smart_wardrobe/features/auth/providers/auth_provider.dart';
 import 'package:smart_wardrobe/features/onboarding/presentation/onboarding_screen.dart';
-import 'package:smart_wardrobe/features/home/presentation/home_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/wardrobe_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/item_detail_screen.dart';
 import 'package:smart_wardrobe/features/wardrobe/presentation/system_catalog_screen.dart';
@@ -30,8 +30,13 @@ import 'package:smart_wardrobe/features/profile/presentation/payment_waiting_scr
 import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
 import 'package:smart_wardrobe/core/config/release_flags.dart';
 import 'package:smart_wardrobe/features/profile/presentation/widgets/web_guidance_card.dart';
+import 'package:smart_wardrobe/features/community/presentation/community_feed_screen.dart';
+import 'package:smart_wardrobe/features/community/presentation/post_detail_screen.dart';
+import 'package:smart_wardrobe/features/community/presentation/post_composer_screen.dart';
+import 'package:smart_wardrobe/features/community/presentation/public_profile_screen.dart';
+import 'package:smart_wardrobe/features/community/presentation/community_search_screen.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class AppRouterNotifier extends ChangeNotifier {
   final Ref _ref;
@@ -57,19 +62,25 @@ final appRouterNotifierProvider = Provider<AppRouterNotifier>((ref) {
 /// rơi về home làm mất thông báo kết quả.
 final pendingRedirectProvider = StateProvider<String?>((ref) => null);
 
+/// Đích mặc định sau khi đăng nhập thành công (khi không có pendingRedirect).
+/// Dùng chung cho mọi luồng đăng nhập (mật khẩu, Google mobile/web).
+/// Spec 013: Mặc định vào tủ đồ (/wardrobe).
+const String kPostLoginRoute = '/wardrobe';
+
 bool _isAuthPath(String location) {
   final path = Uri.tryParse(location)?.path ?? location;
   return path == '/login' ||
       path == '/auth/register' ||
       path == '/auth/forgot-password' ||
-      path == '/auth/preferences';
+      path == '/auth/preferences' ||
+      path == '/auth/callback';
 }
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = ref.watch(appRouterNotifierProvider);
 
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     refreshListenable: notifier,
     initialLocation: '/login',
     redirect: (context, state) {
@@ -80,27 +91,44 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isAuthPage = path == '/login' ||
           path == '/auth/register' ||
           path == '/auth/forgot-password' ||
-          path == '/auth/preferences';
+          path == '/auth/preferences' ||
+          path == '/auth/callback';
 
-      // 1. Chưa đăng nhập mà vào bất kỳ trang nào khác trang auth -> giữ lại
+      final isPublicCommunityPage = path == '/community' ||
+          path == '/community/search' ||
+          path.startsWith('/community/posts/') ||
+          path.startsWith('/users/');
+
+      // 1. Chưa đăng nhập mà vào bất kỳ trang nào khác trang auth/public community -> giữ lại
       // đích đến (kẻo deep-link kết quả thanh toán bị mất) rồi về /login.
-      if (!isAuth && !isAuthPage) {
-        ref.read(pendingRedirectProvider.notifier).state =
-            state.uri.toString();
+      if (!isAuth && !isAuthPage && !isPublicCommunityPage) {
+        final destination = state.uri.toString();
+        // KHÔNG ghi provider trực tiếp trong `redirect`: callback này chạy
+        // khi widget tree đang build, ghi StateProvider sẽ làm Riverpod throw
+        // "Tried to modify a provider while the widget tree was building".
+        // Hẹn sang microtask để áp dụng sau khi build xong.
+        Future.microtask(() {
+          ref.read(pendingRedirectProvider.notifier).state = destination;
+        });
         return '/login';
       }
 
       // 2. Đã đăng nhập mà đang ở trang auth -> quay lại đích đến đã giữ,
-      // không có thì vào trang chính /wardrobe như cũ.
+      // không có thì vào trang chính /home như cũ.
       if (isAuth && isAuthPage) {
-        final pending = ref.read(pendingRedirectProvider.notifier).state;
-        ref.read(pendingRedirectProvider.notifier).state = null;
+        final pending = ref.read(pendingRedirectProvider);
+        if (pending != null) {
+          // Xoá pending cũng phải hoãn khỏi lúc build (cùng lý do trên).
+          Future.microtask(() {
+            ref.read(pendingRedirectProvider.notifier).state = null;
+          });
+        }
         if (pending != null &&
             pending.isNotEmpty &&
             !_isAuthPath(pending)) {
           return pending;
         }
-        return '/home';
+        return kPostLoginRoute;
       }
 
       return null;
@@ -108,7 +136,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/',
-        redirect: (context, state) => '/home',
+        redirect: (context, state) => '/community',
+      ),
+      GoRoute(
+        // Home đã ẩn khỏi thanh điều hướng (spec 012) — deep-link cũ về Community.
+        path: '/home',
+        redirect: (context, state) => '/community',
       ),
       GoRoute(
         path: '/login',
@@ -127,6 +160,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
+        // Callback luồng đăng nhập Google web (BE redirect về đây kèm cookie).
+        path: '/auth/callback',
+        builder: (context, state) => const AuthCallbackScreen(),
+      ),
+      GoRoute(
         path: '/onboarding',
         builder: (context, state) => const OnboardingScreen(),
       ),
@@ -137,6 +175,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/my-outfits',
         redirect: (context, state) => '/outfits',
+      ),
+      GoRoute(
+        path: '/community/posts/:publicId',
+        builder: (context, state) {
+          final publicId = state.pathParameters['publicId'] ?? '';
+          final autoFocusComment = state.uri.queryParameters['focus'] == 'comment';
+          return PostDetailScreen(
+            publicId: publicId,
+            autoFocusComment: autoFocusComment,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/community/create',
+        builder: (context, state) {
+          final editId = state.uri.queryParameters['editId'];
+          return PostComposerScreen(editPublicId: editId);
+        },
+      ),
+      GoRoute(
+        path: '/community/search',
+        builder: (context, state) => const CommunitySearchScreen(),
+      ),
+      GoRoute(
+        path: '/users/:username',
+        builder: (context, state) {
+          final username = state.pathParameters['username'] ?? '';
+          return PublicProfileScreen(username: username);
+        },
       ),
       GoRoute(
         path: '/wardrobe/item/:id',
@@ -177,22 +244,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const PrivacyPolicyScreen(),
       ),
       GoRoute(
+        // Số dư + lịch sử giao dịch: chỉ đọc, không thu tiền trong app →
+        // mở được ở mọi bản build (kể cả bản Play ẩn trả phí).
         path: '/profile/wallet',
-        // Chặn ở bản phát hành Play khi trả phí bị ẩn (spec 008, FR-021).
-        redirect: (context, state) =>
-            ReleaseFlags.enablePaidFeatures ? null : '/profile',
         builder: (context, state) => const WalletDetailScreen(),
       ),
       GoRoute(
+        // Danh sách gói + quyền lợi: chỉ đọc. Nâng cấp thực hiện trên web.
         path: '/profile/subscription',
-        redirect: (context, state) =>
-            ReleaseFlags.enablePaidFeatures ? null : '/profile',
         builder: (context, state) => const SubscriptionDetailScreen(),
       ),
       GoRoute(
+        // Bảng so sánh gói + hướng dẫn nâng cấp trên web: chỉ đọc.
         path: '/profile/subscription/upgrade',
-        redirect: (context, state) =>
-            ReleaseFlags.enablePaidFeatures ? null : '/profile',
         builder: (context, state) => const SubscriptionUpgradeScreen(),
       ),
       GoRoute(
@@ -219,16 +283,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return ScaffoldWithNavBar(navigationShell: navigationShell);
         },
         branches: [
-          // Branch 0: Tab "Home" -> Trang chủ tổng quan & gợi ý
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/home',
-                builder: (context, state) => const HomeScreen(),
-              ),
-            ],
-          ),
-          // Branch 1: Tab "Wardrobe" -> Tủ đồ số cá nhân
+          // Branch 0: Tab "Tủ đồ" -> Tủ đồ số cá nhân
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -237,7 +292,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 2: Tab "AI Outfit" (Center Hero) -> Outfit Studio & AI phối đồ
+          // Branch 1: Tab "Cộng đồng" -> Bảng tin cộng đồng
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/community',
+                builder: (context, state) => const CommunityFeedScreen(),
+              ),
+            ],
+          ),
+          // Branch 2: Tab "Phối đồ AI" (Center Hero) -> Outfit Studio & AI phối đồ
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -246,7 +310,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 3: Tab "AI Chat" -> AI Stylist Trò chuyện tư vấn
+          // Branch 3: Tab "Stylist AI" -> AI Stylist Trò chuyện tư vấn
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -255,7 +319,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 4: Tab "Profile" -> Tài khoản cá nhân, số đo & gói dịch vụ
+          // Branch 4: Tab "Hồ sơ" -> Tài khoản cá nhân, số đo & gói dịch vụ
           StatefulShellBranch(
             routes: [
               GoRoute(

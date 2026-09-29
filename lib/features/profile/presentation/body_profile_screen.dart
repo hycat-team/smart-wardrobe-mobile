@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/body_profile_models.dart';
 import '../providers/profile_provider.dart';
 
@@ -109,18 +110,11 @@ class _BodyProfileScreenState extends ConsumerState<BodyProfileScreen> {
     if (!mounted) return;
 
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã cập nhật hồ sơ số đo & dáng người thành công!'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đã cập nhật hồ sơ số đo & dáng người thành công!');
       Navigator.pop(context);
     } else {
       final error = ref.read(bodyProfileProvider).errorMessage ?? 'Không thể lưu hồ sơ';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.redAccent),
-      );
+      ClosyToast.error(context, error);
     }
   }
 

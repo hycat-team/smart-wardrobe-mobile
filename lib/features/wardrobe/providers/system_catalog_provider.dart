@@ -32,6 +32,11 @@ class SystemCatalogState {
   bool get hasMore => items.length < total;
   int get selectedCount => selectedIds.length;
 
+  /// Chỉ mẫu **có ảnh** mới hiển thị và chọn được (FR-009, FR-010).
+  /// Mẫu hệ thống thiếu ảnh (VD `imageUrl` rỗng) bị ẩn hoàn toàn.
+  List<WardrobeItemModel> get visibleItems =>
+      items.where((it) => it.displayImageUrl.isNotEmpty).toList();
+
   SystemCatalogState copyWith({
     bool? isLoading,
     bool? isLoadingMore,
@@ -131,6 +136,15 @@ class SystemCatalogNotifier extends StateNotifier<SystemCatalogState> {
   }
 
   void toggleSelect(String id) {
+    // Mẫu thiếu ảnh không hiển thị nên cũng không chọn được (FR-010).
+    WardrobeItemModel? target;
+    for (final it in state.items) {
+      if (it.id == id) {
+        target = it;
+        break;
+      }
+    }
+    if (target == null || target.displayImageUrl.isEmpty) return;
     // Mẫu đã có trong tủ thì không cho chọn (chống trùng).
     if (isInMyWardrobe(id)) return;
     final next = Set<String>.from(state.selectedIds);
@@ -151,7 +165,12 @@ class SystemCatalogNotifier extends StateNotifier<SystemCatalogState> {
   /// Thêm các mẫu đã chọn vào tủ cá nhân.
   /// Trả về số món đã tạo; thất bại ném Exception với message hiển thị được.
   Future<int> initSelected() async {
-    final ids = state.selectedIds.toList();
+    // Chỉ gửi các mẫu hợp lệ (có ảnh) — phòng trường hợp selection cũ còn sót.
+    final selectableIds = state.items
+        .where((it) => it.displayImageUrl.isNotEmpty)
+        .map((it) => it.id)
+        .toSet();
+    final ids = state.selectedIds.where(selectableIds.contains).toList();
     if (ids.isEmpty || state.isAdding) return 0;
     state = state.copyWith(isAdding: true, clearError: true);
     try {

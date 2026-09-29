@@ -128,6 +128,21 @@
       "sourceType": "local",
       "skillPath": ".agents/skills/speckit-analyze/SKILL.md"
     },
+    "speckit-bug-assess": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/speckit-bug-assess/SKILL.md"
+    },
+    "speckit-bug-fix": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/speckit-bug-fix/SKILL.md"
+    },
+    "speckit-bug-test": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/speckit-bug-test/SKILL.md"
+    },
     "speckit-checklist": {
       "source": "local",
       "sourceType": "local",

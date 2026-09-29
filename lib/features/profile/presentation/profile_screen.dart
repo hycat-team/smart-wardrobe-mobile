@@ -4,9 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/config/release_flags.dart';
 import '../../../shared/widgets/ai_quota_display.dart';
 import '../../../shared/widgets/closy_network_image.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../../auth/models/auth_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/user_profile_models.dart';
@@ -33,31 +33,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (picked != null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đang tải ảnh đại diện lên ...'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      ClosyToast.info(context, 'Đang tải ảnh đại diện lên ...');
 
       final success = await ref.read(userProfileProvider.notifier).uploadAvatar(picked);
       if (!mounted) return;
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cập nhật ảnh đại diện thành công!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
+        ClosyToast.success(context, 'Cập nhật ảnh đại diện thành công!');
       } else {
         final error = ref.read(userProfileProvider).errorMessage ?? 'Không thể tải ảnh đại diện';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
+        ClosyToast.error(context, error);
       }
     }
   }
@@ -131,7 +116,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final userProfileState = ref.watch(userProfileProvider);
     final subOverview = ref.watch(subscriptionOverviewProvider);
 
-    final user = userProfileState.user ?? authState.user;
+    final user = (userProfileState.user != null && userProfileState.user?.id == authState.user?.id)
+        ? userProfileState.user!
+        : authState.user;
     final isAuth = authState.isAuthenticated;
 
     final sub = subOverview.subscription;
@@ -356,7 +343,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _buildMenuSection(isAuth),
           const SizedBox(height: 24),
 
-          // 4. Logout Button
+          // 4. Chính sách bảo mật — đưa xuống cuối, ngay trên nút đăng xuất.
+          _buildMenuTile(
+            Icons.privacy_tip_outlined,
+            'Chính sách bảo mật',
+            'Cách Closy thu thập, sử dụng và bảo vệ dữ liệu của bạn',
+            () => context.push('/profile/privacy'),
+          ),
+          const SizedBox(height: 14),
+
+          // 5. Logout Button
           if (isAuth)
             OutlinedButton.icon(
               onPressed: _showLogoutConfirmDialog,
@@ -440,36 +436,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ],
               ),
-              // Ẩn điểm vào Gói hội viên ở bản phát hành Play (spec 008, FR-021).
-              if (ReleaseFlags.enablePaidFeatures)
-                InkWell(
-                  onTap: () => context.push('/profile/subscription'),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentSand,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Chi tiết',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+              // Xem các gói hội viên (đọc). Nâng cấp thực hiện trên web.
+              InkWell(
+                onTap: () => context.push('/profile/subscription'),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentSand,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Xem gói',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
-                        SizedBox(width: 2),
-                        Icon(Icons.arrow_forward_ios_rounded,
-                            size: 10, color: AppColors.primary),
-                      ],
-                    ),
+                      ),
+                      SizedBox(width: 2),
+                      Icon(Icons.arrow_forward_ios_rounded,
+                          size: 10, color: AppColors.primary),
+                    ],
                   ),
                 ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -548,20 +542,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Đổi mật khẩu tài khoản và quản lý đăng xuất',
           () => context.push('/profile/change-password'),
         ),
+        // Xem gói hội viên + hạn mức AI (đọc). Nâng cấp thực hiện trên web.
         _buildMenuTile(
-          Icons.privacy_tip_outlined,
-          'Chính sách bảo mật',
-          'Cách Closy thu thập, sử dụng và bảo vệ dữ liệu của bạn',
-          () => context.push('/profile/privacy'),
+          Icons.workspace_premium_outlined,
+          'Gói hội viên & Hạn mức AI',
+          'Xem quyền lợi, hạn mức và các gói dịch vụ nâng cấp',
+          () => context.push('/profile/subscription'),
         ),
-        // Ẩn điểm vào Gói hội viên ở bản phát hành Play (spec 008, FR-021).
-        if (ReleaseFlags.enablePaidFeatures)
-          _buildMenuTile(
-            Icons.workspace_premium_outlined,
-            'Gói hội viên & Hạn mức AI',
-            'Xem quyền lợi chi tiết và các gói dịch vụ nâng cấp',
-            () => context.push('/profile/subscription'),
-          ),
+        _buildMenuTile(
+          Icons.account_balance_wallet_outlined,
+          'Ví Closy Pay & Lịch sử giao dịch',
+          'Xem số dư khả dụng và toàn bộ giao dịch của bạn',
+          () => context.push('/profile/wallet'),
+        ),
         // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng hồ sơ số đo).
         /*
         _buildMenuTile(

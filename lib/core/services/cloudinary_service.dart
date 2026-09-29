@@ -20,10 +20,14 @@ String applyCloudinaryBackgroundRemoval(String? url) {
 class CloudinaryUploadResult {
   final String secureUrl;
   final String publicId;
+  final int? bytes;
+  final double? duration;
 
   const CloudinaryUploadResult({
     required this.secureUrl,
     required this.publicId,
+    this.bytes,
+    this.duration,
   });
 }
 
@@ -35,24 +39,36 @@ class CloudinaryService {
   Future<CloudinaryUploadResult> uploadImage({
     required XFile file,
     required UploadSignatureModel signature,
+    String? resourceType,
+    bool applyBgRemoval = true,
   }) async {
     final cloudName = AppConstants.cloudinaryCloudName;
-    final url = 'https://api.cloudinary.com/v1_1/$cloudName/image/upload';
+    final type = (resourceType ?? signature.resourceType ?? 'image').toLowerCase();
+    final url = 'https://api.cloudinary.com/v1_1/$cloudName/$type/upload';
 
-    final bytes = await file.readAsBytes();
-    final fileName = file.name.isNotEmpty ? file.name : 'upload.png';
+    final fileBytes = await file.readAsBytes();
+    final fileName = file.name.isNotEmpty
+        ? file.name
+        : (type == 'video' ? 'upload.mp4' : 'upload.png');
 
-    final formData = FormData.fromMap({
-      'file': MultipartFile.fromBytes(bytes, filename: fileName),
+    final formDataMap = <String, dynamic>{
+      'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
       'api_key': signature.apiKey,
       'timestamp': signature.timestamp.toString(),
       'signature': signature.signature,
       'folder': signature.folder,
-      if (signature.publicId != null && signature.publicId!.isNotEmpty) ...{
-        'public_id': signature.publicId,
-        'overwrite': 'true',
-      },
-    });
+    };
+
+    if (signature.allowedFormats != null && signature.allowedFormats!.isNotEmpty) {
+      formDataMap['allowed_formats'] = signature.allowedFormats!;
+    }
+
+    if (signature.publicId != null && signature.publicId!.isNotEmpty) {
+      formDataMap['public_id'] = signature.publicId;
+      formDataMap['overwrite'] = 'true';
+    }
+
+    final formData = FormData.fromMap(formDataMap);
 
     final response = await _dio.post(
       url,
@@ -65,19 +81,31 @@ class CloudinaryService {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = response.data;
+      final data = response.data is Map<String, dynamic>
+          ? response.data as Map<String, dynamic>
+          : Map<String, dynamic>.from(response.data as Map);
       final rawUrl = data['secure_url'] as String;
-      final publicId = data['public_id'] as String;
+      final publicId = (data['public_id'] ?? '').toString();
+      final resBytes = data['bytes'] is int
+          ? data['bytes'] as int
+          : int.tryParse(data['bytes']?.toString() ?? '');
+      final resDuration = data['duration'] != null
+          ? (data['duration'] as num).toDouble()
+          : null;
 
-      // Apply named transformation t_bg_remove matching web
-      final optimizedUrl = applyBackgroundRemoval(rawUrl);
+      // Apply named transformation t_bg_remove matching web only for wardrobe items when enabled
+      final finalUrl = (type == 'video' || !applyBgRemoval)
+          ? rawUrl
+          : applyBackgroundRemoval(rawUrl);
 
       return CloudinaryUploadResult(
-        secureUrl: optimizedUrl,
+        secureUrl: finalUrl,
         publicId: publicId,
+        bytes: resBytes ?? fileBytes.length,
+        duration: resDuration,
       );
     } else {
-      throw Exception('Failed to upload image to Cloudinary: ${response.statusMessage}');
+      throw Exception('Failed to upload $type to Cloudinary: ${response.statusMessage}');
     }
   }
 

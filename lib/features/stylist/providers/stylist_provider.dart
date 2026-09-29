@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/stylist_repository.dart';
 import '../models/stylist_models.dart';
+import '../../auth/providers/auth_provider.dart';
 
 final stylistRepositoryProvider = Provider<StylistRepository>((ref) {
   return StylistRepository();
@@ -50,9 +51,22 @@ class StylistState {
 
 class StylistNotifier extends StateNotifier<StylistState> {
   final StylistRepository _repository;
+  final Ref _ref;
 
-  StylistNotifier(this._repository) : super(const StylistState()) {
-    loadSessions();
+  StylistNotifier(this._repository, this._ref) : super(const StylistState()) {
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        state = const StylistState();
+      } else if (previous?.user?.id != next.user?.id) {
+        state = const StylistState();
+        if (next.isAuthenticated) {
+          loadSessions();
+        }
+      }
+    });
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      loadSessions();
+    }
   }
 
   /// Tải toàn bộ danh sách các phiên trò chuyện
@@ -301,5 +315,5 @@ class StylistNotifier extends StateNotifier<StylistState> {
 
 final stylistProvider = StateNotifierProvider<StylistNotifier, StylistState>((ref) {
   final repo = ref.watch(stylistRepositoryProvider);
-  return StylistNotifier(repo);
+  return StylistNotifier(repo, ref);
 });

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../models/auth_models.dart';
@@ -179,22 +180,187 @@ class AuthRepository {
     }
   }
 
+  Future<GoogleSignInOutcome> loginWithGoogle(
+    String idToken, {
+    String? deviceName,
+  }) async {
+    if (idToken.trim().isEmpty) {
+      return GoogleSignInOutcome.cancelled();
+    }
+
+    final devName = deviceName ?? (kIsWeb ? 'Web' : 'Android');
+    try {
+      final response = await _apiClient.dio.post(
+        AppConstants.googleAuthEndpoint,
+        data: GoogleLoginRequest(
+          idToken: idToken,
+          deviceName: devName,
+        ).toJson(),
+        options: Options(
+          headers: {
+            if (!kIsWeb) 'Accept-Encoding': 'identity',
+          },
+        ),
+      );
+
+      final data = _parseResponseData(response.data);
+      String? token;
+      String? refreshToken;
+
+      if (data != null) {
+        final nestedData = _parseResponseData(data['data']) ?? data;
+        token = nestedData['accessToken']?.toString() ??
+            nestedData['token']?.toString() ??
+            nestedData['access_token']?.toString();
+        refreshToken = nestedData['refreshToken']?.toString() ??
+            nestedData['refresh_token']?.toString();
+      }
+
+      if (token == null || token.isEmpty || token.split('.').length != 3) {
+        await _storage.clearAll();
+        return GoogleSignInOutcome.failed(
+          errorCode: AuthErrorCode.invalidToken,
+          customMessage: 'Phiên Google không hợp lệ, thử đăng nhập lại.',
+        );
+      }
+
+      await _storage.saveToken(token);
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await _storage.saveRefreshToken(refreshToken);
+      }
+
+      final message = data?['message']?.toString();
+      final nested = _parseResponseData(data?['data']) ?? data ?? {};
+      final isLinked = nested['isLinked'] == true ||
+          nested['linkedExistingAccount'] == true ||
+          (message != null &&
+              (message.toLowerCase().contains('liên kết') ||
+                  message.toLowerCase().contains('linked')));
+
+      return GoogleSignInOutcome.succeeded(
+        linkedExistingAccount: isLinked,
+        message: message,
+      );
+    } on DioException catch (e) {
+      await _storage.clearAll();
+      final statusCode = e.response?.statusCode;
+      final rawData = _parseResponseData(e.response?.data);
+      final rawError = rawData?['error']?.toString();
+      final message = rawData?['message']?.toString() ??
+          rawData?['detail']?.toString() ??
+          (e.type == DioExceptionType.connectionError
+              ? 'Không thể kết nối đến máy chủ.'
+              : null);
+
+      final errorCode = AuthErrorCode.fromErrorAndStatus(
+        rawError: rawError,
+        statusCode: statusCode,
+        message: message,
+      );
+
+      return GoogleSignInOutcome.failed(
+        errorCode: errorCode,
+        customMessage: message ?? errorCode.defaultMessage,
+      );
+    } catch (e) {
+      await _storage.clearAll();
+      return GoogleSignInOutcome.failed(
+        errorCode: AuthErrorCode.serverError,
+        customMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  Future<AuthTokenResponse> refreshSession(
+    String oldRefreshToken, {
+    String? deviceName,
+  }) async {
+    final devName = deviceName ?? (kIsWeb ? 'Web' : 'Android');
+    final response = await _apiClient.dio.post(
+      AppConstants.refreshTokenEndpoint,
+      data: RefreshTokenRequest(
+        oldRefreshToken: oldRefreshToken,
+        deviceName: devName,
+      ).toJson(),
+      options: Options(
+        headers: {
+          if (!kIsWeb) 'Accept-Encoding': 'identity',
+        },
+      ),
+    );
+
+    final data = _parseResponseData(response.data);
+    final nestedData = _parseResponseData(data?['data']) ?? data ?? {};
+    final token = nestedData['accessToken']?.toString() ??
+        nestedData['token']?.toString() ??
+        nestedData['access_token']?.toString();
+    final refreshToken = nestedData['refreshToken']?.toString() ??
+        nestedData['refresh_token']?.toString();
+
+    if (token == null || token.isEmpty || token.split('.').length != 3) {
+      throw Exception('Làm mới phiên thất bại: token không hợp lệ.');
+    }
+
+    await _storage.saveToken(token);
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await _storage.saveRefreshToken(refreshToken);
+    }
+
+    return AuthTokenResponse(
+      accessToken: token,
+      refreshToken: refreshToken,
+      message: data?['message']?.toString(),
+    );
+  }
+
   Future<void> logout() async {
     try {
-      await _apiClient.dio.post('/auth/logout');
+      final refreshToken = await _storage.getRefreshToken();
+      final token = await _storage.getToken();
+      await _apiClient.dio.post(
+        AppConstants.logoutEndpoint,
+        data: refreshToken != null && refreshToken.isNotEmpty
+            ? {'refreshToken': refreshToken}
+            : null,
+        options: Options(
+          headers: {
+            if (token != null && token.isNotEmpty && token != 'web_session_active')
+              'Authorization': 'Bearer $token',
+            if (!kIsWeb) 'Accept-Encoding': 'identity',
+          },
+          extra: {
+            if (kIsWeb) 'withCredentials': true,
+          },
+        ),
+      );
     } catch (_) {}
     await _storage.clearAll();
   }
 
   Future<bool> isAuthenticated() async {
     final token = await _storage.getToken();
-    if (token == null || token.isEmpty || token == 'web_session_active' || token.split('.').length != 3) {
-      if (token != null && token.isNotEmpty) {
-        await _storage.clearAll();
-      }
+    if (token == null || token.isEmpty) {
+      if (token != null) await _storage.clearAll();
+      return false;
+    }
+    // Web: phiên dựa trên cookie HttpOnly (luồng redirect) — đánh dấu bằng
+    // placeholder; tính hợp lệ được xác nhận qua GET /me.
+    if (token == 'web_session_active') return true;
+    if (token.split('.').length != 3) {
+      await _storage.clearAll();
       return false;
     }
     return true;
+  }
+
+  /// Web: hoàn tất phiên sau khi BE redirect về `/auth/callback`.
+  /// BE đã đặt cookie HttpOnly; gọi `GET /me` (kèm cookie) để xác nhận rồi
+  /// lưu placeholder `web_session_active`.
+  Future<UserModel> completeWebSession() async {
+    final user = await getCurrentUser();
+    await _storage.saveToken('web_session_active');
+    await _storage.saveData('web_session', '1');
+    return user;
   }
 
   String _extractErrorMessage(DioException e, String fallback) {

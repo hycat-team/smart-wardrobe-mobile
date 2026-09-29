@@ -43,8 +43,9 @@ class OutfitRepository {
         '/ai/outfit-recommendations',
         data: req.toJson(),
         options: Options(
+          connectTimeout: const Duration(seconds: 120),
           sendTimeout: const Duration(seconds: 60),
-          receiveTimeout: const Duration(seconds: 90),
+          receiveTimeout: const Duration(seconds: 120),
         ),
       );
 
@@ -62,20 +63,24 @@ class OutfitRepository {
   /// Lấy danh sách đồ trong tủ đồ cá nhân của user
   Future<List<WardrobeItemModel>> getUserWardrobeItems() async {
     try {
-      final response = await _apiClient.dio.get('/me/wardrobe-items');
+      final response = await _apiClient.dio.get(
+        '/me/wardrobe-items',
+        queryParameters: {'page': 1, 'limit': 100},
+      );
       final data = _parseResponseData(response.data);
       if (data != null) {
         final nested = _parseResponseData(data['data']) ?? data;
-        final itemsRaw = nested['items'] ?? nested['wardrobeItems'] ?? [];
+        final itemsRaw = nested['items'] ?? nested['wardrobeItems'] ?? nested['data'] ?? (nested is List ? nested : []);
         if (itemsRaw is List) {
           return itemsRaw
-              .map((item) => WardrobeItemModel.fromJson(item as Map<String, dynamic>))
+              .whereType<Map>()
+              .map((item) => WardrobeItemModel.fromJson(Map<String, dynamic>.from(item)))
               .toList();
         }
       }
       return [];
-    } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e, 'Không thể tải tủ đồ cá nhân'));
+    } catch (e) {
+      return [];
     }
   }
 
@@ -100,14 +105,21 @@ class OutfitRepository {
           final items = itemsRaw
               .map((item) => UserOutfitModel.fromJson(item as Map<String, dynamic>))
               .toList();
+          final meta = _parseResponseData(nested['metadata']);
+          final resolvedPage = meta?['page'] is int
+              ? meta!['page'] as int
+              : (nested['page'] is int ? nested['page'] as int : page);
+          final resolvedTotal = meta?['totalItems'] is int
+              ? meta!['totalItems'] as int
+              : (nested['total'] is int
+                  ? nested['total'] as int
+                  : (nested['total'] is num
+                      ? (nested['total'] as num).toInt()
+                      : items.length));
           return OutfitPaginationResult(
             items: items,
-            page: nested['page'] is int ? nested['page'] as int : page,
-            total: nested['total'] is int
-                ? nested['total'] as int
-                : (nested['total'] is num
-                    ? (nested['total'] as num).toInt()
-                    : items.length),
+            page: resolvedPage,
+            total: resolvedTotal,
           );
         }
       }
@@ -162,6 +174,18 @@ class OutfitRepository {
     );
   }
 
+  /// Lấy chữ ký tải ảnh bìa bộ phối đồ từ BE (/api/v1/outfits/upload-signature)
+  Future<UploadSignatureModel> getUploadSignatureOutfit() async {
+    try {
+      final res = await _apiClient.dio.get('/outfits/upload-signature');
+      final data = _parseResponseData(res.data);
+      final sigData = _parseResponseData(data?['data']) ?? data ?? {};
+      return UploadSignatureModel.fromJson(sigData);
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e, 'Không thể lấy chữ ký tải ảnh outfit'));
+    }
+  }
+
   /// Lưu một outfit mới vào hệ thống
   Future<Map<String, dynamic>> saveOutfit(SaveOutfitReq req) async {
     try {
@@ -191,10 +215,14 @@ class OutfitRepository {
         return data['title'].toString();
       }
     }
-    if (e.type == DioExceptionType.connectionError) {
+    if (e.type == DioExceptionType.connectionError ||
+        (e.message != null && e.message!.contains('XMLHttpRequest'))) {
       return 'Không thể kết nối đến máy chủ backend (vui lòng kiểm tra server).';
     }
-    if (e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.sendTimeout) {
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        (e.message != null && e.message!.toLowerCase().contains('timeout'))) {
       return 'AI Stylist phản hồi quá lâu, vui lòng thử lại sau ít phút.';
     }
     return e.message ?? fallback;

@@ -5,6 +5,8 @@ import '../../../core/network/sse_service.dart';
 import '../../../shared/models/bulk_deletion_result.dart';
 import '../data/wardrobe_repository.dart';
 import '../models/wardrobe_models.dart';
+import '../utils/analysis_status.dart';
+import '../../auth/providers/auth_provider.dart';
 
 final wardrobeRepositoryProvider = Provider<WardrobeRepository>((ref) {
   return WardrobeRepository();
@@ -120,22 +122,42 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
   final WardrobeRepository _repository;
   final Ref _ref;
   final Map<String, SSESubscription> _activeSubscriptions = {};
+  final Set<String> _retryingIds = {};
   Timer? _pollingSafetyTimer;
   // Phiên tải danh sách — tăng mỗi khi refresh/đổi filter để bỏ kết quả
   // loadMore cũ về trễ (US 006).
   int _listGeneration = 0;
 
   WardrobeNotifier(this._repository, this._ref) : super(const WardrobeState()) {
-    loadItems();
+    _ref.listen<AuthState>(authStateProvider, (previous, next) {
+      if (!next.isAuthenticated) {
+        _cleanupSubscriptions();
+        state = const WardrobeState();
+      } else if (previous?.user?.id != next.user?.id) {
+        _cleanupSubscriptions();
+        state = const WardrobeState();
+        if (next.isAuthenticated) {
+          loadItems(refresh: true);
+        }
+      }
+    });
+    if (_ref.read(authStateProvider).isAuthenticated) {
+      loadItems();
+    }
   }
 
-  @override
-  void dispose() {
+  void _cleanupSubscriptions() {
     _pollingSafetyTimer?.cancel();
+    _pollingSafetyTimer = null;
     for (final sub in _activeSubscriptions.values) {
       sub.cancel();
     }
     _activeSubscriptions.clear();
+  }
+
+  @override
+  void dispose() {
+    _cleanupSubscriptions();
     super.dispose();
   }
 
@@ -348,6 +370,95 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
     _activeSubscriptions[taskId] = sub;
   }
 
+  bool isItemRetrying(String id) => _retryingIds.contains(id.toLowerCase());
+
+  /// Gửi lại phân tích AI cho món đồ cần chọn danh mục (needsReview = 5).
+  Future<bool> submitNeedsReview({
+    required String id,
+    required String categoryId,
+  }) async {
+    final lowerId = id.toLowerCase();
+    if (_retryingIds.contains(lowerId)) return false;
+    _retryingIds.add(lowerId);
+
+    try {
+      final updatedItem = await _repository.retryAnalysis(
+        id: id,
+        categoryId: categoryId,
+      );
+
+      final updatedItems = state.items.map((it) {
+        if (it.id.toLowerCase() == lowerId) {
+          return it.copyWith(
+            status: 3, // processing
+            taskId: updatedItem.taskId ?? it.taskId,
+            category: updatedItem.category ?? it.category,
+            fashionItem: it.fashionItem?.copyWith(reviewReason: null),
+          );
+        }
+        return it;
+      }).toList();
+
+      state = state.copyWith(
+        items: updatedItems,
+        notificationMessage: 'Đang gửi lại phân tích với danh mục đã chọn...',
+      );
+
+      final taskId = updatedItem.taskId;
+      if (taskId != null && taskId.isNotEmpty) {
+        _subscribeToTask(taskId);
+      }
+      _startSafetyPolling();
+      return true;
+    } catch (e) {
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      state = state.copyWith(errorMessage: errorMsg);
+      return false;
+    } finally {
+      _retryingIds.remove(lowerId);
+    }
+  }
+
+  /// Gửi lại phân tích AI cho món đồ lỗi tạm thời (failed = 4).
+  Future<bool> retryFailedAnalysis({required String id}) async {
+    final lowerId = id.toLowerCase();
+    if (_retryingIds.contains(lowerId)) return false;
+    _retryingIds.add(lowerId);
+
+    try {
+      final updatedItem = await _repository.retryAnalysis(id: id);
+
+      final updatedItems = state.items.map((it) {
+        if (it.id.toLowerCase() == lowerId) {
+          return it.copyWith(
+            status: 3, // processing
+            taskId: updatedItem.taskId ?? it.taskId,
+            fashionItem: it.fashionItem?.copyWith(processingErrorReason: null),
+          );
+        }
+        return it;
+      }).toList();
+
+      state = state.copyWith(
+        items: updatedItems,
+        notificationMessage: 'Đang gửi lại yêu cầu phân tích...',
+      );
+
+      final taskId = updatedItem.taskId;
+      if (taskId != null && taskId.isNotEmpty) {
+        _subscribeToTask(taskId);
+      }
+      _startSafetyPolling();
+      return true;
+    } catch (e) {
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      state = state.copyWith(errorMessage: errorMsg);
+      return false;
+    } finally {
+      _retryingIds.remove(lowerId);
+    }
+  }
+
   void _handleTaskEvent(String taskId, WardrobeTaskSSEPayload payload) {
     debugPrint('[WardrobeNotifier] Handling SSE event for task: $taskId, status: ${payload.status}');
 
@@ -373,10 +484,26 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
 
       if (!isMatch) return it;
 
+      var currentFashionItem = sseItem?.fashionItem ?? it.fashionItem;
+      if (nextStatus == 4 && payload.error != null && payload.error!.isNotEmpty) {
+        currentFashionItem = currentFashionItem?.copyWith(
+              processingErrorReason: payload.error,
+            ) ??
+            FashionItemModel(
+              id: it.id,
+              imageUrl: it.displayImageUrl,
+              processingErrorReason: payload.error,
+            );
+      } else if (nextStatus == 5 && payload.error != null && payload.error!.isNotEmpty) {
+        currentFashionItem = currentFashionItem?.copyWith(
+          reviewReason: payload.error,
+        );
+      }
+
       return it.copyWith(
         status: nextStatus,
         category: sseItem?.category ?? it.category,
-        fashionItem: sseItem?.fashionItem ?? it.fashionItem,
+        fashionItem: currentFashionItem,
         price: sseItem?.price ?? it.price,
       );
     }).toList();
@@ -387,7 +514,17 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
     } else if (nextStatus == 5) {
       notif = 'AI cần bạn xác nhận lại danh mục trang phục.';
     } else if (nextStatus == 4) {
-      notif = payload.error ?? 'AI không thể nhận diện trang phục.';
+      final reason = payload.error?.toLowerCase().trim() ?? '';
+      if (reason == AnalysisReasonCodes.multipleItemsDetected) {
+        notif = 'Ảnh có nhiều món đồ. Vui lòng tải ảnh khác.';
+      } else if (reason == AnalysisReasonCodes.fullBodyOutfitDetected) {
+        notif = 'Ảnh toàn thân. Vui lòng tải ảnh cận cảnh một món.';
+      } else if (reason == AnalysisReasonCodes.analysisTemporaryError ||
+          reason == AnalysisReasonCodes.autoRetryExceeded) {
+        notif = 'Lỗi tạm thời khi phân tích. Bạn có thể nhấn Thử lại.';
+      } else {
+        notif = payload.error ?? 'AI không thể nhận diện trang phục.';
+      }
     }
 
     state = state.copyWith(
@@ -407,8 +544,20 @@ class WardrobeNotifier extends StateNotifier<WardrobeState> {
     final sub = _activeSubscriptions.remove(taskId);
     sub?.cancel();
 
-    // Trigger full refresh from server to ensure complete consistency
-    loadItems(refresh: true);
+    // T028: Nếu món đồ đã nhận event completed/needs_review đầy đủ thì chỉ patch,
+    // không refetch toàn bộ trang trừ khi thiếu data hoặc kẹt processing.
+    final targetItem = state.items.cast<WardrobeItemModel?>().firstWhere(
+          (it) => it?.taskId?.toLowerCase() == taskId.toLowerCase(),
+          orElse: () => null,
+        );
+
+    final needsFullRefresh = targetItem == null ||
+        targetItem.isProcessing ||
+        (targetItem.isFailed && targetItem.fashionItem == null);
+
+    if (needsFullRefresh) {
+      loadItems(refresh: true);
+    }
     _ref.invalidate(wardrobeInsightsProvider);
     _ref.invalidate(categoryDistributionProvider);
   }

@@ -1,9 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
+import '../../../shared/widgets/otp_input.dart';
 import '../providers/auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -65,9 +67,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _handleSendEmail() async {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập địa chỉ email hợp lệ')),
-      );
+      ClosyToast.error(context, 'Vui lòng nhập địa chỉ email hợp lệ');
       return;
     }
 
@@ -81,9 +81,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _handleVerifyOtp() async {
     final otp = _otpControllers.map((c) => c.text).join();
     if (otp.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập đủ 6 chữ số mã OTP')),
-      );
+      ClosyToast.warning(context, 'Vui lòng nhập đủ 6 chữ số mã OTP');
       return;
     }
 
@@ -101,26 +99,17 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final confirmPass = _confirmPasswordController.text;
 
     if (newPass.length < 8) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mật khẩu mới phải có tối thiểu 8 ký tự')),
-      );
+      ClosyToast.error(context, 'Mật khẩu mới phải có tối thiểu 8 ký tự');
       return;
     }
     if (newPass != confirmPass) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mật khẩu xác nhận không khớp')),
-      );
+      ClosyToast.error(context, 'Mật khẩu xác nhận không khớp');
       return;
     }
 
     final success = await ref.read(authStateProvider.notifier).resetPassword(newPass, confirmPass);
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+      ClosyToast.success(context, 'Đặt lại mật khẩu thành công! Vui lòng đăng nhập lại.');
       context.go('/login');
     }
   }
@@ -159,7 +148,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   height: 120,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
-                  semanticLabel: 'Closy logo',
+                          semanticLabel: 'Logo Closy',
                   errorBuilder: (context, error, stackTrace) => Text(
                     'CLOSY',
                     style: GoogleFonts.playfairDisplay(
@@ -265,41 +254,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 32),
 
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(6, (index) {
-            return SizedBox(
-              width: 46,
-              height: 56,
-              child: TextFormField(
-                controller: _otpControllers[index],
-                focusNode: _otpFocusNodes[index],
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                maxLength: 1,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                  counterText: '',
-                  filled: true,
-                  fillColor: AppColors.surface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.border),
-                  ),
-                ),
-                onChanged: (val) {
-                  if (val.isNotEmpty && index < 5) {
-                    _otpFocusNodes[index + 1].requestFocus();
-                  } else if (val.isEmpty && index > 0) {
-                    _otpFocusNodes[index - 1].requestFocus();
-                  }
-                  if (index == 5 && val.isNotEmpty) {
-                    _handleVerifyOtp();
-                  }
-                },
-              ),
-            );
-          }),
+        OtpInput(
+          controllers: _otpControllers,
+          focusNodes: _otpFocusNodes,
+          onCompleted: _handleVerifyOtp,
         ),
         const SizedBox(height: 32),
 

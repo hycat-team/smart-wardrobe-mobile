@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../shared/widgets/closy_toast.dart';
 
 /// @Deprecated: Luồng thanh toán đã chuyển lên website
 /// (009-web-payment-redirect). Mobile không tạo và không mở bất kỳ
@@ -56,7 +57,5 @@ Future<bool> openPaymentLink(
 
 void _notify(BuildContext context, String message) {
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), duration: const Duration(seconds: 5)),
-  );
+  ClosyToast.warning(context, message);
 }

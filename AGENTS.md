@@ -29,6 +29,7 @@ lib/
 3. `.agents/skills/closy-mobile-flutter/SKILL.md` — tokens + API/SSE + Definition of Done mobile.
 4. `docs/work-log-2026-09-19.md` — ngữ cảnh phiên gần nhất (spec 008 deploy Play, spec 009 stats, việc còn dở cần user).
 5. Spec liên quan trong `specs/<nnn-ten-feature>/` (`spec.md`, `plan.md`, `tasks.md`, `research.md`, `quickstart.md`).
+6. `.specify/memory/constitution.md` — hiến pháp dự án (đã seed theo AGENTS.md/AI guide); mọi `/speckit.plan`/`analyze` phải tuân thủ.
 
 Không sửa BE/FE từ repo này. Không nhúng API key Gemini vào app — mobile chỉ gọi qua BE endpoint.
 
@@ -47,24 +48,35 @@ flutter run --dart-define=ENABLE_PAID_FEATURES=true  # hiện Ví/Gói hội vi�
 - BE local (mobile): `http://localhost:5000/api/v1` (web/desktop) hoặc `http://10.0.2.2:5000/api/v1` (Android emulator) — cấu hình qua `.env`/`--dart-define=API_BASE_URL`. Đối chiếu thêm PROJECT_AGENT_GUIDE §4 (ma trận endpoint, port Docker 8080→map).
 - Giữ `kotlin.incremental=false` trong `android/gradle.properties` (lỗi KT-66598 trên Windows).
 
-## 4. WORKFLOW BẮT BUỘC (Spec-Driven)
+## 4. WORKFLOW BẮT BUỘC (Spec-Driven — GitHub Spec Kit)
 
-Mọi feature/fix > 1 file **phải** đi qua pipeline speckit. Không nhảy cóc sang code.
+Mọi feature/fix > 1 file **phải** đi qua pipeline Spec Kit. Không nhảy cóc sang code.
+Bộ lệnh/skills đã cài đặt:
+- **Antigravity (AGY):** `.agents/skills/speckit-*/` (skills: `speckit-constitution`, `speckit-specify`, `speckit-clarify`, `speckit-plan`, `speckit-tasks`, `speckit-analyze`, `speckit-implement`, `speckit-converge`, `speckit-checklist`, `speckit-bug-assess`, `speckit-bug-fix`, `speckit-bug-test`). Antigravity tự động kích hoạt theo prompt hoặc gọi `/speckit-specify ...`.
+- **opencode:** `.opencode/commands/speckit.*` — gọi trong chat (VD `/speckit.specify ...`).
 
 ```
-specify → clarify → plan → tasks → analyze → implement → verify
+/speckit.constitution (1 lần) → /speckit.specify → /speckit.clarify → /speckit.plan
+→ /speckit.tasks → /speckit.analyze → /speckit.implement → /speckit.converge
 ```
 
-| Bước | Skill / output | Quy tắc |
+| Bước | Lệnh (opencode / Antigravity) | Output / Quy tắc |
 |---|---|---|
-| `specify` | `speckit-specify` → `specs/<nnn-slug>/spec.md` | Ghi user story (P1/P2/P3), FR, SC có số. Nếu app đã có màn tương tự (VD `/wardrobe/insights`), hỏi phạm vi trước khi tạo màn mới. |
-| `clarify` | `speckit-clarify` → sửa `spec.md` | Hỏi tối đa 5 câu, chốt điểm mơ hồ (nguồn dữ liệu, entry point, phạm vi v1). Ghi quyết định vào spec. |
-| `plan` | `speckit-plan` → `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` | Xác minh API thật trên BE repo trước khi chốt (VD `wearCount` hardcode 0 → fallback ẩn chỉ số). Không bịa endpoint. |
-| `tasks` | `speckit-tasks` → `tasks.md` | Task phụ thuộc có thứ tự, chia Setup / Foundational / US1..n / Polish. Mỗi task trỏ file cụ thể. |
-| `analyze` | `speckit-analyze` | Kiểm tra coverage FR↔task, mâu thuẫn (VD deep-link trong checklist khi cờ paid tắt). Sửa spec/plan/tasks trước khi code. |
-| `implement` | `speckit-implement` | Làm theo thứ tự tasks, đánh dấu xong từng task. Viết work-log vào `docs/work-log-<yyyy-mm-dd>.md`. |
-| `verify` | DoD §7 | `flutter analyze` sạch + test liên quan + QS pass trên máy thật (nếu UI). |
+| `constitution` | `/speckit.constitution` hoặc `speckit-constitution` | `.specify/memory/constitution.md` — nguyên tắc dự án (đã seed theo AGENTS.md/AI guide). Chạy 1 lần, chỉ amend khi quy tắc đổi. |
+| `specify` | `/speckit.specify` hoặc `speckit-specify` | `specs/<nnn-slug>/spec.md` — user story (P1/P2/P3), FR, SC có số. Nếu app đã có màn tương tự (VD `/wardrobe/insights`), hỏi phạm vi trước khi tạo màn mới. |
+| `clarify` | `/speckit.clarify` hoặc `speckit-clarify` | Sửa `spec.md` — hỏi tối đa 5 câu, chốt điểm mơ hồ (nguồn dữ liệu, entry point, phạm vi v1). |
+| `plan` | `/speckit.plan` hoặc `speckit-plan` | `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` — xác minh API thật trên BE repo trước khi chốt (VD `wearCount` hardcode 0 → fallback ẩn chỉ số). Không bịa endpoint. |
+| `tasks` | `/speckit.tasks` hoặc `speckit-tasks` | `tasks.md` — task phụ thuộc có thứ tự (Setup / Foundational / US1..n / Polish), mỗi task trỏ file cụ thể. |
+| `analyze` | `/speckit.analyze` hoặc `speckit-analyze` | Kiểm tra coverage FR↔task, mâu thuẫn (VD deep-link trong checklist khi cờ paid tắt). Sửa spec/plan/tasks trước khi code. |
+| `implement` | `/speckit.implement` hoặc `speckit-implement` | Làm theo thứ tự tasks, đánh dấu xong từng task; viết work-log `docs/work-log-<yyyy-mm-dd>.md`. |
+| `converge` | `/speckit.converge` hoặc `speckit-converge` | Rà khoảng trống còn lại so với spec; nếu thêm task thì lặp `implement → converge` tới khi "Converged". |
+| `verify` | DoD §7 | `flutter analyze` 0 issues + test liên quan pass + QS trên máy thật (nếu UI). |
 
+- **Cài đặt Spec Kit:**
+  - Antigravity: `specify integration install agy --force --script ps` (tạo `.agents/skills/speckit-*/`).
+  - opencode: `specify init . --integration opencode --here --force --ignore-agent-tools --script ps` (tạo `.opencode/commands/speckit.*`).
+  - `.specify/` là **machine-local** (gitignored).
+- Tuỳ chọn tăng chất lượng: `/speckit.checklist` hoặc `speckit-checklist` (sau plan), `/speckit.analyze` hoặc `speckit-analyze` (trước implement). Bug workflow: `specify extension add bug` → `speckit-bug-assess`, `speckit-bug-fix`, `speckit-bug-test`.
 - Fix nhỏ 1 file: được bỏ qua specify, nhưng vẫn ghi 1 dòng vào work-log ngày.
 - Không commit/push/PR trừ khi user yêu cầu rõ. File chưa commit thì liệt kê trong work-log.
 - Secrets (`*.jks`, `*.keystore`, `key.properties`, `.env`) không bao giờ commit — đã chặn trong `.gitignore`.
@@ -108,4 +120,5 @@ specify → clarify → plan → tasks → analyze → implement → verify
 - Auth/token/input review: `security-best-practices`. Sinh multi-file không rút gọn: `full-output-enforcement`.
 - Truy cấu cấu trúc lib (provider/service/route): `codegraph` — chạy `codegraph init` + `codegraph sync` tại repo này, không copy db từ FE.
 - Gemini/BE: `gemini-api-dev` — mobile chỉ gọi qua BE, không nhúng key.
-- Tính năng mới: pipeline `speckit-*` + `.specify/` (§4).
+- Tính năng mới: pipeline Spec Kit `speckit-*` (`speckit-specify` → `speckit-clarify` → `speckit-plan` → `speckit-tasks` → `speckit-analyze` → `speckit-implement` → `speckit-converge`).
+- Bug workflow: `speckit-bug-assess`, `speckit-bug-fix`, `speckit-bug-test`.
