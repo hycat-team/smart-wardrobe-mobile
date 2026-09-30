@@ -51,6 +51,38 @@ void main() {
       expect(find.byIcon(Icons.close_rounded), findsNothing);
     });
 
+    testWidgets('nền trắng CHỈ phủ khung ảnh, vùng ngoài ảnh vẫn là nền tối',
+        (tester) async {
+      await tester.pumpWidget(_host(MediaViewerOverlay(
+        imageUrls: const ['https://res.cloudinary.com/demo/a.jpg'],
+      )));
+      await _settle(tester);
+
+      // Ảnh bọc trong ColoredBox trắng.
+      final whiteBox = find.descendant(
+        of: find.byType(MediaViewerOverlay),
+        matching: find.byType(ColoredBox),
+      );
+      expect(whiteBox, findsWidgets);
+      expect(tester.widget<ColoredBox>(whiteBox.first).color, Colors.white);
+
+      // Nền trắng nằm TRONG FittedBox → không tràn ra ngoài khung ảnh.
+      final fitted = find.descendant(
+        of: find.byType(MediaViewerOverlay),
+        matching: find.byType(FittedBox),
+      );
+      expect(
+        find.descendant(of: fitted.first, matching: whiteBox),
+        findsWidgets,
+        reason: 'nền trắng phải nằm trong FittedBox để ôm đúng khung ảnh',
+      );
+
+      // Overlay vẫn trong suốt + nền bổ sung tối 87% (KHÔNG trắng cả màn).
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).last);
+      expect(scaffold.backgroundColor, Colors.transparent);
+      expect(kMediaViewerBarrierColor, const Color(0xD9000000));
+    });
+
     testWidgets('chưa zoom thì ảnh CỐ ĐỊNH: pan bị khoá, không có boundaryMargin',
         (tester) async {
       await tester.pumpWidget(_host(MediaViewerOverlay(

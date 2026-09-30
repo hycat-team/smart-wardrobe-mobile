@@ -32,8 +32,11 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   final TextEditingController _styleCustomController = TextEditingController();
   final TextEditingController _colorCustomController = TextEditingController();
   final ScrollController _aiScrollController = ScrollController();
+
+  /// Neo cho vùng kết quả AI (tên + mô tả set). Dùng để auto-scroll dừng
+  /// đúng ở đầu vùng này thay vì cuộn tới tận `maxScrollExtent`.
+  final GlobalKey _aiResultKey = GlobalKey();
   final DraggableScrollableController _sheetController = DraggableScrollableController();
-  bool _isDrawerSearchOpen = false;
   bool _isDrawerExpanded = false;
 
   /// Tỉ lệ chiều cao hiện tại của khay outfit thay thế (DraggableScrollableSheet).
@@ -688,14 +691,22 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
 
     // Tạo set đồ AI xong: tự scroll xuống (animated) để user thấy ngay
     // outfit vừa tạo, không phải kéo tay tìm (CHK009).
+    //
+    // Mục tiêu là **đầu vùng kết quả** (tên + mô tả set) chứ không phải
+    // `maxScrollExtent` — cuộn tận cuối sẽ nhảy qua mất tên/mô tả và chỉ
+    // còn lưới ảnh, mất thông tin quan trọng nhất. `ensureVisible` với
+    // `alignment: 0` dừng ở đúng đỉnh vùng kết quả.
     ref.listen<RecommendedOutfitRes?>(
       aiOutfitProvider.select((s) => s.recommendation),
       (prev, next) {
         if (next != null && !identical(prev, next) && mounted) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted || !_aiScrollController.hasClients) return;
-            _aiScrollController.animateTo(
-              _aiScrollController.position.maxScrollExtent,
+            if (!mounted) return;
+            final ctx = _aiResultKey.currentContext;
+            if (ctx == null) return;
+            Scrollable.ensureVisible(
+              ctx,
+              alignment: 0,
               duration: const Duration(milliseconds: 600),
               curve: Curves.easeOutCubic,
             );
@@ -997,7 +1008,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             hintText: 'Hoặc nhập dịp khác... (VD: đi đám cưới, du lịch)',
             onCustom: (v) => ref.read(aiOutfitProvider.notifier).setOccasion(v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Text(
             'Phong cách (Style)',
@@ -1032,7 +1043,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             hintText: 'Hoặc nhập phong cách khác... (VD: Hàn Quốc, công chúa)',
             onCustom: (v) => ref.read(aiOutfitProvider.notifier).setStyle(v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Text(
             'Gam màu ưa thích',
@@ -1067,7 +1078,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             hintText: 'Hoặc nhập gam màu khác... (VD: trắng kem, xanh navy)',
             onCustom: (v) => ref.read(aiOutfitProvider.notifier).setColorTone(v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Text(
             'Yêu cầu đặc biệt cho Stylist (Tuỳ chọn)',
@@ -1133,6 +1144,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
 
   Widget _buildRecommendationResult(RecommendedOutfitRes res) {
     return Column(
+      key: _aiResultKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
@@ -1399,9 +1411,15 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                   ),
                                 ),
                                 const SizedBox(height: 6),
-                                const Text(
-                                  'Kéo khay đồ bên dưới lên để thêm các món từ tủ đồ cá nhân.',
-                                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                // Câu hướng dẫn dài: chừa lề 2 bên để không
+                                // sát mép màn hình (trước đây tràn ra tận 2 lề).
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                                  child: Text(
+                                    'Kéo khay đồ bên dưới lên để thêm các món từ tủ đồ cá nhân.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  ),
                                 ),
                               ],
                             ),
@@ -1658,7 +1676,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                     pinned: true,
                     delegate: _StickyDrawerHeaderDelegate(
                       height: _isDrawerExpanded ? 108.0 : 48.0,
-                      child: _buildStickyDrawerHeader(state, filteredItems.length),
+                      child: _buildStickyDrawerHeader(state),
                     ),
                   ),
 
@@ -1722,13 +1740,17 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                 'Không tìm thấy món đồ phù hợp.',
                                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                               ),
-                              if (state.selectedDrawerCategory != 'All' || state.drawerSearchQuery.trim().isNotEmpty)
+                              if (state.selectedDrawerCategory != 'All' ||
+                                  state.drawerSearchQuery.trim().isNotEmpty)
                                 TextButton(
                                   onPressed: () {
                                     _drawerSearchController.clear();
-                                    ref.read(outfitStudioProvider.notifier).setDrawerSearchQuery('');
-                                    ref.read(outfitStudioProvider.notifier).setDrawerCategory('All');
-                                    setState(() => _isDrawerSearchOpen = false);
+                                    ref
+                                        .read(outfitStudioProvider.notifier)
+                                        .setDrawerSearchQuery('');
+                                    ref
+                                        .read(outfitStudioProvider.notifier)
+                                        .setDrawerCategory('All');
                                   },
                                   child: const Text('Xem tất cả đồ trong tủ'),
                                 ),
@@ -1872,7 +1894,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
     );
   }
 
-  Widget _buildStickyDrawerHeader(OutfitStudioState state, int count) {
+  Widget _buildStickyDrawerHeader(OutfitStudioState state) {
     if (!_isDrawerExpanded) {
       return Material(
         color: Colors.white,
@@ -1907,33 +1929,12 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                           style: GoogleFonts.playfairDisplay(fontSize: 14, fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceSubtle,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border, width: 0.5),
-                          ),
-                          child: Text(
-                            '$count món',
-                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-                          ),
-                        ),
                       ],
                     ),
-                    const Row(
-                      children: [
-                        Text(
-                          'Mở tủ đồ',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        SizedBox(width: 2),
-                        Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppColors.primary),
-                      ],
+                    const Icon(
+                      Icons.keyboard_arrow_up_rounded,
+                      size: 20,
+                      color: AppColors.primary,
                     ),
                   ],
                 ),
@@ -1966,128 +1967,32 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             ),
           ),
 
-          // Title Row or Search Field Row
+          // Header giống hệt trạng thái đóng: cùng tiêu đề, cùng padding,
+          // chỉ mũi tên quay xuống. Kéo drawer lên không làm layout nhảy.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            child: _isDrawerSearchOpen
-                ? Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.border, width: 0.8),
-                          ),
-                          child: TextField(
-                            controller: _drawerSearchController,
-                            autofocus: true,
-                            onChanged: (val) {
-                              ref.read(outfitStudioProvider.notifier).setDrawerSearchQuery(val);
-                            },
-                            style: const TextStyle(fontSize: 12),
-                            decoration: InputDecoration(
-                              hintText: 'Tìm theo tên, màu sắc, phong cách...',
-                              hintStyle: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                              prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textSecondary),
-                              suffixIcon: _drawerSearchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear_rounded, size: 16),
-                                      onPressed: () {
-                                        _drawerSearchController.clear();
-                                        ref.read(outfitStudioProvider.notifier).setDrawerSearchQuery('');
-                                        setState(() {});
-                                      },
-                                    )
-                                  : null,
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20, color: AppColors.textSecondary),
-                        tooltip: 'Đóng tìm kiếm',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        onPressed: () {
-                          _drawerSearchController.clear();
-                          ref.read(outfitStudioProvider.notifier).setDrawerSearchQuery('');
-                          setState(() => _isDrawerSearchOpen = false);
-                        },
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Tủ quần áo cá nhân',
-                            style: GoogleFonts.playfairDisplay(fontSize: 16, fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceSubtle,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border, width: 0.6),
-                            ),
-                            child: Text(
-                              '$count món',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() => _isDrawerSearchOpen = true);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceSubtle,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.border, width: 0.6),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.search_rounded, size: 14, color: AppColors.primary),
-                                  SizedBox(width: 4),
-                                  Text(
-                                    'Tìm đồ',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 24, color: AppColors.primary),
-                            tooltip: 'Thu gọn tủ đồ',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                            onPressed: _toggleDrawer,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.checkroom_rounded,
+                        size: 16, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Tủ quần áo cá nhân',
+                      style: GoogleFonts.playfairDisplay(
+                          fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+              ],
+            ),
           ),
 
           // Category Chips Row

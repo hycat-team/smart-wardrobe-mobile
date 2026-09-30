@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/closy_toast.dart';
+import '../../../shared/widgets/media_viewer_overlay.dart';
+import '../../profile/providers/profile_provider.dart';
+import '../../profile/utils/avatar_actions.dart';
 import '../data/community_error.dart';
 import '../data/community_repository.dart';
 import '../models/profile_models.dart';
@@ -51,6 +54,9 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      // Cho phép bấm vùng trống phía trên để đóng (mặc định đã bật, ghi rõ
+      // ra để khỏi mất nếu ai đó đổi tham số sau này).
+      isDismissible: true,
       backgroundColor: Colors.transparent,
       builder: (_) => UserFollowsSheet(
         username: widget.username,
@@ -256,10 +262,11 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         children: [
-          CommunityUserAvatar(
-            user: profile.user,
-            size: 80,
-          ),
+          // isMe = true: bấm avatar mở sheet 2 lựa chọn (Xem / Chọn ảnh),
+          //           kèm nút camera nhỏ mở thẳng thư viện ảnh.
+          // isMe = false: bấm avatar mở thẳng ảnh toàn màn hình — người
+          //               xem khác không có quyền đổi ảnh nên không cần sheet.
+          if (profile.isMe) _buildOwnAvatar(profile) else _buildOtherAvatar(profile),
           const SizedBox(height: 12),
           Text(
             profile.user.displayName,
@@ -301,6 +308,85 @@ class _PublicProfileScreenState extends ConsumerState<PublicProfileScreen> {
         ],
       ),
     );
+  }
+
+  /// Avatar của chính mình: bấm ảnh → sheet, bấm camera nhỏ → chọn ảnh.
+  Widget _buildOwnAvatar(PublicProfile profile) {
+    final avatarUrl = profile.user.avatarUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
+    final isUpdating = ref.watch(userProfileProvider).isUpdating;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: Colors.transparent,
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => showAvatarActionSheet(
+              context,
+              hasAvatar: hasAvatar,
+              onView: () => openMediaViewer(context, imageUrls: [avatarUrl!]),
+              onPick: () => _pickOwnAvatar(profile),
+            ),
+            child: CommunityUserAvatar(user: profile.user, size: 80),
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: GestureDetector(
+            onTap: isUpdating ? null : () => _pickOwnAvatar(profile),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: isUpdating
+                  ? const SizedBox(
+                      width: 13,
+                      height: 13,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(
+                      Icons.camera_alt_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Avatar của người khác: bấm là xem ảnh toàn màn hình, không có sheet.
+  Widget _buildOtherAvatar(PublicProfile profile) {
+    final avatarUrl = profile.user.avatarUrl;
+    final hasAvatar = avatarUrl != null && avatarUrl.trim().isNotEmpty;
+
+    return GestureDetector(
+      onTap: hasAvatar
+          ? () => openMediaViewer(context, imageUrls: [avatarUrl])
+          : null,
+      child: CommunityUserAvatar(user: profile.user, size: 80),
+    );
+  }
+
+  /// Chọn ảnh đại diện của chính mình, rồi nạp lại hồ sơ cộng đồng để avatar
+  /// trên đầu trang cập nhật theo (nguồn ảnh khác `userProfileProvider`).
+  Future<void> _pickOwnAvatar(PublicProfile profile) async {
+    await pickAndUploadAvatar(context, ref);
+    if (!mounted) return;
+    await ref
+        .read(publicProfileProvider(widget.username).notifier)
+        .loadProfile();
   }
 
   Widget _buildStatsRow(PublicProfileStats stats) {

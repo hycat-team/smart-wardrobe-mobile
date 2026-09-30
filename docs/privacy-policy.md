@@ -13,8 +13,7 @@
 - Ảnh từ camera/thư viện: chỉ khi bạn chủ động chụp hoặc chọn ảnh để thêm vào tủ đồ.
 - Thông tin thiết bị và kỹ thuật cần thiết để vận hành app.
 
-Chúng tôi **không** thu thập vị trí của bạn. App **không** tích hợp SDK
-quảng cáo/phân tích của bên thứ ba.
+Chúng tôi không thu thập vị trí của bạn. App không tích hợp SDK quảng cáo/phân tích của bên thứ ba.
 
 ## 2. Cách chúng tôi dùng dữ liệu
 
@@ -24,34 +23,27 @@ quảng cáo/phân tích của bên thứ ba.
 
 ## 3. Chia sẻ dữ liệu
 
-Chúng tôi không bán dữ liệu của bạn. Dữ liệu chỉ được xử lý bởi:
-- Máy chủ của đội để vận hành dịch vụ.
-- Nhà cung cấp hạ tầng lưu ảnh (Cloudinary).
+- Chúng tôi không bán dữ liệu của bạn.
+- Dữ liệu chỉ được xử lý bởi máy chủ của đội và nhà cung cấp hạ tầng lưu ảnh (Cloudinary).
 
 ## 4. Quyền của bạn
 
-- Bạn có thể yêu cầu xem, sửa hoặc xóa dữ liệu tài khoản của mình
-  bằng cách liên hệ đội hỗ trợ qua email trong Store listing.
-- Gỡ cài đặt app không tự động xóa dữ liệu máy chủ; hãy gửi yêu cầu xóa
-  nếu bạn muốn xóa toàn bộ.
+- Yêu cầu xem, sửa hoặc xóa dữ liệu tài khoản qua email hỗ trợ bên dưới.
+- Gỡ cài đặt app không tự động xóa dữ liệu máy chủ — hãy gửi yêu cầu xóa nếu bạn muốn xóa toàn bộ.
 
 ## 5. Thời gian lưu trữ
 
-Dữ liệu được lưu cho đến khi bạn xóa tài khoản hoặc gửi yêu cầu xóa.
-Sau khi xóa, ảnh và dữ liệu tủ đồ của bạn bị gỡ khỏi máy chủ của đội;
-bản sao lưu kỹ thuật (nếu có) được xóa cuốn chiếu trong vòng 30 ngày.
+- Dữ liệu được lưu cho đến khi bạn xóa tài khoản hoặc gửi yêu cầu xóa.
+- Sau khi xóa, ảnh và dữ liệu tủ đồ của bạn bị gỡ khỏi máy chủ; bản sao lưu kỹ thuật (nếu có) được xóa cuốn chiếu trong vòng 30 ngày.
 
 ## 6. Trẻ em
 
-App không dành cho trẻ em dưới 13 tuổi. Người dưới 13 tuổi chỉ được dùng
-app dưới sự giám sát của phụ huynh hoặc người giám hộ.
+- App không dành cho trẻ em dưới 13 tuổi. Người dưới 13 tuổi chỉ được dùng app dưới sự giám sát của phụ huynh hoặc người giám hộ.
 
 ## 7. Thay đổi chính sách
 
-Khi chính sách thay đổi, chúng tôi cập nhật tại trang này kèm ngày hiệu lực
-mới. Thay đổi quan trọng được thông báo trong app trước khi áp dụng.
+- Khi chính sách thay đổi, chúng tôi cập nhật tại trang này kèm ngày hiệu lực mới. Thay đổi quan trọng được thông báo trong app trước khi áp dụng.
 
 ## 8. Liên hệ
 
-Mọi câu hỏi về chính sách này, vui lòng liên hệ qua email hỗ trợ
-ghi trong trang cửa hàng Google Play của ứng dụng.
+- Mọi câu hỏi về chính sách này, vui lòng liên hệ: hycat.support@gmail.com.

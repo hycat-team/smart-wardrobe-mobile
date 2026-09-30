@@ -25,15 +25,27 @@ Tài liệu vận hành phát hành Android lên Google Play (spec 008).
 
 - [ ] `pubspec.yaml`: `version: <versionName>+<versionCode>`, `versionCode` lớn hơn mọi bản đã upload
 - [ ] `flutter clean` → `flutter pub get`
-- [ ] Build đúng lệnh (contract C7):
+- [ ] Build đúng lệnh (contract C7) — **LỆNH THẬT ĐÃ DÙNG CHO BẢN 1.0.0+2**:
   ```powershell
   flutter build appbundle --release `
     --no-tree-shake-icons `
-    --dart-define=API_BASE_URL=https://<prod>/api/v1 `
-    --dart-define=CLOUDINARY_CLOUD_NAME=<name> `
+    --dart-define=API_BASE_URL=https://api.closy.hycat.online/api/v1 `
+    --dart-define=API_BASE_URL_ANDROID=https://api.closy.hycat.online/api/v1 `
+    --dart-define=CLOUDINARY_CLOUD_NAME=dzvwkngxu `
+    --dart-define=GOOGLE_CLIENT_ID=368645245473-5ovjq88e58p97u81asjssbt2bt8bnpt9.apps.googleusercontent.com `
     --dart-define=ENABLE_PAID_FEATURES=false
   ```
-  *(Thêm `--no-tree-shake-icons` để tránh lỗi Windows Application Control chặn `font-subset.exe`)*
+  - `--no-tree-shake-icons`: tránh lỗi Windows Application Control chặn `font-subset.exe`.
+  - `API_BASE_URL_ANDROID`: Android runtime dùng biến này TRƯỚC `API_BASE_URL`
+    (xem `app_constants.dart:_resolveBaseUrl`). Thiếu nó → emulator trỏ localhost.
+  - `GOOGLE_CLIENT_ID`: phải là **Web client ID của môi trường production**
+    (`..._PROD` trong `.env`), không phải client dev. BE allow-list client ID
+    theo môi trường → sai client ID sẽ bị từ chối `idToken`.
+  - ⚠ **`.env` KHÔNG ảnh hưởng bản build** (đã gỡ khỏi `assets` 2026-09-30).
+    Giá trị ghi thẳng vào bytecode lúc compile. Sửa `.env` không làm đổi app
+    đã build — phải build lại.
+  - ⚠ Cảnh báo `failed to strip debug symbols` là do thiếu NDK licenses
+    (`flutter doctor --android-licenses`). Không chặn upload lên Play.
 - [ ] `build/app/outputs/bundle/release/app-release.aab` tồn tại, ký bằng upload key
 - [ ] Release APK (`flutter build apk --release`) cài và smoke test trên máy thật:
   đăng nhập, API HTTPS, tải ảnh, camera, quyền runtime;

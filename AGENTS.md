@@ -33,20 +33,57 @@ lib/
 
 Không sửa BE/FE từ repo này. Không nhúng API key Gemini vào app — mobile chỉ gọi qua BE endpoint.
 
+### 2.1 Ảnh store KHÔNG được đặt trong `assets/`
+
+Screenshot/icon/feature graphic chỉ dùng để upload lên Play Console, **không
+dùng trong app**. Đặt vào `assets/` sẽ bị đóng gói vào **mọi** bản build
+(8 ảnh screenshot tốn ~1 MB thừa mỗi lần phát hành).
+
+Vị trí đúng: `store-assets/`
+- `phone-screenshots/closy-screenshot-N.jpg` — ảnh đã chuẩn hoá cho Play.
+- `play-icon-512.png`, `play-feature-graphic-1024x500.png` — tài nguyên bắt buộc.
+- `raw/` — ảnh gốc chụp từ máy, giữ lại để sinh lại.
+
+Sinh lại: `tool/prep_store_screenshots.ps1`, `tool/prep_store_graphics.ps1`.
+
+**Quy tắc Play đã kiểm tra (screenshot điện thoại):** cạnh dài **không được
+vượt 2× cạnh ngắn**. Ảnh 1080×2400 (tỉ lệ 2,22) sẽ bị **từ chối**. Script
+đã cắt status bar + nới 2 bên để đạt đúng 2:1. Ngoài ra Play khuyến nghị
+"không hiện thông báo của nhà cung cấp khác" trên status bar.
+
+
 ## 3. Lệnh chuẩn
 
 ```powershell
 flutter pub get
 flutter analyze                    # phải 0 issues trước khi bàn giao
 flutter test
-flutter run -d chrome --web-port=8081   # CORS BE đã allow 8081 + 3000; R = hot restart
+
+# ⚠ `.env` KHÔNG còn nằm trong `assets` (gỡ ở §10 để không lộ cấu hình
+# production trong .aab). Vì vậy mọi lệnh `flutter run` phải truyền
+# --dart-define; nếu thiếu, app rơi về fallback localhost + cloud `demo`
+# (ảnh upload sẽ hỏng).
+$env:API = 'http://localhost:5000/api/v1'
+$env:CLD = 'dzvwkngxu'
+
+flutter run -d chrome --web-port=8081 `
+  --dart-define=API_BASE_URL=$env:API `
+  --dart-define=CLOUDINARY_CLOUD_NAME=$env:CLD   # CORS BE đã allow 8081 + 3000; R = hot restart
+
+# Android emulator: API_BASE_URL_ANDROID trỏ 10.0.2.2 (alias host của máy host)
+flutter run `
+  --dart-define=API_BASE_URL=$env:API `
+  --dart-define=API_BASE_URL_ANDROID=http://10.0.2.2:5000/api/v1 `
+  --dart-define=CLOUDINARY_CLOUD_NAME=$env:CLD
+
 flutter build apk --debug
 flutter run --dart-define=ENABLE_PAID_FEATURES=true  # hiện Ví/Gói hội viên (mặc định release ẩn)
 ```
 
 - Test account: `user / 123456`; brand/admin: `brand_admin` hoặc `admin / 123456`.
-- BE local (mobile): `http://localhost:5000/api/v1` (web/desktop) hoặc `http://10.0.2.2:5000/api/v1` (Android emulator) — cấu hình qua `.env`/`--dart-define=API_BASE_URL`. Đối chiếu thêm PROJECT_AGENT_GUIDE §4 (ma trận endpoint, port Docker 8080→map).
+- BE local (mobile): `http://localhost:5000/api/v1` (web/desktop) hoặc `http://10.0.2.2:5000/api/v1` (Android emulator) — **luôn truyền qua `--dart-define`**, không còn đọc `.env`. Đối chiếu thêm PROJECT_AGENT_GUIDE §4 (ma trận endpoint, port Docker 8080→map).
 - Giữ `kotlin.incremental=false` trong `android/gradle.properties` (lỗi KT-66598 trên Windows).
+- Build phát hành Google Play: xem `docs/Release_Play_Checklist.md` mục 2 (cần `android/key.properties` + upload keystore).
 
 ## 4. WORKFLOW BẮT BUỘC (Spec-Driven — GitHub Spec Kit)
 

@@ -224,19 +224,27 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ref.read(stylistProvider.notifier).createNewSession();
-                      },
-                      icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Cuộc trò chuyện mới'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        elevation: 0,
+                    // Column bên ngoài dùng `crossAxisAlignment: start` nên nút
+                    // bị ôm sát mép trái, lệch hẳn sang phải. Bọc
+                    // `width: double.infinity` để nút trải hết bề ngang, cách
+                    // 2 mép đều nhau (20px nhờ Padding bao ngoài).
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          ref.read(stylistProvider.notifier).createNewSession();
+                        },
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Cuộc trò chuyện mới'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
                       ),
                     ),
                   ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_theme.dart';
 import 'closy_network_image.dart';
 
 /// Mở ảnh toàn màn hình (overlay đen) — dùng chung cho bài đăng cộng đồng và
@@ -11,8 +12,10 @@ import 'closy_network_image.dart';
 ///   pinch để zoom, khi đang zoom mới kéo được (chặn tại mép ảnh, không hở viền).
 /// - Vuốt ngang để đổi ảnh (khi có nhiều ảnh).
 /// - **Đóng bằng cách tap vùng trống ngoài ảnh** (không có nút đóng).
-/// - Nền bổ xung **trong suốt** (`kMediaViewerBarrierColor`) giống hệt trình
-///   phát video, để vẫn nhìn thấy nhẹ nội dung phía sau.
+/// - **Nền trắng phủ đúng khung ảnh** (không phải trắng cả màn hình): ảnh có
+///   nền sáng không còn bị "cắt" khỏi nền tối; vùng ngoài ảnh vẫn là nền bổ
+///   sung **trong suốt** (`kMediaViewerBarrierColor`) để nhìn thấy nhẹ nội
+///   dung phía sau, và chip đếm ảnh / tên set vẫn nằm trên nền tối.
 Future<void> openMediaViewer(
   BuildContext context, {
   required List<String> imageUrls,
@@ -223,31 +226,44 @@ class _MediaViewerOverlayState extends State<MediaViewerOverlay> {
           onTap: () {},
           child: FittedBox(
             fit: BoxFit.contain,
-            child: ClosyNetworkImage(
-              imageUrl: widget.imageUrls[index],
-              fit: BoxFit.contain,
-              memCacheWidth: 1200,
-              errorWidget: Container(
-                color: Colors.black,
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.broken_image_outlined,
-                      color: Color(0xFFB8A99A),
-                      size: 40,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Không tải được ảnh',
-                      style: GoogleFonts.beVietnamPro(
-                        color: const Color(0xFFB8A99A),
-                        fontSize: 13,
+            // Nền trắng **đúng khung ảnh**: ảnh bìa outfit, ảnh sản phẩm và
+            // avatar đều có nền sáng. Trước đây ảnh nổi thành một mảng trắng
+            // bị cắt khỏi nền tối 87% đen nên thấy rõ mép. Bọc `ColoredBox` ngay
+            // sau ảnh (trong `FittedBox`) để trắng phủ đúng bề rộng/cao của ảnh
+            // — vùng ngoài khung ảnh vẫn giữ nền tối, chip đếm ảnh và tên set
+            // vẫn đọc tốt trên nền tối.
+            //
+            // Bọc trong `FittedBox` (child được layout với constraint không
+            // chặn) nên `ColoredBox` ôm đúng kích thước tự nhiên của ảnh, tự
+            // co theo tỉ lệ gốc thay vì giãn hết khung.
+            child: ColoredBox(
+              color: Colors.white,
+              child: ClosyNetworkImage(
+                imageUrl: widget.imageUrls[index],
+                fit: BoxFit.contain,
+                memCacheWidth: 1200,
+                errorWidget: Container(
+                  color: AppColors.surfaceSubtle,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.broken_image_outlined,
+                        color: AppColors.textSecondary,
+                        size: 40,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      Text(
+                        'Không tải được ảnh',
+                        style: GoogleFonts.beVietnamPro(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

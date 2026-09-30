@@ -3,7 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io' show Platform;
 
 class AppConstants {
-  static const String appName = 'Smart Wardrobe';
+  static const String appName = 'Closy';
 
   // Cloudinary Cloud Name with fallback (--dart-define > .env > demo).
   static String get cloudinaryCloudName {

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/closy_toast.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
 import 'widgets/web_guidance_card.dart';
@@ -15,6 +17,9 @@ class WalletDetailScreen extends ConsumerStatefulWidget {
 
 class _WalletDetailScreenState extends ConsumerState<WalletDetailScreen>
     with WidgetsBindingObserver {
+  /// Mặc định **ẩn** số dư (theo yêu cầu). Bấm con mắt để hiện.
+  bool _hideBalance = true;
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +46,26 @@ class _WalletDetailScreenState extends ConsumerState<WalletDetailScreen>
     if (!mounted) return;
     ref.read(walletProvider.notifier).loadWallet();
     ref.invalidate(walletStatementsProvider);
+  }
+
+  /// Nạp ví thực hiện trên website.
+  ///
+  /// Không mở trình duyệt tự động: luồng mua hàng số ngoài app vi phạm chính
+  /// sách Google Play (spec 009). Nút chỉ **sao chép** địa chỉ web để người
+  /// dùng tự dán vào trình duyệt — ngắn gọn, không kèm hướng dẫn dài.
+  Future<void> _openTopUpWeb() async {
+    const site = 'https://${WebGuidanceCard.websiteHost}';
+    try {
+      await Clipboard.setData(const ClipboardData(text: site));
+      if (!mounted) return;
+      ClosyToast.success(
+        context,
+        'Đã sao chép ${WebGuidanceCard.websiteHost} — mở trình duyệt để nạp ví.',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ClosyToast.error(context, 'Không sao chép được. Mở $site trên trình duyệt.');
+    }
   }
 
   @override
@@ -121,17 +146,51 @@ class _WalletDetailScreenState extends ConsumerState<WalletDetailScreen>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      wallet.formattedBalance,
-                      style: GoogleFonts.outfit(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        color: goldColor,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _hideBalance ? '•••••••• đ' : wallet.formattedBalance,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.outfit(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w800,
+                              color: goldColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Bật/tắt hiện số dư.
+                        IconButton(
+                          icon: Icon(
+                            _hideBalance
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            color: Colors.white60,
+                            size: 20,
+                          ),
+                          tooltip: _hideBalance ? 'Hiện số dư' : 'Ẩn số dư',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () =>
+                              setState(() => _hideBalance = !_hideBalance),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    // Nạp ví thực hiện trên website — gọn, không hướng dẫn dài.
+                    OutlinedButton.icon(
+                      onPressed: () => _openTopUpWeb(),
+                      icon: const Icon(Icons.language_rounded, size: 18),
+                      label: const Text('Nạp ví trên web'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: goldColor,
+                        side: BorderSide(color: goldColor.withOpacity(0.5)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        shape: const StadiumBorder(),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    // Nạp ví thực hiện trên website — hướng dẫn văn bản.
-                    const WebGuidanceCard(actionLabel: 'nạp ví'),
                   ],
                 ),
               ),

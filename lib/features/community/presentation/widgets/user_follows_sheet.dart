@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -62,6 +62,11 @@ class _UserFollowsSheetState extends ConsumerState<UserFollowsSheet> {
         ref.read(userFollowsProvider((widget.username, _currentType)).notifier);
 
     return DraggableScrollableSheet(
+      // `expand: false` giữ chiều cao sheet ở `initialChildSize` thay vì
+      // tràn kín màn hình. Nhờ vậy khoảng trống phía trên thuộc về vùng
+      // barrier của `showModalBottomSheet` → bấm vào đó sẽ đóng sheet.
+      // (Mặc định `expand: true` làm sheet phủ kín, nuốt mất vùng bấm này.)
+      expand: false,
       initialChildSize: 0.65,
       minChildSize: 0.4,
       maxChildSize: 0.9,
@@ -84,14 +89,16 @@ class _UserFollowsSheetState extends ConsumerState<UserFollowsSheet> {
               ),
               const SizedBox(height: 12),
 
-              // Tab Switcher (Đang theo dõi vs Người theo dõi)
+              // Tab Switcher — thống nhất với hồ sơ: "Người theo dõi" (người
+              // theo dõi bạn) đứng trước, "Đang theo dõi" (bạn đang theo dõi
+              // ai) đứng sau.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    _buildTabItem('Đang theo dõi', 'following'),
-                    const SizedBox(width: 10),
                     _buildTabItem('Người theo dõi', 'followers'),
+                    const SizedBox(width: 10),
+                    _buildTabItem('Đang theo dõi', 'following'),
                   ],
                 ),
               ),
@@ -107,7 +114,7 @@ class _UserFollowsSheetState extends ConsumerState<UserFollowsSheet> {
                     hintText: 'Tìm kiếm theo tên hoặc @username...',
                     hintStyle: GoogleFonts.beVietnamPro(
                       fontSize: 12.5,
-                      color: AppColors.textSecondary.withOpacity(0.7),
+                      color: AppColors.textSecondary,
                     ),
                     prefixIcon: const Icon(Icons.search_rounded, size: 20, color: AppColors.textSecondary),
                     filled: true,

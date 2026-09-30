@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/ai_quota_display.dart';
 import '../../../shared/widgets/closy_network_image.dart';
 import '../../../shared/widgets/closy_toast.dart';
+import '../../../shared/widgets/media_viewer_overlay.dart';
 import '../../auth/models/auth_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/user_profile_models.dart';
+import '../utils/avatar_actions.dart';
 import 'widgets/closy_wallet_card.dart';
 import '../providers/profile_provider.dart';
 
@@ -21,30 +22,19 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final ImagePicker _picker = ImagePicker();
+  /// Camera nhỏ → mở thẳng thư viện ảnh (không qua sheet).
+  Future<void> _handlePickAvatar() =>
+      pickAndUploadAvatar(context, ref);
 
-  Future<void> _handlePickAvatar() async {
-    final picked = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1024,
-      maxHeight: 1024,
+  /// Bấm vào avatar → sheet trượt lên 2 lựa chọn.
+  void _openAvatarActions() {
+    final avatarUrl = ref.read(authStateProvider).user?.avatarUrl;
+    showAvatarActionSheet(
+      context,
+      hasAvatar: avatarUrl != null && avatarUrl.trim().isNotEmpty,
+      onView: () => openMediaViewer(context, imageUrls: [avatarUrl!]),
+      onPick: _handlePickAvatar,
     );
-
-    if (picked != null) {
-      if (!mounted) return;
-      ClosyToast.info(context, 'Đang tải ảnh đại diện lên ...');
-
-      final success = await ref.read(userProfileProvider.notifier).uploadAvatar(picked);
-      if (!mounted) return;
-
-      if (success) {
-        ClosyToast.success(context, 'Cập nhật ảnh đại diện thành công!');
-      } else {
-        final error = ref.read(userProfileProvider).errorMessage ?? 'Không thể tải ảnh đại diện';
-        ClosyToast.error(context, error);
-      }
-    }
   }
 
   void _showLogoutConfirmDialog() {
@@ -110,6 +100,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return 'Thành viên Closy';
   }
 
+  /// Mở trang cá nhân cộng đồng của chính người dùng đang đăng nhập.
+  ///
+  /// Route `/users/:username` dùng chung với bài viết trong cộng đồng, nên
+  /// bấm tên ở hồ sơ cá nhân và bấm tên ở cộng đồng đều dẫn tới một nơi.
+  void _openCommunityProfile(UserModel? user) {
+    final un = user?.username.trim() ?? '';
+    if (un.isEmpty) {
+      ClosyToast.warning(context, 'Tài khoản chưa có tên người dùng để xem hồ sơ.');
+      return;
+    }
+    context.push('/users/$un');
+  }
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
@@ -156,32 +159,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 Stack(
                   children: [
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        color: AppColors.accentSand.withOpacity(0.3),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border, width: 2),
-                      ),
-                      child: ClipOval(
-                        child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
-                            ? ClosyNetworkImage(
-                                imageUrl: user.avatarUrl!,
-                                width: 96,
-                                height: 96,
-                                fit: BoxFit.cover,
-                              )
-                            : Center(
-                                child: Text(
-                                  _getInitialLetter(user),
-                                  style: GoogleFonts.playfairDisplay(
-                                    fontSize: 36,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary,
+                    // Bấm avatar → sheet 2 lựa chọn (Xem / Chọn ảnh).
+                    Material(
+                      color: Colors.transparent,
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: isAuth ? _openAvatarActions : null,
+                        child: Container(
+                          width: 96,
+                          height: 96,
+                          decoration: BoxDecoration(
+                            color: AppColors.accentSand.withOpacity(0.3),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.border, width: 2),
+                          ),
+                          child: ClipOval(
+                            child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                                ? ClosyNetworkImage(
+                                    imageUrl: user.avatarUrl!,
+                                    width: 96,
+                                    height: 96,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Center(
+                                    child: Text(
+                                      _getInitialLetter(user),
+                                      style: GoogleFonts.playfairDisplay(
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
+                            ),
+                        ),
                       ),
                     ),
                     if (isAuth)
@@ -228,10 +240,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Flexible(
-                      child: Text(
-                        isAuth ? _getDisplayName(user) : 'Khách khám phá',
-                        style: GoogleFonts.beVietnamPro(fontSize: 18, fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
+                      // Bấm tên → xem hồ sơ cộng đồng của mình.
+                      child: InkWell(
+                        onTap: isAuth ? () => _openCommunityProfile(user) : null,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+                          child: Text(
+                            isAuth ? _getDisplayName(user) : 'Khách khám phá',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: isAuth
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
                     ),
                     if (isAuth && sub.isPremium) ...[
@@ -542,19 +569,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Đổi mật khẩu tài khoản và quản lý đăng xuất',
           () => context.push('/profile/change-password'),
         ),
-        // Xem gói hội viên + hạn mức AI (đọc). Nâng cấp thực hiện trên web.
-        _buildMenuTile(
-          Icons.workspace_premium_outlined,
-          'Gói hội viên & Hạn mức AI',
-          'Xem quyền lợi, hạn mức và các gói dịch vụ nâng cấp',
-          () => context.push('/profile/subscription'),
-        ),
-        _buildMenuTile(
-          Icons.account_balance_wallet_outlined,
-          'Ví Closy Pay & Lịch sử giao dịch',
-          'Xem số dư khả dụng và toàn bộ giao dịch của bạn',
-          () => context.push('/profile/wallet'),
-        ),
+        // ẨN: mục "Gói hội viên & Hạn mức AI" và "Ví Closy Pay & Lịch sử giao
+        // dịch" bị bỏ khỏi menu dưới vì đã có card Closy Pay + phần Gói ở
+        // trên — giữ lại sẽ trùng lặp. Xem gói: /profile/subscription,
+        // xem lịch sử: nút "Lịch Sử" trong card Ví.
         // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng hồ sơ số đo).
         /*
         _buildMenuTile(

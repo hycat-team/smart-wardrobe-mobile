@@ -14,6 +14,8 @@ class OutfitPickerSheet extends ConsumerWidget {
     final outfitsState = ref.watch(outfitsListProvider);
 
     return DraggableScrollableSheet(
+      // `expand: false` để vùng trống phía trên thuộc barrier → bấm là đóng.
+      expand: false,
       initialChildSize: 0.65,
       minChildSize: 0.4,
       maxChildSize: 0.9,

@@ -12,7 +12,9 @@ class ClosyWalletCard extends ConsumerStatefulWidget {
 }
 
 class _ClosyWalletCardState extends ConsumerState<ClosyWalletCard> {
-  bool _hideBalance = false;
+  /// Số dư **mặc định ẩn** — không lộ số tiền khi vừa mở app. Bấm con mắt
+  /// để hiện, bấm lần nữa để ẩn.
+  bool _hideBalance = true;
 
   @override
   Widget build(BuildContext context) {
@@ -136,57 +138,27 @@ class _ClosyWalletCardState extends ConsumerState<ClosyWalletCard> {
                         ),
                       ),
                 const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      // Nạp ví thực hiện trên website — văn bản thuần túy,
-                      // không nút mở link (spec 009, FR-004/FR-006).
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.06),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                            width: 1.2,
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.language_rounded, size: 18, color: goldColor),
-                            SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                'Nạp ví trên web: closy.hycat.online',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
+                // Card này chỉ còn một hành động: xem lịch sử giao dịch.
+                // Nạp ví thực hiện trên website (spec 009, FR-004/FR-006) —
+                // không đưa nút thu tiền vào app.
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/profile/wallet'),
+                    icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                    label: const Text(
+                      'Lịch Sử',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white.withOpacity(0.9),
+                      side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1.2),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => context.push('/profile/wallet'),
-                        icon: const Icon(Icons.receipt_long_rounded, size: 18),
-                        label: const Text(
-                          'Lịch Sử',
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white.withOpacity(0.9),
-                          side: BorderSide(color: Colors.white.withOpacity(0.3), width: 1.2),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),

@@ -173,7 +173,7 @@ class WardrobeInsightsScreen extends ConsumerWidget {
             Expanded(
               child: _buildMetricCard(
                 icon: Icons.history_rounded,
-                title: 'Ít mặc / Lãng phí',
+                title: 'Ít mặc',
                 value: '${insights.underutilizedItemsCount}',
                 unit: 'món >30 ngày',
                 accentColor: const Color(0xFFD97706),

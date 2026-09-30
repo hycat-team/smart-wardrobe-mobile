@@ -187,7 +187,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
                       decoration: InputDecoration(
                         labelText: 'Email hoặc Tên đăng nhập',
-                        hintText: 'user hoặc user@smartwardrobe.com',
+                        // Không dùng hintText: nhãn đã nói rõ nhập gì, thêm
+                        // hint "user hoặc user@smartwardrobe.com" chỉ nhắc lại
+                        // và tốn một dòng trong ô.
                         labelStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                         filled: true,
                         fillColor: AppColors.surface,

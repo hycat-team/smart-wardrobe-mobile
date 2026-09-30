@@ -4,10 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/closy_network_image.dart';
-import '../../../../shared/widgets/closy_toast.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../data/community_error.dart';
 import '../../models/post_models.dart';
+import '../../utils/post_share_helper.dart';
 import '../../../../shared/widgets/media_viewer_overlay.dart';
 import '../widgets/community_user_avatar.dart';
 import '../widgets/media_grid.dart';
@@ -74,15 +74,29 @@ class PostCard extends ConsumerWidget {
                       Row(
                         children: [
                           Flexible(
-                            child: Text(
-                              post.user?.displayName ?? 'Thành viên Closy',
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
+                            // Bấm vào tên → trang cá nhân của thành viên.
+                            child: InkWell(
+                              onTap: () {
+                                final un = post.user?.username;
+                                if (un != null && un.isNotEmpty) {
+                                  context.push('/users/$un');
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 2, vertical: 1),
+                                child: Text(
+                                  post.user?.displayName ?? 'Thành viên Closy',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (post.isHidden) ...[
@@ -107,10 +121,9 @@ class PostCard extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 2),
+                      // Chỉ hiện ngày đăng — bỏ "@username" theo yêu cầu.
                       Text(
-                        post.user?.username != null && post.user!.username.isNotEmpty
-                            ? '@${post.user!.username}'
-                            : _formatDate(post.createdAt),
+                        _formatDate(post.createdAt),
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -211,66 +224,17 @@ class PostCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(16),
                 child: AspectRatio(
                   aspectRatio: 4 / 5,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      // Bấm ảnh → mở ảnh toàn màn hình (như bài ảnh thông thường).
-                      GestureDetector(
-                        onTap: () => openMediaViewer(
-                          context,
-                          imageUrls: [post.outfit!.coverImageUrl!],
-                          caption: post.outfit!.name,
-                        ),
-                        child: ClosyNetworkImage(
-                          imageUrl: post.outfit!.coverImageUrl!,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 600,
-                        ),
-                      ),
-                      // Badge tên outfit (bấm để mở bài viết chi tiết)
-                      Positioned(
-                        top: 12,
-                        left: 12,
-                        child: GestureDetector(
-                          onTap: () =>
-                              context.push('/community/posts/${post.publicId}'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.92),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.style_outlined, size: 14, color: AppColors.primary),
-                                const SizedBox(width: 6),
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 160),
-                                  child: Text(
-                                    post.outfit!.name,
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.primary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: GestureDetector(
+                    onTap: () => openMediaViewer(
+                      context,
+                      imageUrls: [post.outfit!.coverImageUrl!],
+                      caption: post.outfit!.name,
+                    ),
+                    child: ClosyNetworkImage(
+                      imageUrl: post.outfit!.coverImageUrl!,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 600,
+                    ),
                   ),
                 ),
               ),
@@ -363,16 +327,6 @@ class PostCard extends ConsumerWidget {
                 // Nút Bình luận
                 InkWell(
                   onTap: () {
-                    final authState = ref.read(authStateProvider);
-                    if (!authState.isAuthenticated) {
-                      requireLogin(
-                        context,
-                        ref,
-                        targetRoute: '/community/posts/${post.publicId}?focus=comment',
-                        message: 'Vui lòng đăng nhập để bình luận bài viết.',
-                      );
-                      return;
-                    }
                     if (onCommentTap != null) {
                       onCommentTap!();
                     } else {
@@ -409,9 +363,7 @@ class PostCard extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.share_outlined, color: AppColors.textSecondary, size: 20),
                   tooltip: 'Chia sẻ liên kết',
-                  onPressed: () {
-                    ClosyToast.info(context, 'Đã sao chép liên kết: ${post.sharePath}');
-                  },
+                  onPressed: () => copyPostLink(context, post.sharePath),
                 ),
               ],
             ),

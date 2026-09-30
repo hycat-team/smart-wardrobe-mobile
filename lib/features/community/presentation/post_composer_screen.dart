@@ -362,7 +362,7 @@ class _PostComposerScreenState extends ConsumerState<PostComposerScreen> {
               maxLength: 150,
               decoration: InputDecoration(
                 hintText: 'Nhập tiêu đề ấn tượng cho bài viết...',
-                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary.withOpacity(0.7)),
+                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.surface,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -400,7 +400,7 @@ class _PostComposerScreenState extends ConsumerState<PostComposerScreen> {
               maxLength: 5000,
               decoration: InputDecoration(
                 hintText: 'Chia sẻ cảm hứng, cách phối phụ kiện hoặc mẹo phong cách...',
-                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary.withOpacity(0.7)),
+                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
                 filled: true,
                 fillColor: AppColors.surface,
                 contentPadding: const EdgeInsets.all(16),

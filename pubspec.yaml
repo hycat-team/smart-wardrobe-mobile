@@ -1,7 +1,9 @@
 name: smart_wardrobe
 description: "Smart Wardrobe Mobile App - Quiet Luxury AI Stylist & Fashion Wardrobe"
 publish_to: 'none'
-version: 1.0.0+1
+# versionCode (+N) PHẢI lớn hơn mọi bản đã upload Play. Đã upload 1.0.0+1
+# (Internal testing, 2026-09-24) → bản tiếp theo là +2.
+version: 1.0.0+2
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -46,7 +48,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # KHÔNG khai báo `.env` ở đây — file này sẽ bị đóng gói vào .aab và ai tải
+  # app từ Play về cũng đọc được URL production. Bản release dùng
+  # `--dart-define` (xem docs/Release_Play_Checklist.md mục 2). File .env vẫn
+  # tồn tại trên máy dev, chỉ không được đóng gói vào app.
   assets:
-    - .env
     - assets/mockups/
     - assets/images/

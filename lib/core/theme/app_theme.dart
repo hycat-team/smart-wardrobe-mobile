@@ -79,6 +79,14 @@ class AppTheme {
           fontWeight: FontWeight.w600,
         ),
       ),
+      // Màu chữ gợi ý (placeholder) của ô nhập.
+      //
+      // Mặc định của Flutter cho theme sáng là `Colors.black` @ 60% — nhìn
+      // gần như đen, lệch hẳn so với bảng màu Quiet Luxury và dễ bị nhầm là
+      // đã nhập chữ. Đặt lại `textSecondary` (#737373) để MỌI ô nhập không
+      // khai báo `hintStyle` riêng cũng nhận đúng màu, thống nhất với các ô
+      // đã khai báo tường minh.
+      hintColor: AppColors.textSecondary,
       chipTheme: const ChipThemeData(
         backgroundColor: AppColors.surfaceSubtle,
         selectedColor: AppColors.accentSand,

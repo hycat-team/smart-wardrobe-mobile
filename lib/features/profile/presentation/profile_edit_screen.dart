@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -360,7 +360,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                               fontSize: 14,
                               color: _selectedDob != null
                                   ? AppColors.textPrimary
-                                  : AppColors.textMuted,
+                                  : AppColors.textSecondary,
                             ),
                           ),
                           const Spacer(),
@@ -473,7 +473,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   InputDecoration _inputDecoration({required String hintText, Widget? prefixIcon}) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: const TextStyle(fontSize: 14, color: AppColors.textMuted),
+      hintStyle: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
       prefixIcon: prefixIcon,
       filled: true,
       fillColor: AppColors.surface,

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,6 +12,7 @@ import '../data/community_repository.dart';
 import '../models/comment_models.dart';
 import '../models/post_models.dart';
 import '../providers/comments_provider.dart';
+import '../utils/post_share_helper.dart';
 import '../providers/community_feed_provider.dart';
 import '../providers/post_detail_provider.dart';
 import 'widgets/comment_tile.dart';
@@ -37,10 +38,19 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
   final FocusNode _commentFocusNode = FocusNode();
 
+  /// Cuộn danh sách bài viết + bình luận. Dùng để trượt xuống vùng bình
+  /// luận khi ô nhập mở, tránh bàn phím che mất nội dung.
+  final ScrollController _scrollController = ScrollController();
+
+  /// Ô nhập bình luận chỉ hiện khi người dùng bấm "bình luận" hoặc "trả lời"
+  /// (thay vì luôn chiếm chỗ ở đáy màn). Gửi xong sẽ tự ẩn lại.
+  bool _isCommentBarVisible = false;
+
   @override
   void initState() {
     super.initState();
     if (widget.autoFocusComment) {
+      _isCommentBarVisible = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _commentFocusNode.requestFocus();
@@ -49,10 +59,50 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     }
   }
 
+  /// Mở ô nhập (bình luận mới hoặc trả lời) và đưa bàn phím lên.
+  ///
+  /// Khi bàn phím mở, vùng nội dung bị co lại nhưng **không tự cuộn**, nên
+  /// ô nhập dính ở đáy và che mất phần bình luận. Gọi `_scrollToComments()`
+  /// sau một frame để danh sách trượt lên vùng bình luận, nhờ vậy ô nhập
+  /// luôn nằm ngay dưới nội dung đang xem thay vì "fix cứng".
+  void _openCommentBar() {
+    setState(() => _isCommentBarVisible = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _commentFocusNode.requestFocus();
+      _scrollToComments();
+      // Chờ bàn phím animate lên rồi cuộn lại (bàn phím mất ~250ms).
+      Future.delayed(const Duration(milliseconds: 260), () {
+        if (mounted) _scrollToComments();
+      });
+    });
+  }
+
+  /// Đóng ô nhập: bỏ focus để hạ bàn phím, xoá nội dung dở và ẩn thanh nhập.
+  void _closeCommentBar() {
+    _commentFocusNode.unfocus();
+    _commentController.clear();
+    final notifier = ref.read(commentsProvider(widget.publicId).notifier);
+    notifier.setReplyingTo(null);
+    notifier.setEditingComment(null);
+    setState(() => _isCommentBarVisible = false);
+  }
+
+  /// Trượt danh sách tới vùng bình luận.
+  void _scrollToComments() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   void dispose() {
     _commentController.dispose();
     _commentFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -122,14 +172,9 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
           ),
         ),
         actions: [
+          // Chia sẻ nằm cùng hàng Thích / Bình luận phía dưới (giống
+          // bài viết trong feed) nên AppBar không lặp lại nút này.
           if (post != null) ...[
-            IconButton(
-              icon: const Icon(Icons.share_outlined, color: AppColors.primary, size: 22),
-              tooltip: 'Chia sẻ liên kết',
-              onPressed: () {
-                ClosyToast.info(context, 'Đã sao chép liên kết: ${post.sharePath}');
-              },
-            ),
             if (isOwner)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_horiz_rounded, color: AppColors.primary),
@@ -167,9 +212,13 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
           ],
         ],
       ),
-      bottomNavigationBar: post != null
-          ? _buildCommentInputBar(commentsState, commentsNotifier)
-          : null,
+      // Ô nhập bình luận nằm **trong body** (dưới dạng child cuối của
+      // Column), không phải `bottomNavigationBar`.
+      //
+      // Lý do: `Scaffold.resizeToAvoidBottomInset` chỉ thu nhỏ vùng `body`
+      // theo chiều cao bàn phím; nó **không** nâng `bottomNavigationBar` lên
+      // → ô nhập nằm dưới bàn phím và bị che. Đặt trong body thì Column co
+      // lại và ô nhập tự nhảy lên sát bàn phím, giống trang chat AI.
       body: detailState.isLoading
           ? const Center(
               child: CircularProgressIndicator(
@@ -183,7 +232,17 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                   ? _buildErrorView(detailState.errorMessage!)
                   : post == null
                       ? const SizedBox.shrink()
-                      : _buildPostDetailContent(post, commentsState, commentsNotifier),
+                      : Column(
+                          children: [
+                            Expanded(
+                              child: _buildPostDetailContent(
+                                  post, commentsState, commentsNotifier),
+                            ),
+                            if (_isCommentBarVisible)
+                              _buildCommentInputBar(
+                                  commentsState, commentsNotifier),
+                          ],
+                        ),
     );
   }
 
@@ -272,6 +331,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     CommentsNotifier commentsNotifier,
   ) {
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,9 +487,14 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
             const SizedBox(height: 16),
           ],
 
-          // 6. Tương tác (Thích & Bình luận)
+          // 6. Tương tác (Thích / Bình luận / Chia sẻ)
+          //
+          // Mỗi nút chiếm đúng 1/3 chiều ngang (`Expanded`) để không bao giờ
+          // tràn khi số lượt thích/bình luận lớn. Chỉ hiện icon + con số
+          // (kiểu Twitter), bỏ các nhãn dài "lượt thích" / "bình luận" /
+          // "Chia sẻ" vì chúng làm hàng này vỡ layout trên máy hẹp.
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: const BoxDecoration(
               border: Border.symmetric(
                 horizontal: BorderSide(color: AppColors.border, width: 0.8),
@@ -437,68 +502,77 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
             ),
             child: Row(
               children: [
-                InkWell(
-                  onTap: () {
-                    final isAuth = ref.read(authStateProvider).isAuthenticated;
-                    if (!isAuth) {
-                      requireLogin(context, ref, message: 'Vui lòng đăng nhập để thích bài viết.');
-                      return;
-                    }
-                    ref.read(postDetailProvider(widget.publicId).notifier).toggleLike();
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    child: Row(
-                      children: [
-                        Icon(
-                          post.isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                          color: post.isLiked ? const Color(0xFFC85A54) : AppColors.textSecondary,
-                          size: 22,
-                        ),
-                        const SizedBox(width: 6),
-                        GestureDetector(
-                          onTap: () {
-                            if (post.likeCount > 0) {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (_) => PostLikesSheet(publicId: post.publicId),
-                              );
-                            }
-                          },
-                          child: Text(
-                            '${post.likeCount} lượt thích',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: post.isLiked ? const Color(0xFFC85A54) : AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                // Thích
+                Expanded(
+                  key: const ValueKey('postActionLike'),
+                  child: _buildActionButton(
+                    icon: post.isLiked
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    iconColor: post.isLiked
+                        ? const Color(0xFFC85A54)
+                        : AppColors.textSecondary,
+                    count: '${post.likeCount}',
+                    countColor: post.isLiked
+                        ? const Color(0xFFC85A54)
+                        : AppColors.textSecondary,
+                    semanticLabel: 'Thích bài viết',
+                    onTap: () {
+                      final isAuth =
+                          ref.read(authStateProvider).isAuthenticated;
+                      if (!isAuth) {
+                        requireLogin(context, ref,
+                            message: 'Vui lòng đăng nhập để thích bài viết.');
+                        return;
+                      }
+                      ref
+                          .read(postDetailProvider(widget.publicId).notifier)
+                          .toggleLike();
+                    },
+                    // Bấm số lượt thích → xem danh sách người thích.
+                    onCountTap: post.likeCount > 0
+                        ? () => showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) =>
+                                  PostLikesSheet(publicId: post.publicId),
+                            )
+                        : null,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      color: AppColors.textSecondary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${post.commentCount} bình luận',
-                      style: GoogleFonts.beVietnamPro(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
+                // Bình luận
+                Expanded(
+                  key: const ValueKey('postActionComment'),
+                  child: _buildActionButton(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    iconColor: AppColors.textSecondary,
+                    count: '${post.commentCount}',
+                    countColor: AppColors.textSecondary,
+                    semanticLabel: 'Bình luận',
+                    onTap: () {
+                      final isAuth =
+                          ref.read(authStateProvider).isAuthenticated;
+                      if (!isAuth) {
+                        requireLogin(context, ref,
+                            message: 'Vui lòng đăng nhập để bình luận.');
+                        return;
+                      }
+                      _openCommentBar();
+                    },
+                  ),
+                ),
+                // Chia sẻ — chỉ icon, không có count.
+                Expanded(
+                  key: const ValueKey('postActionShare'),
+                  child: _buildActionButton(
+                    icon: Icons.share_outlined,
+                    iconColor: AppColors.textSecondary,
+                    count: null,
+                    countColor: null,
+                    semanticLabel: 'Chia sẻ liên kết bài viết',
+                    onTap: () => copyPostLink(context, post.sharePath),
+                  ),
                 ),
               ],
             ),
@@ -529,8 +603,69 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
           ),
           const SizedBox(height: 12),
           _buildCommentsSection(commentsState, commentsNotifier),
-          const SizedBox(height: 80),
+          // Chừa chút khoảng trống khi cuộn hết bình luận. Trước đây là 80
+          // để né `bottomNavigationBar`; nay ô nhập nằm trong Column nên
+          // không cần nhiều.
+          const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  /// Một nút hành động trong thanh tương tác: icon + (tuỳ chọn) số đếm.
+  ///
+  /// Nút bọc trong `Expanded` nên chiếm 1/3 chiều ngang; nội dung canh giữa
+  /// và co giãn được nên số lượt thích lớn cũng không làm tràn hàng.
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color iconColor,
+    required String? count,
+    required Color? countColor,
+    required String semanticLabel,
+    required VoidCallback onTap,
+    VoidCallback? onCountTap,
+  }) {
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      container: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          // 12 mỗi bên + icon 20 = 44px, đạt chuẩn vùng chạm tối thiểu.
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: iconColor, size: 20),
+              if (count != null) ...[
+                const SizedBox(width: 6),
+                // Số đếm co giãn + xuống dòng nếu quá dài, không đẩy icon
+                // ra ngoài màn hình.
+                Flexible(
+                  child: InkWell(
+                    onTap: onCountTap,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(
+                        count,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: countColor ?? AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -687,7 +822,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                                 : 'Thêm bình luận của bạn...',
                         hintStyle: GoogleFonts.beVietnamPro(
                           fontSize: 13,
-                          color: AppColors.textSecondary.withOpacity(0.7),
+                          color: AppColors.textSecondary,
                         ),
                         filled: true,
                         fillColor: AppColors.surfaceSubtle,
@@ -699,7 +834,14 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
+                  // Đóng ô nhập: bỏ focus (hạ bàn phím) rồi ẩn thanh nhập.
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 20),
+                    tooltip: 'Đóng',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _closeCommentBar,
+                  ),
                   IconButton(
                     icon: commentsState.isSubmitting
                         ? const SizedBox(
@@ -742,6 +884,8 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
     if (success) {
       _commentController.clear();
       _commentFocusNode.unfocus();
+      // Gửi xong → ẩn ô nhập cho gọn đáy màn.
+      if (mounted) setState(() => _isCommentBarVisible = false);
     } else {
       final err = ref.read(commentsProvider(widget.publicId)).errorMessage ??
           'Không thể gửi bình luận. Vui lòng thử lại.';
@@ -753,7 +897,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   void _startEditComment(Comment comment, CommentsNotifier notifier) {
     notifier.setEditingComment(comment);
     _commentController.text = comment.content;
-    _commentFocusNode.requestFocus();
+    _openCommentBar();
   }
 
   void _startReplyComment(Comment comment, CommentsNotifier notifier) {
@@ -763,7 +907,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
       return;
     }
     notifier.setReplyingTo(comment);
-    _commentFocusNode.requestFocus();
+    _openCommentBar();
   }
 
   Future<void> _handleDeleteComment(Comment comment, CommentsNotifier notifier) async {

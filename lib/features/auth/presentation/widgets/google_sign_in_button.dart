@@ -9,6 +9,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../models/auth_models.dart';
 import '../../providers/auth_provider.dart';
 import 'google_logo.dart';
+import 'google_sign_in_bootstrap.dart';
 import 'web_button.dart';
 
 class GoogleSignInButton extends ConsumerStatefulWidget {
@@ -26,7 +27,7 @@ class GoogleSignInButton extends ConsumerStatefulWidget {
 }
 
 class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
-  static bool _isSdkInitialized = false;
+  static bool get _isSdkInitialized => GoogleSignInBootstrap.isInitialized;
   bool _isLocallyLoading = false;
   StreamSubscription<GoogleSignInAuthenticationEvent>? _webAuthSubscription;
 
@@ -43,21 +44,11 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
   }
 
   Future<void> _initGoogleSdk() async {
-    if (!_isSdkInitialized) {
-      _isSdkInitialized = true;
-      final clientId = AppConstants.googleClientId;
-      try {
-        await GoogleSignIn.instance.initialize(
-          clientId: kIsWeb ? (clientId.isNotEmpty ? clientId : null) : null,
-          serverClientId:
-              !kIsWeb ? (clientId.isNotEmpty ? clientId : null) : null,
-        );
-      } catch (e) {
-        debugPrint('Google Sign-In SDK initialization warning: $e');
-      }
-      if (mounted) {
-        setState(() {});
-      }
+    // Dùng bootstrap singleton — main.dart đã initialize lúc startup, gọi
+    // lại ở đây sẽ làm google_sign_in 7.x ném lỗi trên bản release.
+    await GoogleSignInBootstrap.ensureInitialized(AppConstants.googleClientId);
+    if (mounted) {
+      setState(() {});
     }
 
     // Web (GIS): lắng nghe sự kiện đăng nhập -> lấy ID token -> đổi Bearer.
@@ -99,9 +90,8 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
     setState(() => _isLocallyLoading = true);
 
     try {
-      if (!_isSdkInitialized) {
-        await _initGoogleSdk();
-      }
+      // Luôn gọi (idempotent) — bootstrap tự bỏ qua nếu đã khởi tạo.
+      await _initGoogleSdk();
 
       // Buộc hiện lại account chooser: xoá phiên Google cục bộ trước khi
       // authenticate() để không tự động tái dùng tài khoản đã cấp quyền

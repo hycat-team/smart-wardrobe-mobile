@@ -156,15 +156,47 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _onCreatePost,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        icon: const Icon(Icons.edit_note_rounded, size: 22),
-        label: Text(
-          'Đăng bài',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.w600, fontSize: 14),
+      // Nút tạo bài: tròn 48×48, CHỈ icon "+", đặt sát góc dưới bên phải.
+      //
+      // Lịch sử: ban đầu là pill có chữ "Đăng bài" đặt `centerFloat` (nằm giữa
+      // màn, che nội dung). Nay bỏ hết chữ, chỉ giữ dấu "+" và chuyển sang
+      // `endFloat` cho khớp thói quen bấm ở mép.
+      //
+      // 48×48 là cùng kích thước nút "Lưu" ở Outfit Studio nên hai màn có
+      // chung một ngôn ngữ thị giác. `tooltip` là **bắt buộc** vì nút không còn
+      // chữ: đây là lối vào tạo bài duy nhất (nút ở AppBar đã bị gỡ trước đó),
+      // thiếu nhãn thì người khiếm thị không biết đây là nút gì.
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.14),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          // `IconButton` (không phải `ElevatedButton`) vì nó có sẵn tham số
+          // `tooltip` — bắt buộc khi nút không còn chữ.
+          child: IconButton(
+            onPressed: _onCreatePost,
+            tooltip: 'Đăng bài',
+            icon: const Icon(Icons.add_rounded, size: 26),
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              // `fixedSize` = khoá đúng 48×48 bất kể padding mặc định.
+              fixedSize: const Size(48, 48),
+              minimumSize: const Size(48, 48),
+              maximumSize: const Size(48, 48),
+              shape: const CircleBorder(),
+              elevation: 0,
+            ),
+          ),
         ),
       ),
     );
@@ -237,7 +269,17 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                                 color: !isFollowing ? Colors.white : AppColors.textSecondary,
                               ),
                               const SizedBox(width: 7),
-                              const Text('Khám phá'),
+                              // `Flexible` + `ellipsis`: khi người dùng tăng cỡ
+                              // chữ hệ thống (Android font scaling) nhãn dài có
+                              // thể tràn ô phân đoạn. Không có nó, `Row` báo
+                              // "overflowed ... on the right".
+                              const Flexible(
+                                child: Text(
+                                  'Khám phá',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -267,7 +309,17 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                                 color: isFollowing ? Colors.white : AppColors.textSecondary,
                               ),
                               const SizedBox(width: 7),
-                              const Text('Đang theo dõi'),
+                              // `Flexible` + `ellipsis`: khi người dùng tăng cỡ
+                              // chữ hệ thống (Android font scaling) nhãn dài có
+                              // thể tràn ô phân đoạn. Không có nó, `Row` báo
+                              // "overflowed ... on the right".
+                              const Flexible(
+                                child: Text(
+                                  'Đang theo dõi',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ],
                           ),
                         ),

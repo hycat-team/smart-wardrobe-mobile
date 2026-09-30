@@ -1,14 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/router/url_strategy.dart';
 import 'core/session/session_provider.dart';
 import 'core/deeplink/payment_deeplink_handler.dart';
+import 'features/auth/presentation/widgets/google_sign_in_bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,17 +28,8 @@ Future<void> main() async {
 
   // Pre-initialize Google Sign-In SDK: Web (GIS) dùng clientId; Android dùng
   // serverClientId. Giúp GIS sẵn sàng ngay khi màn login render.
-  try {
-    final clientId = AppConstants.googleClientId;
-    if (clientId.isNotEmpty) {
-      await GoogleSignIn.instance.initialize(
-        clientId: kIsWeb ? clientId : null,
-        serverClientId: !kIsWeb ? clientId : null,
-      );
-    }
-  } catch (e) {
-    debugPrint('Google Sign-In pre-initialization notice: $e');
-  }
+  // Dùng bootstrap singleton để không bị initialize() lần hai ở widget.
+  await GoogleSignInBootstrap.ensureInitialized(AppConstants.googleClientId);
 
   runApp(
     const SmartWardrobeRoot(),
@@ -99,7 +89,7 @@ class SmartWardrobeApp extends ConsumerWidget {
     return PaymentDeepLinkObserver(
       router: router,
       child: MaterialApp.router(
-        title: 'Smart Wardrobe',
+        title: 'Closy',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: router,

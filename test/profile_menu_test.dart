@@ -6,6 +6,7 @@ import 'package:smart_wardrobe/features/auth/data/auth_repository.dart';
 import 'package:smart_wardrobe/features/auth/models/auth_models.dart';
 import 'package:smart_wardrobe/features/auth/providers/auth_provider.dart';
 import 'package:smart_wardrobe/features/profile/data/profile_repository.dart';
+import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
 import 'package:smart_wardrobe/features/profile/presentation/profile_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/widgets/closy_wallet_card.dart';
 import 'package:smart_wardrobe/features/profile/providers/profile_provider.dart';
@@ -75,14 +76,28 @@ class _FakeAuthNotifier extends AuthNotifier {
   Future<void> logout() async => state = const AuthState();
 }
 
+/// Wallet cố định để card Closy Pay render số dư ngay (không ở loading).
+class _FakeWalletNotifier extends WalletNotifier {
+  _FakeWalletNotifier(super.repo, super.ref) {
+    state = const WalletState(
+      wallet: WalletModel(userId: 'u1', balance: 125000, currency: 'VND'),
+    );
+  }
+
+  @override
+  Future<void> loadWallet() async {}
+}
+
 void main() {
   final authRepo = _NoopAuthRepository();
+  final profileRepo = _NoopProfileRepository();
   final overrides = <Override>[
-    profileRepositoryProvider.overrideWithValue(_NoopProfileRepository()),
+    profileRepositoryProvider.overrideWithValue(profileRepo),
     authRepositoryProvider.overrideWithValue(authRepo),
     authStateProvider.overrideWith(
       (ref) => _FakeAuthNotifier(authRepo, ref),
     ),
+    walletProvider.overrideWith((ref) => _FakeWalletNotifier(profileRepo, ref)),
   ];
 
   group('ProfileScreen — điều hướng menu', () {
@@ -94,7 +109,8 @@ void main() {
       expect(find.text('Cộng đồng thời trang'), findsNothing);
     });
 
-    testWidgets('hiện mục số dư, lịch sử và xem gói', (tester) async {
+    testWidgets('card Closy Pay ẩn số dư mặc định và chỉ có nút Lịch Sử',
+        (tester) async {
       await tester.pumpWidget(_host(overrides, const ProfileScreen()));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
@@ -102,29 +118,36 @@ void main() {
       // Tiêu đề ví dùng font Outfit, in hoa: "VÍ CLOSY PAY".
       expect(find.text('VÍ CLOSY PAY'), findsOneWidget);
       expect(find.text('Số dư khả dụng'), findsOneWidget);
-      expect(find.text('Lịch Sử'), findsOneWidget);
       expect(find.text('Xem gói'), findsOneWidget);
-      // Nạp/nâng cấp vẫn chỉ hướng dẫn lên web, không có nút mở link.
-      expect(find.textContaining('closy.hycat.online'), findsOneWidget);
 
-      // Menu nằm dưới thẻ ví/gói → phải cuộn mới thấy.
-      await tester.scrollUntilVisible(
-        find.text('Gói hội viên & Hạn mức AI'),
-        300,
-        scrollable: find.byType(Scrollable).first,
+      // Số dư mặc định ẩn, hiện con mắt "đang ẩn".
+      expect(find.text('•••••••• đ'), findsOneWidget);
+      expect(find.text('125.000 đ'), findsNothing);
+      expect(find.byIcon(Icons.visibility_off_rounded), findsOneWidget);
+
+      // Card chỉ còn nút Lịch Sử, không còn nút nạp ví trên web.
+      expect(find.text('Lịch Sử'), findsOneWidget);
+      expect(find.textContaining('Nạp ví trên web'), findsNothing);
+      expect(find.textContaining('closy.hycat.online'), findsNothing);
+    });
+
+    testWidgets('xoá mục Gói hội viên & Hạn mức AI và Ví & Lịch sử khỏi menu dưới',
+        (tester) async {
+      await tester.pumpWidget(_host(overrides, const ProfileScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.drag(
+        find.byType(Scrollable).first,
+        const Offset(0, -1200),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Gói hội viên & Hạn mức AI'), findsOneWidget);
 
-      await tester.scrollUntilVisible(
-        find.text('Ví Closy Pay & Lịch sử giao dịch'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text('Ví Closy Pay & Lịch sử giao dịch'), findsOneWidget);
+      expect(find.text('Gói hội viên & Hạn mức AI'), findsNothing);
+      expect(find.text('Ví Closy Pay & Lịch sử giao dịch'), findsNothing);
+      // Các mục còn lại của khu TÀI KHOẢN & HỆ THỐNG vẫn phải còn.
+      expect(find.text('Chỉnh sửa thông tin cá nhân'), findsOneWidget);
     });
 
     testWidgets('thẻ ví hiện số dư và nút lịch sử (không phụ thuộc cờ paid)',
@@ -190,18 +213,13 @@ void main() {
       expect(find.text('ROUTE /profile/privacy'), findsOneWidget);
     });
 
-    testWidgets('bấm mục Ví → mở /profile/wallet', (tester) async {
+    testWidgets('bấm nút Lịch Sử trong card ví → mở /profile/wallet',
+        (tester) async {
       await tester.pumpWidget(_host(overrides, const ProfileScreen()));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      await tester.scrollUntilVisible(
-        find.text('Ví Closy Pay & Lịch sử giao dịch'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pump();
-      await tester.tap(find.text('Ví Closy Pay & Lịch sử giao dịch'));
+      await tester.tap(find.text('Lịch Sử'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

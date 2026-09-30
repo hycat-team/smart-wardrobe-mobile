@@ -61,12 +61,10 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
-              Text(
-                'Chụp ảnh hoặc chọn từ máy để AI tự động tách nền và phân tích chất liệu, màu sắc, phong cách.',
-                style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.textSecondary),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
+              // Đã bỏ dòng mô tả "Chụp ảnh hoặc chọn từ máy để AI tự động
+              // tách nền và phân tích chất liệu, màu sắc, phong cách." — câu
+              // dài chiếm 2 dòng và làm menu rối.
+              const SizedBox(height: 18),
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(10),
@@ -77,30 +75,15 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   child: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
                 ),
                 title: const Text('Chụp ảnh mới', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                subtitle: const Text('Dùng máy ảnh để ghi lại trang phục', style: TextStyle(fontSize: 12)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _handleUpload(ImageSource.camera);
                 },
               ),
               const SizedBox(height: 8),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceSubtle,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
-                ),
-                title: const Text('Chọn từ thư viện ảnh', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                subtitle: const Text('Tải ảnh trang phục từ thiết bị', style: TextStyle(fontSize: 12)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  _handleUpload(ImageSource.gallery);
-                },
-              ),
-              const SizedBox(height: 8),
+              // Option này chọn nhiều ảnh một lúc nên dùng icon
+              // `collections_outlined`; option "Chọn từ thư viện ảnh" (chọn
+              // 1 ảnh) đã bị bỏ vì trùng ý và làm menu rối.
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(10),
@@ -110,8 +93,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   ),
                   child: const Icon(Icons.collections_outlined, color: AppColors.primary),
                 ),
-                title: const Text('Chọn nhiều ảnh cùng lúc', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                subtitle: const Text('Thêm nhiều món đồ một lần, AI xử lý từng ảnh', style: TextStyle(fontSize: 12)),
+                title: const Text('Chọn từ thư viện ảnh', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _handleUploadMultiple(ImageSource.gallery);
@@ -128,7 +110,6 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   child: const Icon(Icons.explore_outlined, color: AppColors.primary),
                 ),
                 title: const Text('Từ tủ đồ hệ thống', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                subtitle: const Text('Thêm nhanh mẫu có sẵn, không tốn lượt AI', style: TextStyle(fontSize: 12)),
                 onTap: () {
                   Navigator.pop(ctx);
                   context.push('/wardrobe/catalog');

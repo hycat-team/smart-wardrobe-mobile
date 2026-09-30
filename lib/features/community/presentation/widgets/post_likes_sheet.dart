@@ -95,6 +95,8 @@ class _PostLikesSheetState extends ConsumerState<PostLikesSheet> {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
+      // `expand: false` để vùng trống phía trên thuộc barrier → bấm là đóng.
+      expand: false,
       initialChildSize: 0.55,
       minChildSize: 0.35,
       maxChildSize: 0.85,
