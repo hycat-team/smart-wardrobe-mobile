@@ -1,4 +1,4 @@
-# Store Listing — Closy
+﻿# Store Listing — Closy
 
 Nội dung dán sẵn cho Play Console (2026-09-30). Giới hạn ký tự của Google
 đã được kiểm tra.
@@ -17,11 +17,11 @@ Nội dung dán sẵn cho Play Console (2026-09-30). Giới hạn ký tự của
 | **Contact email** | `hycat.support@gmail.com` |
 | **Privacy policy URL** | `https://closy.hycat.online/privacy` |
 
-Tên gói bắt buộc (không sửa sau khi tạo app): `com.smartwardrobe.smart_wardrobe`
+Tên gói bắt buộc (không sửa sau khi tạo app): `online.hycat.closy`
 
 > **Tên hiển thị đã đổi thành "Closy"** (30/09). Đổi `android:label` trong
 > `android/app/src/main/AndroidManifest.xml` → tên icon trên máy là Closy.
-> Tên gói `com.smartwardrobe.smart_wardrobe` **giữ nguyên** vì Play khóa
+> Tên gói `online.hycat.closy` **giữ nguyên** vì Play khóa
 > vĩnh viễn sau lần publish đầu.
 
 ---

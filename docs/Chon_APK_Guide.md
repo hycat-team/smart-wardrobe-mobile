@@ -1,4 +1,4 @@
-# Chọn và cài đúng file APK
+﻿# Chọn và cài đúng file APK
 
 Bản build `--split-per-abi` tạo ra **3 file riêng biệt**, mỗi file dành cho
 một loại máy. Chọn sai → app không cài được hoặc báo lỗi ngay.
@@ -95,7 +95,7 @@ adb install -r "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
 
 Gỡ cài đặt:
 ```powershell
-adb uninstall com.smartwardrobe.smart_wardrobe
+adb uninstall online.hycat.closy
 ```
 
 ---
@@ -214,13 +214,13 @@ $f = "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
 Kết quả đúng:
 
 ```
-package: name='com.smartwardrobe.smart_wardrobe' versionCode='2002' versionName='1.0.0'
+package: name='online.hycat.closy' versionCode='2002' versionName='1.0.0'
 native-code: 'arm64-v8a'
 Signer #1 certificate DN: CN=hycat, OU=closy, O=hycat, ...
 ```
 
 Ba dấu hiệu cần đúng:
-- `package` = `com.smartwardrobe.smart_wardrobe`
+- `package` = `online.hycat.closy`
 - `native-code` đúng kiến trúc máy bạn
 - Có dòng `certificate DN` → **đã ký** (không có dòng này = build lỗi)
 

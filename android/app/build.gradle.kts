@@ -16,7 +16,14 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.smartwardrobe.smart_wardrobe"
+    // Package đổi từ `com.smartwardrobe.smart_wardrobe` → `online.hycat.closy`
+    // (2026-09-30), đổi TRƯỚC lần publish đầu lên Play — sau khi tạo app thì
+    // Google khóa package vĩnh viễn, không sửa được.
+    //
+    // `namespace` và `applicationId` cố tình giữ khớp nhau. `namespace` là package
+    // Kotlin sinh ra R/BuildConfig nên phải khớp với `package` + đường dẫn của
+    // MainActivity.kt (`kotlin/online/hycat/closy/`).
+    namespace = "online.hycat.closy"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -26,8 +33,8 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.smartwardrobe.smart_wardrobe"
+        // Chính là giá trị phải khai trong Play Console > Package name.
+        applicationId = "online.hycat.closy"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

@@ -1,4 +1,4 @@
-# Hướng dẫn Frontend — Đăng nhập Google (Web & Mobile)
+﻿# Hướng dẫn Frontend — Đăng nhập Google (Web & Mobile)
 
 > **Trạng thái**: Đây là hợp đồng tích hợp cho dev frontend của tính năng "Đăng nhập Google" (spec
 > `021-google-login`). Backend đang được triển khai theo hợp đồng tại
@@ -32,9 +32,25 @@ Không mô tả chi tiết nội bộ backend.
     - **Authorized JavaScript origins**: `http://localhost:8081` (Flutter web dev), `http://localhost:3000` (FE web dev), `https://closy.hycat.online` (Production).
     - Client ID này được dùng làm `clientId` trên Web và `serverClientId` trên Android.
   - **OAuth 2.0 Android Client**:
-    - Package name: `com.smartwardrobe.smart_wardrobe`.
+    - Package name: `online.hycat.closy`.
     - SHA-1 fingerprint từ keystore (debug/release).
     - Android app khởi tạo `GoogleSignIn` với `serverClientId = WEB_CLIENT_ID` để nhận OpenID `idToken`.
+
+    > ⚠️ **PHẢI LÀM LẠI SAU KHI ĐỔI PACKAGE (2026-09-30).** Package đã đổi
+    > từ `com.smartwardrobe.smart_wardrobe` → `online.hycat.closy`. Google
+    > **gắn Android OAuth client với đúng cặp (package name + SHA-1)**, nên
+    > client cũ sẽ **hỏng ngay** và `loginWithGoogle` trả lỗi
+    > `DEEMED_NOT_VALID` (Google Play services 12500).
+    >
+    > Cần tạo **một Android OAuth client mới** trong Google Cloud Console
+    > (cùng project `368645245473`):
+    > - Package name: `online.hycat.closy`
+    > - SHA-1: `BE:C4:0C:45:A0:C7:64:48:C9:40:19:99:6C:25:F0:F1:9C:E9:90:CC`
+    >   (SHA-1 **không** đổi vì dùng cùng keystore `upload-keystore.jks`).
+    >
+    > `serverClientId` trong app vẫn là **Web** client ID nên **không phải** sửa
+    > `GOOGLE_CLIENT_ID` trong build. Client cũ có thể xoá sau khi client mới
+    > hoạt động.
 - **Điều kiện tiên quyết**:
   - Web và API **cùng registrable domain** (ví dụ FE `closy.hycat.online`, API `api.closy.hycat.online`) để cookie `SameSite=Strict` hoạt động.
   - Mọi request cần phiên phải gửi kèm credentials (`fetch(..., { credentials: 'include' })`).

@@ -1,4 +1,4 @@
-# Release Checklist — Smart Wardrobe (Google Play)
+﻿# Release Checklist — Smart Wardrobe (Google Play)
 
 Tài liệu vận hành phát hành Android lên Google Play (spec 008).
 Đánh dấu từng mục trước mỗi lần rollout.
@@ -8,8 +8,13 @@ Tài liệu vận hành phát hành Android lên Google Play (spec 008).
 - Flutter: 3.47.2 (stable, `C:\src\flutter`)
 - JDK/keytool: `C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe`
   (JDK đi kèm Android Studio mà Flutter đang dùng — xem `flutter doctor -v`)
-- Package: `com.smartwardrobe.smart_wardrobe` (đã chốt, không đổi sau publish)
+- Package: `online.hycat.closy` (đổi 2026-09-30, **trước** lần publish đầu;
+  Play khóa vĩnh viễn sau khi tạo app nên không thể sửa)
+  - Google OAuth client Android **phải tạo lại** cho package này — xem
+    `docs/google-login-frontend-guide.md` §Google Cloud Setup. Thiếu bước này
+    thì login Google trên máy trả `DEEMED_NOT_VALID`.
 - Keystore: `$env:USERPROFILE\upload-keystore.jks`, alias `upload`
+  (không đổi, nên SHA-1 giữ nguyên)
 - Play Console: tài khoản Personal mới → bắt buộc Closed Testing 12 tester × 14 ngày
 
 ## 1. Security

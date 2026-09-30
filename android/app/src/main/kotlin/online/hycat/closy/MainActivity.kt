@@ -1,4 +1,4 @@
-package com.smartwardrobe.smart_wardrobe
+package online.hycat.closy
 
 import io.flutter.embedding.android.FlutterActivity
 

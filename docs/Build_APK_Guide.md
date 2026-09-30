@@ -1,4 +1,4 @@
-# Hướng dẫn build APK release từng bước
+﻿# Hướng dẫn build APK release từng bước
 
 Tài liệu này giải thích **từng lệnh** và **tại sao cần**, dành cho người muốn
 tự build lại sau này. Mọi số liệu trong đây đã được kiểm chứng trên máy này.
@@ -284,7 +284,7 @@ Kết quả hiện tại:
   [ OK ] AAB: 62.3 MB
 
 === 2. Package / version ===
-  [ OK ] package = com.smartwardrobe.smart_wardrobe
+  [ OK ] package = online.hycat.closy
   [ .. ] versionCode = 2  versionName = 1.0.0
   [ OK ] versionCode matches metadata (2)
   [ OK ] All 3 ABIs present (ARM/ARM64/x86)
@@ -331,7 +331,7 @@ $aapt2 = "$env:LOCALAPPDATA\Android\Sdk\build-tools\36.0.0\aapt2.exe"
 
 Kỳ vọng:
 ```
-package: name='com.smartwardrobe.smart_wardrobe' versionCode='2' versionName='1.0.0'
+package: name='online.hycat.closy' versionCode='2' versionName='1.0.0'
 minSdkVersion:'24'
 targetSdkVersion:'36'
 native-code: 'arm64-v8a' 'armeabi-v7a' 'x86_64'

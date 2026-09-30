@@ -1,4 +1,4 @@
-# Hướng dẫn cài APK release lên máy Android thật
+﻿# Hướng dẫn cài APK release lên máy Android thật
 
 Dùng để test nhanh và chuẩn bị ảnh chụp, không cần chờ upload Google Play.
 
@@ -11,7 +11,7 @@ D:\_HYCAT\smart-wardrobe-mobile\build\app\outputs\flutter-apk\app-release.apk
 | Thuộc tính | Giá trị |
 |---|---|
 | Dung lượng | 63.3 MB |
-| Package | `com.smartwardrobe.smart_wardrobe` |
+| Package | `online.hycat.closy` |
 | versionCode / versionName | `2` / `1.0.0` |
 | API | `https://api.closy.hycat.online/api/v1` (production) |
 | Chữ ký | upload keystore (`CN=hycat, OU=closy, O=hycat`) |
@@ -71,7 +71,7 @@ adb shell pm list packages | Select-String smartwardrobe
 
 Gỡ cài đặt:
 ```powershell
-adb uninstall com.smartwardrobe.smart_wardrobe
+adb uninstall online.hycat.closy
 ```
 
 ### Cài và chạy ngay không cần cài app

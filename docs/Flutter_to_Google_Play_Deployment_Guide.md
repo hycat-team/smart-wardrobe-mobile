@@ -1,4 +1,4 @@
-# Flutter → Google Play Deployment Guide
+﻿# Flutter → Google Play Deployment Guide
 
 **Mục tiêu:** Deploy ứng dụng Flutter lên Google Play Store  
 **Đối tượng:** Flutter Developer / FYP Team  
@@ -1240,7 +1240,7 @@ Các yêu cầu của Google Play có thể thay đổi theo thời điểm, lo�
 
 # Phụ lục: Giá trị riêng của Smart Wardrobe (spec 008)
 
-- Package / applicationId: `com.smartwardrobe.smart_wardrobe` (đã chốt)
+- Package / applicationId: `online.hycat.closy` (đã chốt)
 - Version đầu: `1.0.0+1` (`pubspec.yaml`); mỗi lần upload tăng `versionCode`
 - Keystore: `$env:USERPROFILE\upload-keystore.jks`, alias `upload`
 - `android/key.properties`: `storePassword`, `keyPassword`, `keyAlias=upload`, `storeFile` (tuyệt đối)

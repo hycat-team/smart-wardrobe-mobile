@@ -33,7 +33,10 @@ $PROD_API = 'https://api.closy.hycat.online/api/v1'
 $PROD_CLD = 'dzvwkngxu'
 $PROD_GID = '5ovjq88e58p97u81asjssbt2bt8bnpt9'
 $DEV_GID  = 'u71cfbe461nl51us9dmlta6vfgcdun8a'
-$PKG      = 'com.smartwardrobe.smart_wardrobe'
+# Package đổi sang `online.hycat.closy` (2026-09-30, trước lần publish đầu).
+# Phải khớp `applicationId` trong android/app/build.gradle.kts và giá trị
+# khai trong Play Console > Package name.
+$PKG      = 'online.hycat.closy'
 
 $script:fail = 0
 function Ok($m)   { Write-Host "  [ OK ] $m" -ForegroundColor Green }
