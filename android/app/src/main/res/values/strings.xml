@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      `google_sign_in_android` (Credential Manager) đọc resource này làm
+      `serverClientId` KHI app không truyền `serverClientId` qua
+      `GoogleSignIn.instance.initialize(...)`.
+
+      Ở đây app luôn truyền `serverClientId` từ `AppConstants.googleClientId`
+      (dart-define GOOGLE_CLIENT_ID), nhưng nếu quên truyền khi build release
+      thì SDK trả MISSING_SERVER_CLIENT_ID, login Google chết im lặng.
+      Resource này là fallback để bản APK cài tay vẫn đăng nhập được.
+
+      Gia tri phai la Web/Server client ID của môi trường production
+      (api.closy.hycat.online), KHÔNG phải Android client ID. BE allow-list
+      client ID theo môi trường, sai client ID sẽ bị từ chối idToken.
+      Đổi môi trường thì sửa file này rồi build lại.
+    -->
+    <string name="default_web_client_id" translatable="false">368645245473-5ovjq88e58p97u81asjssbt2bt8bnpt9.apps.googleusercontent.com</string>
+</resources>

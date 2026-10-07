@@ -89,7 +89,8 @@ Chạy theo thứ tự, ghi lại lỗi nếu có:
 - [ ] **Đăng nhập** bằng `user` / `123456` — quan trọng nhất, xác nhận
       kết nối production
 - [ ] **Đăng nhập Google** — bước quyết định xem có cần đăng ký Android
-      OAuth client với SHA-1 không
+      OAuth client với SHA-1 không. Nếu chọn tài khoản xong **không có gì xảy
+      ra**: xem [`Google_OAuth_Android_Guide.md`](./Google_OAuth_Android_Guide.md) §5
 - [ ] Tủ đồ: danh sách món hiển thị ảnh (không phải ô trống)
 - [ ] **Thêm 1 món đồ** từ thư viện — xác nhận Cloudinary hoạt động
       (tách nền được, không phải cloud `demo`)

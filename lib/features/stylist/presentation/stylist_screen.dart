@@ -618,7 +618,7 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
                 // Thẻ Lookbook trực quan cuộn ngang nếu AI gợi ý món đồ
                 if (msg.suggestedItems.isNotEmpty) ...[
                   const SizedBox(height: 10),
-                  _buildLookbookCarousel(msg.suggestedItems),
+                  _buildLookbookCarousel(msg),
                 ],
 
                 // Nút hành động mở Studio nếu AI phát hiện nhu cầu phối đồ
@@ -643,17 +643,75 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
     );
   }
 
-  Widget _buildLookbookCarousel(List<OutfitRecommendationItem> items) {
+  /// Thẻ gợi ý cuộn ngang.
+  ///
+  /// Spec 015 — FR-029/FR-030: tiêu đề phải phân biệt gợi ý dự phòng với gợi ý
+  /// chuẩn, và nói rõ còn bao nhiêu lượt. FR-019: món không có ảnh hiện nhãn vai
+  /// trò thay vì khung trống. FR-031/FR-032: nhãn vai trò lấy từ bảng ánh xạ
+  /// dùng chung, vai trò lạ hiện nguyên chuỗi.
+  Widget _buildLookbookCarousel(ChatMessageModel msg) {
+    final items = msg.suggestedItems;
+    final rec = msg.outfitRecommendation;
+    final isFallback = rec?.isFallback ?? false;
+    final remainingQuota = rec?.remainingQuota ?? 0;
+
+    // FR-030: chỉ hiện khi còn lượt. Khi hết lượt (0) thì không hiện con số —
+    // người dùng chỉ thấy nhãn dự phòng, tránh hiểu nhầm là còn dùng được.
+    final quotaLabel = remainingQuota > 0
+        ? 'Còn $remainingQuota lượt gợi ý hôm nay'
+        : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 6),
-          child: Text(
-            'Gợi ý trang phục trong set đồ:',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          padding: const EdgeInsets.only(left: 4, right: 4, bottom: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  isFallback
+                      ? 'Gợi ý dự phòng'
+                      : 'Gợi ý trang phục trong set đồ:',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              if (quotaLabel != null)
+                Text(
+                  quotaLabel,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+            ],
           ),
         ),
+        // FR-029: gợi ý do máy chủ tự sinh (thường khi hết lượt) phải nói rõ để
+        // người dùng không tưởng stylist đã phân tích tủ đồ của họ.
+        if (isFallback)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 4, bottom: 6),
+            child: Text(
+              // Chỉ nói "hết lượt" khi hạn mức thực sự bằng 0. Bản trước in câu
+              // "đã dùng hết lượt" cho **mọi** giá trị quota, nên khi còn lượt thì
+              // header ("Còn N lượt") và dòng này trái nhau trên cùng một thẻ —
+              // người dùng không biết nào mới đúng (spec 015 — T054).
+              remainingQuota > 0
+                  ? 'Đây là bộ sưu tập dự phòng của Closy, chưa phải gợi ý phối đồ riêng cho tủ đồ của bạn.'
+                  : 'Bạn đã dùng hết lượt gợi ý chuyên sâu hôm nay. Hãy quay lại vào ngày mai để có gợi ý mới.',
+              style: const TextStyle(
+                fontSize: 10,
+                fontStyle: FontStyle.italic,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
         SizedBox(
           height: 185,
           child: ListView.separated(
@@ -683,16 +741,36 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
                     Expanded(
                       child: Container(
                         color: const Color(0xFFF2EFE9),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: ClosyNetworkImage(
-                              imageUrl: it.imageUrl ?? '',
-                              fit: BoxFit.contain,
-                              memCacheWidth: 200,
-                            ),
-                          ),
-                        ),
+                        // FR-019: món không có ảnh thì hiện nhãn vai trò để người
+                        // dùng vẫn biết món này đóng vai gì, thay vì một ô trống
+                        // trông như lỗi tải ảnh.
+                        child: it.hasImage
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: ClosyNetworkImage(
+                                    imageUrl: it.imageUrl!,
+                                    fit: BoxFit.contain,
+                                    memCacheWidth: 200,
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: Text(
+                                    it.roleLabelVi.isEmpty
+                                        ? 'Chưa có ảnh'
+                                        : it.roleLabelVi,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              ),
                       ),
                     ),
                     Padding(
@@ -700,6 +778,18 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (it.roleLabelVi.isNotEmpty)
+                            Text(
+                              it.roleLabelVi,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                                color: Color(0xFFB8975A),
+                              ),
+                            ),
                           if (it.brand != null && it.brand!.isNotEmpty)
                             Text(
                               it.brand!.toUpperCase(),

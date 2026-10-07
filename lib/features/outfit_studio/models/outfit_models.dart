@@ -79,27 +79,71 @@ class RecommendedFashionItemBrief {
   }
 }
 
+/// Món của thương hiệu — BE thay thế `fashionItem` bằng `brandItem` chứ không
+/// thêm bên cạnh (spec 015 — FR-018, khẳng định sau khi đọc
+/// `dto/recommendation.go` ở repo máy chủ).
+class RecommendedBrandItemBrief {
+  final String id;
+  final RecommendedCategoryBrief? category;
+  final String? imageUrl;
+  final String? color;
+  final String? brandName;
+  final double? price;
+
+  const RecommendedBrandItemBrief({
+    required this.id,
+    this.category,
+    this.imageUrl,
+    this.color,
+    this.brandName,
+    this.price,
+  });
+
+  factory RecommendedBrandItemBrief.fromJson(Map<String, dynamic> json) {
+    return RecommendedBrandItemBrief(
+      id: json['id']?.toString() ?? '',
+      category: json['category'] is Map<String, dynamic>
+          ? RecommendedCategoryBrief.fromJson(
+              json['category'] as Map<String, dynamic>)
+          : null,
+      imageUrl: json['imageUrl'] ?? json['image_url'],
+      color: json['color'],
+      brandName: json['brandName'] ?? json['brand'],
+      price: json['price'] != null ? (json['price'] as num).toDouble() : null,
+    );
+  }
+}
+
 class RecommendedItemRes {
   final String id;
   final String itemContext;
   final RecommendedFashionItemBrief? fashionItem;
 
+  /// Spec 015 — FR-018: lấy ảnh được từ cả món tủ đồ lẫn món thương hiệu.
+  final RecommendedBrandItemBrief? brandItem;
+
   const RecommendedItemRes({
     required this.id,
     this.itemContext = 'user_wardrobe',
     this.fashionItem,
+    this.brandItem,
   });
 
+  /// Nhãn hiển thị, xét cả món tủ đồ lẫn món thương hiệu (FR-018).
   String get displayName {
-    if (fashionItem != null) {
-      final cat = fashionItem!.category?.name ?? 'Món đồ';
-      final color = fashionItem!.color ?? '';
-      return color.isNotEmpty ? '$cat - $color' : cat;
-    }
-    return 'Món đồ thời trang';
+    final color = fashionItem?.color ?? brandItem?.color ?? '';
+    final cat = fashionItem?.category?.name ??
+        brandItem?.category?.name ??
+        (fashionItem == null && brandItem == null ? null : 'Món đồ');
+    if (cat == null) return 'Món đồ thời trang';
+    return color.isNotEmpty ? '$cat - $color' : cat;
   }
 
-  String get imageUrl => fashionItem?.imageUrl ?? '';
+  /// Ưu tiên ảnh món tủ đồ, thiếu thì lấy ảnh món thương hiệu (FR-018).
+  String get imageUrl =>
+      fashionItem?.imageUrl ??
+      brandItem?.imageUrl ??
+      '';
 
   factory RecommendedItemRes.fromJson(Map<String, dynamic> json) {
     return RecommendedItemRes(
@@ -108,9 +152,18 @@ class RecommendedItemRes {
       fashionItem: json['fashionItem'] != null
           ? RecommendedFashionItemBrief.fromJson(json['fashionItem'] as Map<String, dynamic>)
           : null,
+      brandItem: json['brandItem'] != null
+          ? RecommendedBrandItemBrief.fromJson(json['brandItem'] as Map<String, dynamic>)
+          : null,
     );
   }
 }
+
+/// Nguồn nhãn vai trò **duy nhất** của ứng dụng (spec 015 — FR-034).
+///
+/// Cả màn Studio và màn trò chuyện stylist đều gọi hàm này, nên không thể xuất
+/// hiện hai bảng ánh xạ song song cho cùng một vai trò.
+String outfitRoleLabelVi(String role) => RecommendedItemGroup.roleLabelVi(role);
 
 class RecommendedItemGroup {
   final String role;
@@ -123,24 +176,42 @@ class RecommendedItemGroup {
     this.alternatives = const [],
   });
 
-  String get roleDisplay {
-    switch (role.toLowerCase()) {
+  /// Nhãn tiếng Việt của vai trò.
+  ///
+  /// Spec 015 — FR-031: bảng ánh xạ **đóng**, lấy đúng điển từ vai trò mà máy
+  /// chủ trả về (`CategorySlugToWearingRole`: top / bottom / fullbody / outerwear /
+  /// footwear / headwear / accessory, cộng `other` cho slug lạ).
+  ///
+  /// Trước đây thiếu `headwear` nên mũ rơi xuống `default` và hiện ra chữ
+  /// `HEADWEAR`/`OTHER` cho người dùng — lỗi đã quan sát thấy.
+  ///
+  /// FR-032: vai trò **không có trong bảng** thì trả về **nguyên chuỗi gốc** máy
+  /// chủ gửi (không ẩn, không upper-case) để lộ ra được khi máy chủ thêm vai trò mới.
+  static String roleLabelVi(String role) {
+    switch (role.trim().toLowerCase()) {
       case 'top':
         return 'Áo';
       case 'bottom':
         return 'Quần / Váy';
       case 'fullbody':
         return 'Váy liền / Đầm';
-      case 'footwear':
-        return 'Giày dép';
       case 'outerwear':
         return 'Áo khoác';
+      case 'footwear':
+        return 'Giày dép';
+      case 'headwear':
+        return 'Mũ / Nón';
       case 'accessory':
         return 'Phụ kiện';
+      case 'other':
+        return 'Món khác';
       default:
-        return role.toUpperCase();
+        // FR-032: giữ nguyên chuỗi gốc.
+        return role;
     }
   }
+
+  String get roleDisplay => roleLabelVi(role);
 
   factory RecommendedItemGroup.fromJson(Map<String, dynamic> json) {
     return RecommendedItemGroup(
@@ -161,6 +232,9 @@ class RecommendedOutfitRes {
   final String title;
   final String explanation;
   final List<RecommendedItemGroup> items;
+
+  /// Máy chủ sinh sẵn bộ gợi ý này (thường khi hết hạn mức) — phải gắn nhãn
+  /// dự phòng, không trình bày như gợi ý chuẩn.
   final bool isFallback;
   final int remainingQuota;
 
@@ -182,7 +256,15 @@ class RecommendedOutfitRes {
               .map((g) => RecommendedItemGroup.fromJson(g as Map<String, dynamic>))
               .toList()
           : [],
-      isFallback: data['isFallback'] is bool ? data['isFallback'] : false,
+      // Spec 015 — FR-029: chấp nhận CẢ `fallback` (tên trường máy chủ gửi, xem
+      // `dto/recommendation.go`) lẫn `isFallback` (khoá cũ của ứng dụng).
+      //
+      // Bug cũ chỉ đọc `isFallback` trong khi máy chủ không bao giờ gửi khoá đó,
+      // nên `isFallback` LUÔN false và gợi ý dự phòng bị trình bày y như gợi ý
+      // thật của stylist.
+      isFallback: data['fallback'] is bool
+          ? data['fallback'] as bool
+          : (data['isFallback'] is bool ? data['isFallback'] as bool : false),
       remainingQuota: data['remainingQuota'] is int
           ? data['remainingQuota']
           : int.tryParse(data['remainingQuota']?.toString() ?? '0') ?? 0,

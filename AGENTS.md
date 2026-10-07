@@ -54,6 +54,22 @@ vượt 2× cạnh ngắn**. Ảnh 1080×2400 (tỉ lệ 2,22) sẽ bị **từ 
 
 ## 3. Lệnh chuẩn
 
+> **Ưu tiên `make`** — `Makefile` ở root gom sẵn `--dart-define` cho từng môi
+> trường, tránh quên biến (đặc biệt `--dart-define=API_BASE_URL`). `make help`
+> liệt kê đích. Ba lệnh chính:
+>
+> | Lệnh | Việc |
+> |---|---|
+> | `make run` | web trên **Edge**, port 8081, mở sẵn trình duyệt |
+> | `make dev` | chạy trên thiết bị thật / emulator (`DEVICE=android`) |
+> | `make build` | APK + AAB **production** rồi `verify` — lệnh phát hành |
+>
+> Ghi đè biến: `make run WEB_PORT=9000 BROWSER=chrome`, hoặc
+> `make apk DEV_API=http://10.0.2.2:5000/api/v1` (emulator).
+>
+> Lệnh `flutter` thô bên dưới vẫn dùng được — khi cần cờ chưa có target
+> (VD `--dart-define=ENABLE_PAID_FEATURES=true`).
+
 ```powershell
 flutter pub get
 flutter analyze                    # phải 0 issues trước khi bàn giao
@@ -138,6 +154,7 @@ Bộ lệnh/skills đã cài đặt:
 
 - **Mojibake tiếng Việt:** PowerShell 5.1 mặc định ANSI. Cấm `(Get-Content …) -replace … | Set-Content …` và redirect `>`. Chỉ dùng tool `edit`/`write`, hoặc `Get-Content -Encoding utf8 … | … | Set-Content -Encoding utf8`.
 - Tool `bash` chạy PowerShell 5.1: nối lệnh phụ thuộc bằng `cmd1; if ($?) { cmd2 }`, không dùng `&&` hay `head`. Đổi thư mục bằng tham số `workdir`, không `cd` trong lệnh.
+- **Makefile trên Windows:** make mặc định gán `SHELL = sh.exe` nhưng `sh.exe` **không có trên PATH** → make **không báo lỗi**, lặng lẽ fallback sang `cmd.exe`, mọi recipe hỏng (`echo "x"` in ra `"x"`, `if [ -f f ]` lỗi). `Makefile` đã tự dò `C:/Program*/Git/usr/bin/sh.exe`; **phải bọc dấu nháy kép** vì đường dẫn có khoảng trang, nếu không sẽ lỗi `CreateProcess(NULL, …)`. Dùng `.RECIPEPREFIX = >` thay TAB. Không sửa `SHELL` nếu chưa hiểu lý do.
 
 ## 7. Definition of Done / Pre-flight
 

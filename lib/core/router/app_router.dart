@@ -45,7 +45,15 @@ class AppRouterNotifier extends ChangeNotifier {
     _ref.listen<AuthState>(
       authStateProvider,
       (previous, next) {
-        if (previous?.isAuthenticated != next.isAuthenticated) {
+        // Spec 015 — T015: phải so **ba** cờ, không chỉ `isAuthenticated`.
+        //
+        // Nếu chỉ so `isAuthenticated`: lúc lỗi mạng, `isAuthenticated` vẫn
+        // `true` nên không có tín hiệu → splash biến mất nhưng router không được
+        // đánh giá lại. Lúc `authCheckFailed` chuyển từ true → false cũng vậy.
+        final changed = previous?.isCheckingAuth != next.isCheckingAuth ||
+            previous?.authCheckFailed != next.authCheckFailed ||
+            previous?.isAuthenticated != next.isAuthenticated;
+        if (changed) {
           notifyListeners();
         }
       },
@@ -87,6 +95,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authStateProvider);
       final isAuth = authState.isAuthenticated;
       final path = state.uri.path;
+
+      // Spec 015 — FR-003/FR-004/FR-027: khi đang kiểm tra phiên HOẶC đang chờ
+      // thử lại sau lỗi tạm thời thì thoát sớm, không áp bất kỳ luật điều hướng nào.
+      //
+      // Phải kiểm **cả hai** cờ: sau lỗi mạng, `isCheckingAuth` đã tắt nhưng
+      // `authCheckFailed` thì chưa — nếu chỉ kiểm một cờ, người dùng sẽ bị đá
+      // vào app với hồ sơ rỗng, đúng lỗi spec 015 cố tránh.
+      if (authState.isShowingSplash) {
+        return null;
+      }
 
       final isAuthPage = path == '/login' ||
           path == '/auth/register' ||

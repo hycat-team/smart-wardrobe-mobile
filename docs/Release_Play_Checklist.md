@@ -46,6 +46,10 @@ Tài liệu vận hành phát hành Android lên Google Play (spec 008).
   - `GOOGLE_CLIENT_ID`: phải là **Web client ID của môi trường production**
     (`..._PROD` trong `.env`), không phải client dev. BE allow-list client ID
     theo môi trường → sai client ID sẽ bị từ chối `idToken`.
+  - Thiếu `GOOGLE_CLIENT_ID` **không còn chết app** — có fallback
+    `default_web_client_id` trong `android/app/src/main/res/values/strings.xml`.
+    Vẫn nên truyền để không phụ thuộc resource đó. Chi tiết:
+    [`Google_OAuth_Android_Guide.md`](./Google_OAuth_Android_Guide.md).
   - ⚠ **`.env` KHÔNG ảnh hưởng bản build** (đã gỡ khỏi `assets` 2026-09-30).
     Giá trị ghi thẳng vào bytecode lúc compile. Sửa `.env` không làm đổi app
     đã build — phải build lại.

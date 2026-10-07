@@ -98,31 +98,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.primary),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            }
-          },
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+    // Spec 015 — FR-007/FR-008/FR-009 (US2): khi đang lấy phiên đăng nhập, PHỦ
+    // TOÀN MÀN HÌNH bằng một lớp chặn tương tác, thay vì chỉ xoay spinner trên
+    // nút. Lớp phủ nuốt mọi chạm/nhấn — kể cả nhấn lại nút "Đăng nhập", nên bấm
+    // liên tục chỉ sinh MỘT yêu cầu.
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.primary),
+              onPressed: () {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ),
+          body: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                     const SizedBox(height: 12),
                     Center(
                       child: Image.asset(
@@ -347,6 +353,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
+    ),
+        if (authState.isLoading)
+          // FR-009: nhãn tiếng Việt nói rõ đang xử lý. Vùng chạm >= 44px.
+          Positioned.fill(
+            child: AbsorbPointer(
+              // FR-008: nuốt mọi chạm/nhấn, kể cả nhấn lại nút Đăng nhập.
+              absorbing: true,
+              child: Container(
+                color: AppColors.background.withOpacity(0.92),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.accentSandDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Đang xử lý, vui lòng chờ...',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

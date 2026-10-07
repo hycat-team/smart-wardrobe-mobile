@@ -422,8 +422,21 @@ class _PostComposerScreenState extends ConsumerState<PostComposerScreen> {
             const SizedBox(height: 16),
 
             // 5. Media Attachments Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //
+            // Spec 015 — FR-012/FR-013: trước đây đây là `Row` + `spaceBetween`
+            // chứa một `Text` không co giãn và một `Row` lồng chứa hai
+            // `TextButton.icon`. Tổng bề rộng cố định vượt khung ở cửa sổ hẹp,
+            // gây `RenderFlex overflowed` (đã quan sát thấy trong log runtime).
+            //
+            // Cách sửa: đổi sang `Wrap`. `Wrap` cho con **không giới hạn** theo trục
+            // chính, nên KHÔNG bọc `Flexible` ở đây (Wrap từ chối ParentData loại
+            // Flex — sẽ ném lỗi "incompatible type WrapParentData"). Khi đủ chỗ,
+            // `alignment: spaceBetween` cho ra **đúng** bố cục cũ; khi hẹp, cụm nút
+            // tự xuống dòng. Giữ nguyên mọi hành vi khác (FR-015).
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              runSpacing: 4,
               children: [
                 Text(
                   'HÌNH ẢNH & VIDEO (${composerState.media.length}/10)',
@@ -434,7 +447,8 @@ class _PostComposerScreenState extends ConsumerState<PostComposerScreen> {
                     color: AppColors.textSecondary,
                   ),
                 ),
-                Row(
+                Wrap(
+                  spacing: 0,
                   children: [
                     TextButton.icon(
                       onPressed: composerState.media.length >= 10

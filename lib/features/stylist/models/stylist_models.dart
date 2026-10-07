@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../../outfit_studio/models/outfit_models.dart';
+
 class ChatSessionModel {
   final String id;
   final String title;
@@ -57,6 +59,11 @@ class ChatSessionModel {
   }
 }
 
+/// Một món đồ trong thẻ gợi ý của stylist.
+///
+/// Spec 015 — FR-034: đây là mô hình **duy nhất** mang kết quả gợi ý tới màn
+/// trò chuyện. Không tạo bộ model phẳng thứ hai song song (chính cái trùng lặp đó
+/// đã khiến ảnh gợi ý ra rỗng).
 class OutfitRecommendationItem {
   final String id;
   final String title;
@@ -66,6 +73,14 @@ class OutfitRecommendationItem {
   final String? color;
   final double? price;
 
+  /// FR-020/FR-031/FR-032 — vai trò nguyên chuỗi máy chủ trả về.
+  ///
+  /// FR-033: trường mới **phải có giá trị mặc định** (hiến pháp II).
+  final String? role;
+
+  /// Món thay thế (không phải món chính của nhóm vai trò).
+  final bool isAlternative;
+
   const OutfitRecommendationItem({
     required this.id,
     required this.title,
@@ -74,7 +89,19 @@ class OutfitRecommendationItem {
     this.imageUrl,
     this.color,
     this.price,
+    this.role,
+    this.isAlternative = false,
   });
+
+  /// FR-031/FR-032 — nhãn vai trò tiếng Việt.
+  ///
+  /// Là **getter** gọi tới bảng ánh xạ đóng dùng chung, không phải một bảng riêng —
+  /// tránh sinh ra nguồn nhãn thứ hai (FR-034).
+  String get roleLabelVi =>
+      role == null ? '' : outfitRoleLabelVi(role!);
+
+  /// Món không có ảnh thì hiện nhãn vai trò thay vì khung trống (FR-019).
+  bool get hasImage => imageUrl != null && imageUrl!.isNotEmpty;
 
   factory OutfitRecommendationItem.fromJson(Map<String, dynamic> json) {
     return OutfitRecommendationItem(
@@ -85,6 +112,8 @@ class OutfitRecommendationItem {
       imageUrl: json['imageUrl'] ?? json['image_url'],
       color: json['color'],
       price: json['price'] != null ? (json['price'] as num).toDouble() : null,
+      role: json['role']?.toString(),
+      isAlternative: json['isAlternative'] == true,
     );
   }
 }
@@ -98,6 +127,17 @@ class OutfitRecommendationModel {
   final List<String> tags;
   final List<OutfitRecommendationItem> items;
 
+  /// FR-029 — máy chủ tự sinh bộ gợi ý này (thường khi **hết hạn mức**).
+  /// Phải gắn nhãn dự phòng, không trình bày như gợi ý chuẩn của stylist.
+  ///
+  /// FR-033: trường mới **phải có giá trị mặc định** (hiến pháp II).
+  final bool isFallback;
+
+  /// FR-030 — số hạn mức còn lại. Máy chủ KHÔNG trả mốc thời gian làm mới
+  /// (`RemainingQuota` là con số đơn lẻ), nên ứng dụng chỉ hiện con số này kèm
+  /// thông báo chung "làm mới vào ngày mới" — không được bịa ngày giờ cụ thể.
+  final int remainingQuota;
+
   const OutfitRecommendationModel({
     required this.id,
     required this.title,
@@ -106,11 +146,28 @@ class OutfitRecommendationModel {
     this.weatherContext,
     this.tags = const [],
     this.items = const [],
+    this.isFallback = false,
+    this.remainingQuota = 0,
   });
 
   factory OutfitRecommendationModel.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'] as List<dynamic>? ?? [];
     final rawTags = json['tags'] as List<dynamic>? ?? [];
+
+    // Spec 015 — T052 (FR-033): trước đây factory bỏ sót hai trường này, nên khi
+    // parse lại từ JSON chúng rơi về default `false`/`0` — cờ dự phòng biến mất
+    // và UI hiển thị bộ gợi ý dự phòng y như gợi ý chuẩn, trái FR-029.
+    //
+    // Đọc CẢ `fallback` (tên trường máy chủ gửi, `dto/recommendation.go`) lẫn
+    // `isFallback` (khoá cũ của ứng dụng), đồng thời chấp nhận `remainingQuota`
+    // dạng số lẫn chuỗi — máy chủ có thể trả 0..3 dạng `json.Number`.
+    int parseQuota(dynamic raw) {
+      if (raw is int) return raw;
+      if (raw is num) return raw.toInt();
+      return int.tryParse(raw?.toString() ?? '') ?? 0;
+    }
+
+    final rawFallback = json['fallback'] ?? json['isFallback'];
 
     return OutfitRecommendationModel(
       id: json['id']?.toString() ?? '',
@@ -120,6 +177,9 @@ class OutfitRecommendationModel {
       weatherContext: json['weatherContext'],
       tags: rawTags.map((t) => t.toString()).toList(),
       items: rawItems.map((i) => OutfitRecommendationItem.fromJson(i as Map<String, dynamic>)).toList(),
+      isFallback: rawFallback == true ||
+          (rawFallback is String && rawFallback.toLowerCase() == 'true'),
+      remainingQuota: parseQuota(json['remainingQuota']),
     );
   }
 }
@@ -158,20 +218,22 @@ class ChatMessageModel {
       time = DateTime.now();
     }
 
-    OutfitRecommendationModel? rec;
-    if (json['outfitRecommendation'] != null && json['outfitRecommendation'] is Map<String, dynamic>) {
-      rec = OutfitRecommendationModel.fromJson(json['outfitRecommendation']);
-    }
-
-    final rawItems = json['suggestedItems'] as List<dynamic>? ?? [];
-
+    // Spec 015 — T038 (nghiên cứu R8): `ChatMessageRes` của máy chủ **không** gửi
+    // `outfitRecommendation` lẫn `suggestedItems`. Trước đây `fromJson` vẫn đọc
+    // hai trường đó, nhưng chúng luôn `null`/rỗng — dấu hiệu cho thấy tác giả
+    // tưởng lịch sử có thể khôi phục lại thẻ gợi ý.
+    //
+    // Thực tế thẻ gợi ý chỉ tồn tại trong RAM của phiên đang mở: máy chủ lưu văn
+    // bản trò chuyện, không lưu bộ gợi ý. Vì vậy hai trường giữ nguyên giá trị
+    // mặc định và KHÔNG đọc từ JSON.
+    //
+    // `outfitRecommendation`/`suggestedItems` vẫn được `copyWith` giữ nguyên nên
+    // luồng trong phiên hiện tại không bị ảnh hưởng.
     return ChatMessageModel(
       id: json['id']?.toString() ?? '',
       content: json['content']?.toString() ?? '',
       sender: json['sender']?.toString().toUpperCase() ?? 'ASSISTANT',
       timestamp: time,
-      outfitRecommendation: rec,
-      suggestedItems: rawItems.map((e) => OutfitRecommendationItem.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 

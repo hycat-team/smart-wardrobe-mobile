@@ -175,8 +175,15 @@ class AuthRepository {
       final data = _parseResponseData(response.data);
       final userData = _parseResponseData(data?['data']) ?? data ?? {};
       return UserModel.fromJson(userData);
-    } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e, 'Không thể tải thông tin cá nhân'));
+    } on DioException {
+      // Cố tình KHÔNG bọc lại thành Exception chuỗi tiếng Việt.
+      //
+      // Spec 015 — FR-026/027/428: `checkAuthStatus()` phải phân biệt được
+      // "token bị máy chủ từ chối" (401/403 → xoá phiên) với "lỗi tạm thời" (mất
+      // mạng, timeout, 5xx → giữ phiên). Bọc vào Exception sẽ xoá mất mã trạng thái
+      // HTTP, khiến hai nhánh này không phân biệt được và mọi người dùng có phiên hợp
+      // lệ đều bị đá ra màn đăng nhập chỉ vì sự cố mạng tạm thời.
+      rethrow;
     }
   }
 

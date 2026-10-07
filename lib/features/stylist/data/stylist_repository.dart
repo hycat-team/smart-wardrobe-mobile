@@ -6,6 +6,10 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/http_client_factory.dart';
 import '../../../core/storage/secure_storage_service.dart';
+// Spec 015 — T032: tái dùng bộ model ĐÃ CÓ SẴN khớp đúng hợp đồng máy chủ
+// (dùng cho màn AI Outfit Studio). Không viết lại model mới — chính việc có hai
+// bộ model song song đã khiến ảnh gợi ý ra rỗng.
+import '../../outfit_studio/models/outfit_models.dart';
 import '../models/stylist_models.dart';
 
 class StylistRepository {
@@ -244,52 +248,116 @@ class StylistRepository {
 
       final body = response.data;
       final data = body['data'] is Map<String, dynamic> ? body['data'] : body;
-      return OutfitRecommendationModel.fromJson(data);
-    } catch (_) {
-      // Return curated fallback lookbook recommendation if backend AI is offline
+      // Spec 015 — T032/T033: máy chủ trả `RecommendedOutfitRes` với `items` là
+      // danh sách **NHÓM theo vai trò**, mỗi nhóm có `primary` + `alternatives`,
+      // và món nằm ở `fashionItem` hoặc `brandItem`.
+      //
+      // Trước đây ứng dụng đọc `data.items[i].imageUrl` — ở cấp SAI, nên mọi món ra
+      // `imageUrl` rỗng và thẻ gợi ý hiện ra trống ("ảnh không xem được").
+      final parsed = RecommendedOutfitRes.fromJson(data);
+
+      final flat = flattenRecommendationGroups(parsed.items);
+
+
       return OutfitRecommendationModel(
         id: 'rec_${DateTime.now().millisecondsSinceEpoch}',
-        title: 'Bộ phối phong cách Quiet Luxury',
-        occasion: occasion ?? 'Dạo phố cuối tuần',
-        weatherContext: 'Tiết trời mát mẻ 22°C',
-        explanation:
-            'Sự kết hợp tinh tế giữa áo khoác dạ dáng rộng, áo len dệt kim cổ lọ tông be và quần âu xếp ly mang lại vẻ đẹp vượt thời gian.',
-        tags: ['áo khoác dạ', 'len dệt kim', 'quần âu xếp ly', 'giày da tối giản'],
-        items: const [
-          OutfitRecommendationItem(
-            id: 'item_1',
-            title: 'Áo khoác dạ dáng dài Camel',
-            brand: 'LEMAIRE',
-            color: 'Camel',
-            category: 'Áo khoác',
-            imageUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=600',
-          ),
-          OutfitRecommendationItem(
-            id: 'item_2',
-            title: 'Áo len Cashmere cổ lọ kem',
-            brand: 'THE ROW',
-            color: 'Kem ngà',
-            category: 'Áo len',
-            imageUrl: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600',
-          ),
-          OutfitRecommendationItem(
-            id: 'item_3',
-            title: 'Quần âu xếp ly ống suông Charcoal',
-            brand: 'COS ATELIER',
-            color: 'Xám than',
-            category: 'Quần',
-            imageUrl: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600',
-          ),
-          OutfitRecommendationItem(
-            id: 'item_4',
-            title: 'Giày lười da bê đen bóng',
-            brand: 'JIL SANDER',
-            color: 'Đen mun',
-            category: 'Giày',
-            imageUrl: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600',
-          ),
-        ],
+        title: parsed.title,
+        occasion: occasion,
+        explanation: parsed.explanation.isEmpty ? null : parsed.explanation,
+        items: flat,
+        // FR-029/FR-030: mang cờ dự phòng + số hạn mức còn lại tới tận UI.
+        isFallback: parsed.isFallback,
+        remainingQuota: parsed.remainingQuota,
       );
+    } on DioException catch (e) {
+      // FR-022/FR-023/FR-025: thất bại thì GIỮ NGUYÊN phần trả lời văn bản đã có
+      // và KHÔNG tự chế ra danh sách món. Khối fallback Unsplash từng nhúng sẵn ở
+      // đây chính là nguồn của cảm giác "AI không chính xác": người dùng tưởng đó là
+      // gợi ý thật nhưng không khớp tủ đồ của họ.
+      debugPrint('[StylistRepository] getOutfitRecommendation failed: '
+          '${e.type} ${e.response?.statusCode} ${e.message}');
+      return const OutfitRecommendationModel(
+        id: '',
+        title: '',
+      );
+    } catch (e) {
+      debugPrint('[StylistRepository] getOutfitRecommendation unexpected: $e');
+      return const OutfitRecommendationModel(id: '', title: '');
     }
   }
 }
+
+/// Làm phẳng danh sách **nhóm vai trò** của máy chủ thành danh sách món phẳng mà
+/// carousel hiển thị (spec 015 — T032/T033/T053).
+///
+/// Tách thành hàm thuần ở cấp thư viện thay vì closure lồng trong
+/// `getOutfitRecommendation()` để **test gọi được đúng mã đang chạy thật** —
+/// trước đó test sao chép lại logic, nên bug `brand!` không bao giờ bị bắt.
+List<OutfitRecommendationItem> flattenRecommendationGroups(
+  List<RecommendedItemGroup> groups,
+) {
+  final flat = <OutfitRecommendationItem>[];
+
+  void addItem(RecommendedItemRes? res, RecommendedItemGroup group,
+      {required bool isAlternative}) {
+    if (res == null) return;
+
+    // FR-017: món thiếu CẢ `fashionItem` lẫn `brandItem` thì bỏ qua hẳn — đó là
+    // nguyên nhân gốc tạo thẻ rỗng.
+    final fashion = res.fashionItem;
+    final brand = res.brandItem;
+    if (fashion == null && brand == null) return;
+
+    // FR-018: định danh lấy từ cả hai nguồn.
+    //
+    // Không dùng `brand!` ở đây. Bản trước viết
+    // `(fashion?.id.isNotEmpty ?? false) ? fashion!.id : (brand!.id...)`, nên khi
+    // `fashionItem` tồn tại nhưng `id` rỗng **và** không có `brandItem`, biểu
+    // thức ép buộc đọc `brand!.id` ném lỗi null-check — làm hỏng **cả** lượt gợi
+    // ý thay vì chỉ bỏ qua một món.
+    final id = _firstNonEmptyId(fashion?.id, brand?.id, res.id);
+    if (id.isEmpty) return;
+
+    // FR-018: ảnh và danh mục lấy từ cả hai nguồn.
+    final categoryName = fashion?.category?.name ?? brand?.category?.name ?? '';
+    final rawImage = fashion?.imageUrl ?? brand?.imageUrl ?? '';
+
+    flat.add(
+      OutfitRecommendationItem(
+        id: id,
+        // FR-017: thẻ phải có tên. Món không rõ danh mục thì dùng nhãn vai trò
+        // thay vì để trống.
+        title: categoryName.isNotEmpty
+            ? categoryName
+            : outfitRoleLabelVi(group.role),
+        role: group.role,
+        isAlternative: isAlternative,
+        category: categoryName.isEmpty ? null : categoryName,
+        // FR-019: để null khi không có ảnh, UI sẽ hiện nhãn vai trò.
+        imageUrl: rawImage.isEmpty ? null : rawImage,
+        color: fashion?.color ?? brand?.color,
+        brand: brand?.brandName,
+      ),
+    );
+  }
+
+  for (final group in groups) {
+    addItem(group.primary, group, isAlternative: false);
+    for (final alt in group.alternatives) {
+      addItem(alt, group, isAlternative: true);
+    }
+  }
+
+  return flat;
+}
+
+/// Định danh đầu tiên khác rỗng trong danh sách. Không ép buộc null ở bất kỳ
+/// tham số nào (spec 015 — T053).
+String _firstNonEmptyId(String? a, String? b, String? c) {
+  for (final candidate in [a, b, c]) {
+    final value = candidate?.trim() ?? '';
+    if (value.isNotEmpty) return value;
+  }
+  return '';
+}
+

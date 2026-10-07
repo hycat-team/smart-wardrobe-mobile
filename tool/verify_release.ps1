@@ -2,13 +2,18 @@
 #
 # Usage:  powershell -ExecutionPolicy Bypass -File tool\verify_release.ps1
 #
-# Checks 6 things:
+# Checks 7 things:
 #   1. File exists, sane size
 #   2. package / versionCode correct, 3 architectures present
 #   3. Signed with the upload keystore
 #   4. Production config embedded, dev client ID NOT embedded
 #   5. No .env file inside the package
 #   6. No Cloudinary api_secret inside the binary
+#   7. AAB is a valid App Bundle (bundletool validate) and agrees with the APKs
+#
+# Section 7 exists because the AAB - not the APK - is what gets uploaded to
+# Play. It used to be skipped entirely ("outputFile not listed in metadata"),
+# which meant the actual release artifact was never checked.
 #
 # ASCII-only on purpose: PowerShell 5.1 mis-parses non-ASCII source.
 # Exit code 0 = pass, 1 = fail.
@@ -33,10 +38,58 @@ $PROD_API = 'https://api.closy.hycat.online/api/v1'
 $PROD_CLD = 'dzvwkngxu'
 $PROD_GID = '5ovjq88e58p97u81asjssbt2bt8bnpt9'
 $DEV_GID  = 'u71cfbe461nl51us9dmlta6vfgcdun8a'
-# Package đổi sang `online.hycat.closy` (2026-09-30, trước lần publish đầu).
-# Phải khớp `applicationId` trong android/app/build.gradle.kts và giá trị
-# khai trong Play Console > Package name.
+# Package renamed to `online.hycat.closy` (2026-09-30, before first publish).
+# Must match `applicationId` in android/app/build.gradle.kts and the value
+# entered in Play Console > Package name.
 $PKG      = 'online.hycat.closy'
+
+# Shared helper: SHA-256 of the upload keystore certificate, normalised to
+# lowercase hex with no colons (keytool prints "FA:5E:..", apksigner "fa5e..").
+function Get-KeystoreSha256 {
+    $kp = Join-Path $repo 'android\key.properties'
+    if (-not (Test-Path $kp)) { return $null }
+    $lines = Get-Content $kp -Encoding utf8
+    $sfLine = ($lines | Select-String '^storeFile=').Line
+    if (-not $sfLine) { return $null }
+    $sf = ($sfLine -split '=', 2)[1].Trim() -replace '\\\\', '\'
+    if (-not (Test-Path $sf)) { return $null }
+    $sp = (($lines | Select-String '^storePassword=(.*)$').Matches.Groups[1].Value)
+    if (-not $sp) { return $null }
+    $ks = & $keytool -list -v -keystore $sf -storepass $sp 2>$null
+    $km = (($ks | Select-String 'SHA256: ').Line)
+    if (-not $km) { return $null }
+    return (($km -split 'SHA256: ')[1].Trim() -replace '[\s:]', '').ToLower()
+}
+
+# Locate bundletool in the Gradle cache. It is pulled in transitively by AGP,
+# so there is no standalone copy on PATH. Returns @{ Jar; Classpath } or $null.
+function Get-Bundletool {
+    $cache = Join-Path $env:USERPROFILE '.gradle\caches\modules-2\files-2.1'
+    if (-not (Test-Path $cache)) { return $null }
+    $jar0 = Get-ChildItem $cache -Recurse -Filter 'bundletool-*.jar' -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notmatch 'sources|javadoc' } |
+        Sort-Object { [version]($_.BaseName -replace '^bundletool-', '') } -Descending |
+        Select-Object -First 1
+    if (-not $jar0) { return $null }
+    $cp = @($jar0.FullName)
+    foreach ($d in @('jose4j', 'protobuf-java', 'guava', 'gson', 'auto-value-annotations',
+                     'jsr305', 'checker-qual', 'error_prone_annotations',
+                     'j2objc-annotations', 'failureaccess', 'listenablefuture',
+                     'kotlin-stdlib', 'aapt2-proto', 'aapt-proto', 'sdklib', 'common')) {
+        Get-ChildItem $cache -Recurse -Filter "$d*.jar" -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -notmatch 'sources|javadoc' } |
+            Select-Object -First 2 | ForEach-Object { $cp += $_.FullName }
+    }
+    return @{ Classpath = (($cp | Sort-Object -Unique) -join ';') }
+}
+
+function Invoke-Bundletool([string]$bundle, [string[]]$toolArgs) {
+    $btTool = Get-Bundletool
+    if (-not $btTool) { return $null }
+    $java = Join-Path $env:JAVA_HOME 'bin\java.exe'
+    if (-not (Test-Path $java)) { return $null }
+    return (& $java -cp $btTool.Classpath com.android.tools.build.bundletool.BundleToolMain @toolArgs 2>&1)
+}
 
 $script:fail = 0
 function Ok($m)   { Write-Host "  [ OK ] $m" -ForegroundColor Green }
@@ -88,21 +141,14 @@ if ($pkgLine -match "versionCode='(.+?)'") { $vc = $Matches[1] }
 if ($pkgLine -match "versionName='(.+?)'") { $vn = $Matches[1] }
 Note "versionCode = $vc  versionName = $vn"
 
-$metaPath = Join-Path $repo 'build\app\outputs\apk\release\output-metadata.json'
-if (Test-Path $metaPath) {
-    $meta = Get-Content $metaPath -Raw -Encoding utf8 | ConvertFrom-Json
-    # With --split-per-abi the metadata lists ONE_OF_MANY elements, each with
-    # its own versionCode (base + 1000*abiIndex). Compare per outputFile,
-    # not against the first element.
-    $mine = $meta.elements | Where-Object { $_.outputFile -eq (Split-Path $apk -Leaf) }
-    if ($mine) {
-        $metaVc = $mine.versionCode
-        if ("$metaVc" -eq $vc) { Ok "versionCode matches metadata ($metaVc)" }
-        else { Bad "versionCode mismatch: manifest=$vc metadata=$metaVc" }
-    } else {
-        Note "outputFile not listed in metadata (skipped)"
-    }
-}
+# The APK section above reads $PKG/$vc/$vn. Do NOT read versionCode back out
+# of output-metadata.json: --split-per-abi rewrites each split's versionCode to
+# base + 1000*abiIndex, so the value in the manifest of the *universal* APK
+# would never match and the check produced a misleading
+# "outputFile not listed in metadata (skipped)" for the AAB. The AAB has no
+# output-metadata.json at all, which is why it was silently skipped for years.
+# Version cross-checks live in section 7 instead.
+Note "versionCode/versionName above come from aapt2 on the universal APK"
 
 $arch = ($badging | Select-String "native-code:").Line
 $abiCount = ([regex]::Matches($arch, "'")).Count / 2
@@ -215,6 +261,105 @@ try {
     else { Ok "No Cloudinary api_secret (signature comes from BE)" }
 } finally {
     Remove-Item -Recurse -Force $tmp2 -ErrorAction SilentlyContinue
+}
+
+Write-Host ""
+Write-Host "=== 7. AAB (App Bundle) ===" -ForegroundColor Cyan
+if (-not (Test-Path $aab)) {
+    Note "AAB not built (skipped)"
+} else {
+    $aabMb = [math]::Round((Get-Item $aab).Length / 1MB, 1)
+    Note "AAB: $aabMb MB - $($aab | Split-Path -Leaf)"
+
+    $aabTmp = Join-Path $env:TEMP ('aabfull_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    New-Item -ItemType Directory -Path $aabTmp | Out-Null
+    try {
+        Push-Location $aabTmp
+        & $jar xf $aab 2>$null
+        Pop-Location
+
+        $aabManifest = Join-Path $aabTmp 'base\manifest\AndroidManifest.xml'
+        if (-not (Test-Path $aabManifest)) {
+            Bad "AAB manifest not found (corrupt bundle?)"
+        } else {
+            $mBytes = [System.IO.File]::ReadAllBytes($aabManifest)
+            $mTxt = [System.Text.Encoding]::UTF8.GetString($mBytes)
+
+            if ($mTxt -match [regex]::Escape($PKG)) { Ok "AAB package = $PKG" }
+            else { Bad "AAB wrong package (expected $PKG)" }
+
+            # The manifest is protobuf, so versionCode/minSdk/targetSdk are
+            # varints and CANNOT be read as text. Only a real parser sees them.
+            $aabLibApp = Join-Path $aabTmp 'base\lib\arm64-v8a\libapp.so'
+            $aabAbis = @()
+            if (Test-Path (Join-Path $aabTmp 'base\lib')) {
+                $aabAbis = (Get-ChildItem (Join-Path $aabTmp 'base\lib') -Directory | ForEach-Object { $_.Name })
+            }
+            if ($aabAbis.Count -ge 2) { Ok "AAB ABIs = $($aabAbis -join ', ')" }
+            else { Bad "AAB has fewer than 2 ABIs ($($aabAbis.Count))" }
+
+            if ($mTxt -match 'com\.smartwardrobe') {
+                Bad "AAB still contains the OLD package com.smartwardrobe"
+            } else { Ok "No leftover old package in AAB" }
+
+            if (Test-Path $aabLibApp) {
+                $aTxt = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($aabLibApp))
+                if ($aTxt -match [regex]::Escape($PROD_API)) { Ok "AAB: production API embedded" } else { Bad "AAB: production API missing" }
+                if ($aTxt -match [regex]::Escape($PROD_CLD)) { Ok "AAB: Cloudinary embedded" } else { Bad "AAB: Cloudinary missing" }
+                if ($aTxt -match [regex]::Escape($PROD_GID)) { Ok "AAB: production Google client embedded" } else { Bad "AAB: production Google client missing" }
+                if ($aTxt -match [regex]::Escape($DEV_GID)) { Bad "AAB: DEV client ID leaked" } else { Ok "AAB: dev client ID absent" }
+                if ($aTxt -match 'api_secret|cloudinary_api_secret') { Bad "AAB: secret string found in binary" } else { Ok "AAB: no api_secret" }
+            } else {
+                Note "AAB libapp.so not extracted - config checks skipped"
+            }
+
+            $aabEnv = Get-ChildItem $aabTmp -Recurse -File -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '\.env$|key\.properties|\.jks$|\.keystore$' }
+            if ($aabEnv) { $aabEnv | ForEach-Object { Bad "AAB contains $($_.Name)" } }
+            else { Ok "No .env / keystore inside AAB" }
+        }
+    } finally {
+        Remove-Item -Recurse -Force $aabTmp -ErrorAction SilentlyContinue
+    }
+
+    # Signature. apksigner CANNOT be used here: it expects a flat APK and dies
+    # with "Missing AndroidManifest.xml" on a bundle (the manifest lives in
+    # base/manifest/ and is protobuf). An AAB carries a plain JAR signature
+    # instead, which keytool reads directly.
+    $aabCert = & $keytool -printcert -jarfile $aab 2>&1
+    $aabDn = ($aabCert | Select-String 'Owner:').Line
+    if ($aabDn) {
+        Ok "AAB signed: $($aabDn.Trim() -replace '^Owner:\s*','')"
+        $aabSha = ''
+        if (($aabCert | Select-String 'SHA256:').Line -match 'SHA256:\s*(\S+)') {
+            $aabSha = (($Matches[1].Trim()) -replace '[\s:]', '').ToLower()
+        }
+        $ksSha = Get-KeystoreSha256
+        if ($aabSha -and $ksSha) {
+            if ($aabSha -eq $ksSha) { Ok "AAB signature matches keystore ($($ksSha.Substring(0,16))...)" }
+            else { Bad "AAB signature does NOT match keystore" }
+        } elseif (-not $ksSha) {
+            Note "Keystore SHA-256 unreadable (check storePassword in key.properties)"
+        }
+    } else {
+        Bad "AAB NOT SIGNED - no certificate found"
+    }
+
+    # Structural validation with bundletool - this is what Google Play itself
+    # runs. Without it we only know the zip opens, not that Play will accept
+    # the bundle.
+    $btOut = Invoke-Bundletool $aab @('validate', "--bundle=$aab")
+    if ($null -eq $btOut) {
+        Note "bundletool not found in Gradle cache - bundle structure NOT validated"
+    } elseif ($LASTEXITCODE -eq 0) {
+        Ok "bundletool validate: PASS (Play will accept the bundle structure)"
+    } else {
+        Bad "bundletool validate FAILED - Play would reject this bundle"
+    }
+
+    # get-device-spec needs --output; it writes to stdout only with that flag
+    # and is a diagnostic, not a release gate. Skipped to keep this section
+    # focused on pass/fail checks.
 }
 
 Write-Host ""

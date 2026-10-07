@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/stylist_repository.dart';
+import '../data/outfit_query_matcher.dart';
 import '../models/stylist_models.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -245,12 +246,16 @@ class StylistNotifier extends StateNotifier<StylistState> {
         final finalText = fullText.isNotEmpty ? fullText : streamAccumulated;
         final hasRedirect = finalText.contains('[ACTION:REDIRECT_OUTFIT]');
 
-        // Nếu có lệnh gợi ý trang phục, tải lookbook đính kèm
+        // Spec 015 — FR-021: quyết định gọi thẻ gợi ý dựa trên bộ khoá MÁY CHỦ
+        // gửi, thay vì `contains('phối')`/`contains('outfit')` tự đoán.
+        final wantsOutfit = hasRedirect || isOutfitRelatedQuery(cleanPrompt);
+
         OutfitRecommendationModel? rec;
-        if (hasRedirect || cleanPrompt.toLowerCase().contains('phối') || cleanPrompt.toLowerCase().contains('outfit')) {
-          try {
-            rec = await _repository.getOutfitRecommendation(prompt: cleanPrompt);
-          } catch (_) {}
+        if (wantsOutfit) {
+          // Spec 015 — FR-022: gọi thẻ gợi ý CHỈ khi câu hỏi về trang phục.
+          // `rec` rỗng (không món nào đủ dữ liệu) thì để `null` — tuyệt đối không
+          // chế sẵn danh sách món để thay thế.
+          rec = await _repository.getOutfitRecommendation(prompt: cleanPrompt);
         }
 
         _finalizeAiMessage(aiMsgId, finalText, recommendation: rec);
@@ -263,17 +268,15 @@ class StylistNotifier extends StateNotifier<StylistState> {
         }
       },
       onError: (err) async {
-        debugPrint('[StylistNotifier] Stream error, executing fallback: $err');
-        try {
-          final rec = await _repository.getOutfitRecommendation(prompt: cleanPrompt);
-          final fallbackContent = rec.explanation ?? 'Dưới đây là gợi ý phối đồ phù hợp với phong cách của bạn:';
-          _finalizeAiMessage(aiMsgId, fallbackContent, recommendation: rec);
-        } catch (_) {
-          _finalizeAiMessage(
-            aiMsgId,
-            'Tôi có thể giúp bạn phối trang phục từ tủ đồ cho nhiều dịp như đi làm, dạo phố hoặc dự tiệc. Bạn hãy cho tôi biết sở thích của mình nhé!',
-          );
-        }
+        debugPrint('[StylistNotifier] Stream error: $err');
+        // Spec 015 — FR-022/FR-023: khi luồng chat hỏng, KHÔNG tự chế thẻ gợi ý.
+        // Bản cũ gọi `getOutfitRecommendation` ở đây và dùng `rec.explanation` làm
+        // câu trả lời, nên người dùng thấy nội dung bịa mà không hề có lỗi nào
+        // được báo. Giờ chỉ giữ phần trả lời dự phòng ngắn, không kèm món đồ.
+        _finalizeAiMessage(
+          aiMsgId,
+          'Tôi có thể giúp bạn phối trang phục từ tủ đồ cho nhiều dịp như đi làm, dạo phố hoặc dự tiệc. Bạn hãy cho tôi biết sở thích của mình nhé!',
+        );
         state = state.copyWith(isStreaming: false);
       },
     );

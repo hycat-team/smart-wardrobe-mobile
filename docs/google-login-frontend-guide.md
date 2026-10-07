@@ -34,23 +34,28 @@ Không mô tả chi tiết nội bộ backend.
   - **OAuth 2.0 Android Client**:
     - Package name: `online.hycat.closy`.
     - SHA-1 fingerprint từ keystore (debug/release).
+    - 👉 **Hướng dẫn từng bước + bảng lỗi: [`Google_OAuth_Android_Guide.md`](./Google_OAuth_Android_Guide.md)**
     - Android app khởi tạo `GoogleSignIn` với `serverClientId = WEB_CLIENT_ID` để nhận OpenID `idToken`.
 
-    > ⚠️ **PHẢI LÀM LẠI SAU KHI ĐỔI PACKAGE (2026-09-30).** Package đã đổi
-    > từ `com.smartwardrobe.smart_wardrobe` → `online.hycat.closy`. Google
-    > **gắn Android OAuth client với đúng cặp (package name + SHA-1)**, nên
-    > client cũ sẽ **hỏng ngay** và `loginWithGoogle` trả lỗi
-    > `DEEMED_NOT_VALID` (Google Play services 12500).
+    > ⚠️ **SHA-1 PHẢI LẤY TỪ APK ĐANG CHẠY, KHÔNG PHẢI TỪ PLAY CONSOLE.**
+    > (2026-09-30, sửa sau sự cố `UNREGISTERED_ON_API_CONSOLE`.)
     >
-    > Cần tạo **một Android OAuth client mới** trong Google Cloud Console
-    > (cùng project `368645245473`):
-    > - Package name: `online.hycat.closy`
-    > - SHA-1: `BE:C4:0C:45:A0:C7:64:48:C9:40:19:99:6C:25:F0:F1:9C:E9:90:CC`
-    >   (SHA-1 **không** đổi vì dùng cùng keystore `upload-keystore.jks`).
+    > Google đối chiếu SHA-1 của **chứng thư đang ký app trên máy**. Play
+    > Console hiện *nhiều* dòng và chỉ một dòng là dòng đúng:
     >
-    > `serverClientId` trong app vẫn là **Web** client ID nên **không phải** sửa
-    > `GOOGLE_CLIENT_ID` trong build. Client cũ có thể xoá sau khi client mới
-    > hoạt động.
+    > | Nguồn | Ký cái gì | Dùng cho OAuth? |
+    > |---|---|---|
+    > | *App signing key — In use* (cột **Classical key**) | app sau khi bật Play App Signing | ✅ |
+    > | *Previous app signing keys* | khoá **đã bị thay** | ❌ vô dụng |
+    > | *Upload key certificate* | chỉ AAB bạn upload | ❌ chỉ dùng cho APK local |
+    > | *(không có dòng nào)* | **shared key** `CN=Android, O=Google Inc.` khi **chưa** bật Play App Signing | ✅ nếu app chưa bật |
+    >
+    > Cách lấy chắc chắn — chạy `tool\capture_google_login_log.ps1`, script in
+    > sẵn DN + SHA-1 của app đang cài kèm cảnh báo nếu là shared key.
+    >
+    > Lỗi dấu hiệu: picker hiện ra, chọn tài khoản xong **im lặng không có gì
+    > xảy ra** → OAuth client không khớp, xem `build\play-login.log` có
+    > `UNREGISTERED_ON_API_CONSOLE`.
 - **Điều kiện tiên quyết**:
   - Web và API **cùng registrable domain** (ví dụ FE `closy.hycat.online`, API `api.closy.hycat.online`) để cookie `SameSite=Strict` hoạt động.
   - Mọi request cần phiên phải gửi kèm credentials (`fetch(..., { credentials: 'include' })`).

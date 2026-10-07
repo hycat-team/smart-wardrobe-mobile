@@ -93,12 +93,25 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
       // Luôn gọi (idempotent) — bootstrap tự bỏ qua nếu đã khởi tạo.
       await _initGoogleSdk();
 
-      // Buộc hiện lại account chooser: xoá phiên Google cục bộ trước khi
-      // authenticate() để không tự động tái dùng tài khoản đã cấp quyền
-      // (spec 012 — FR-013).
-      await _clearPreviousGoogleSession();
-
-      final account = await GoogleSignIn.instance.authenticate();
+      // KHÔNG gọi _clearPreviousGoogleSession() trên Android.
+      //
+      // Lý do: GoogleSignIn.authenticate() chạy *button flow*
+      // (GetSignInWithGoogleOption) nên account chooser LUÔN hiện, không phụ
+      // thuộc vào việc xoá phiên cục bộ — đây chỉ là workaround cho web
+      // (spec 012 FR-013, vì GIS tự chọn lại tài khoản cũ). Ngoài ra
+      // disconnect() còn gọi revokeAccess tức thu hồi quyền của user qua
+      // mạng, làm chậm thêm mỗi lần bấm nút.
+      //
+      // Timeout: authenticate() await thẳng CredentialManager.getCredentialAsync
+      // và KHÔNG có timeout sẵn. Khi Android OAuth client không khớp
+      // (package + SHA-1) thì callback không bao giờ được gọi → nút đứng ở
+      // trạng thái loading vĩnh viễn, không báo lỗi, không log. Đây là lý do
+      // lỗi "12500 / UNREGISTERED_ON_API_CONSOLE" phải mò tới logcat mới biết.
+      // 2 phút: đủ dài để người dùng chọn tài khoản thoải mái, nhưng vẫn bắt
+      // được trường hợp treo vĩnh viễn.
+      final account = await GoogleSignIn.instance
+          .authenticate()
+          .timeout(const Duration(minutes: 2));
       final auth = account.authentication;
       final idToken = auth.idToken;
 
@@ -113,6 +126,16 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
       }
 
       await _exchangeIdToken(idToken);
+    } on TimeoutException {
+      // Không dính nhánh cancelled bên dưới: timeout KHÔNG phải người dùng
+      // huỷ, nên phải báo lỗi thật chứ không im lặng.
+      if (!mounted) return;
+      setState(() => _isLocallyLoading = false);
+      widget.onOutcome?.call(GoogleSignInOutcome.failed(
+        errorCode: AuthErrorCode.serverError,
+        customMessage:
+            'Google không phản hồi sau 2 phút. Vui lòng thử lại hoặc đăng nhập bằng email.',
+      ));
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLocallyLoading = false);
@@ -121,6 +144,12 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
           rawStr.contains('cancelled') ||
           rawStr.contains('access_denied')) {
         widget.onOutcome?.call(GoogleSignInOutcome.cancelled());
+      } else if (rawStr.contains('timeout')) {
+        widget.onOutcome?.call(GoogleSignInOutcome.failed(
+          errorCode: AuthErrorCode.serverError,
+          customMessage:
+              'Google không phản hồi sau 2 phút. Vui lòng thử lại hoặc đăng nhập bằng email.',
+        ));
       } else {
         final failedOutcome = GoogleSignInOutcome.failed(
           errorCode: AuthErrorCode.serverError,
