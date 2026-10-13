@@ -40,12 +40,15 @@ Quan hệ chéo: `fullbody` ⇄ `top` **loại trừ nhau** khi thêm tay; `bott
   thêm món mới; không tồn tại 2 món cùng vai trò độc quyền sau thao tác.
 - **INV-3 (đầm↔áo)**: Sau khi thêm `fullbody`, không còn `top`; sau khi thêm `top`, không còn
   `fullbody`. `bottom` giữ nguyên trong cả hai.
-- **INV-4 (vị trí chuẩn)**: Món mới có `positionX/Y` từ toạ độ chuẩn của vai trò, **không** kế thừa vị trí món cũ. `scale` giữ theo mức tỉ lệ chung hiện có của canvas (trung bình các món, hoặc `1.0` khi trống) — hành vi sẵn có, không đổi.
+- **INV-4 (thay tại chỗ)**: Khi thay món **cùng vai trò**, món mới giữ **đúng** `positionX/Y` và
+  `scale` của món cũ. Khi **thêm mới** (không có món cùng vai trò), `positionX/Y` lấy từ toạ độ
+  chuẩn của vai trò và `scale` = mức tỉ lệ chung của canvas (trung bình, `1.0` khi trống). Luôn kẹp
+  trong khung.
 - **INV-5 (trong khung)**: Mọi món luôn qua `clampCanvasItem` → hộp giới hạn nằm trong khung.
-- **INV-6 (áo khoác chồng nhẹ, nền không dời)**: Nếu có `outerwear` và lớp nền (`top`/`fullbody`):
-  áo khoác dịch khỏi tâm nền một khoảng tỉ lệ canvas; hai món **vẫn chồng ngang** (không tách rời)
-  và **nền lộ một phần**; **vị trí/tỉ lệ lớp nền KHÔNG đổi**; outerwear giữ `layerOrder` trên;
-  cả hai trong khung. (Bản chỉnh 2026-10-13.)
+- **INV-6 (áo khoác chồng ~20%, nền không dời)**: Nếu có `outerwear` và lớp nền (`top`/`fullbody`):
+  áo khoác đặt **sát bên** sao cho **phần chồng ngang ≈ 20% bề rộng nền**; nếu không đủ chỗ, **thu
+  `scale` áo khoác** (sàn `0.15`) cho vừa khung; **vị trí/tỉ lệ lớp nền KHÔNG đổi**; outerwear giữ
+  `layerOrder` trên; cả hai trong khung. (Bản chỉnh 2026-10-13.)
 
 ---
 

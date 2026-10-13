@@ -50,46 +50,47 @@ mới, **gỡ mọi món xung đột** khỏi danh sách trước khi chọn to�
 
 ## R3 — Vị trí món mới khi thay thế
 
-**Decision**: Món mới dùng **toạ độ chuẩn của vai trò** (`roleCoordinatesSeparate/Fullbody`),
-`baseScale`/`boxRatio` theo vai trò, **không** copy `positionX/Y` của món cũ; `scale` giữ theo
-**mức chung hiện có của canvas** (trung bình các món, `1.0` khi trống — hành vi sẵn có); rồi
-`clampCanvasItem` để nằm trọn trong khung.
+**Decision**: Khi thay món **cùng vai trò**, món mới giữ **đúng** `positionX/Y` và `scale` của
+món cũ (**thay tại chỗ**). Khi **thêm mới** (không có món cùng vai trò), đặt theo toạ độ chuẩn
+của vai trò với `scale` = mức chung của canvas (trung bình, `1.0` khi trống); rồi `clampCanvasItem`.
 
 **Rationale**:
-- Clarifications 2026-10-13: đặt theo vị trí chuẩn (không kế thừa) — bố cục nhất quán.
-- `addItemToCanvas` hiện **đã** đặt theo toạ độ chuẩn → chỉ cần giữ nguyên hành vi này; FR-003
-  thoả tự nhiên sau khi thêm bước gỡ xung đột.
-- `clampCanvasItem` (spec 016, `canvas_layout.dart:437`) đảm bảo nằm trong khung.
+- Bản chỉnh 2026-10-13 (feedback tester): thay giày/nón/phụ kiện trước đây nhảy về toạ độ chuẩn
+  → cách xa vị trí cũ. Người dùng muốn thay **tại chỗ, đúng kích thước cũ**.
+- `addItemToCanvas` đã gỡ món cùng vai trò; chỉ cần lấy `positionX/Y/scale` của món bị gỡ để đặt
+  món mới (đổi từ `removeWhere` sang lấy phần tử trước khi xoá).
+- `clampCanvasItem` đảm bảo vẫn trong khung kể cả khi món cũ bị kéo sát biên.
 
-**Alternatives considered**: kế thừa vị trí món cũ / đặt giữa canvas — bị loại ở Clarifications.
+**Alternatives considered**: đặt theo vị trí chuẩn (bản gốc) — bị bác; đặt giữa canvas — loại.
 
 ---
 
-## R4 — Bố cục outerwear + lớp nền (không chồng lấn)
+## R4 — Bố cục áo khoác + lớp nền (chồng ~20%)
 
-**Decision**: Thêm helper thuần trong `canvas_layout.dart`, ví dụ
-`List<CanvasItem> layoutOuterwearBesideBase(List<CanvasItem> items, {canvasWidth, canvasHeight})`:
+**Decision**: Helper thuần `layoutOuterwearOverBase(items, {canvasWidth, canvasHeight})` trong
+`canvas_layout.dart`:
 
-- **Bản chỉnh 2026-10-13** (sau feedback tester, thay cho bố cục hai cột gốc):
+- **Bản chỉnh 2026-10-13 (lần 2, sau feedback tester)**:
   - Kích hoạt khi có **outerwear** và có **lớp nền** (`top`/`fullbody`).
-  - **Giữ nguyên vị trí/kích thước lớp nền**; chỉ dịch nhẹ áo khoác:
-    `outerwear.positionX = base.positionX + 0.12 * canvasWidth`.
-  - Không thu tỉ lệ (giữ kích thước tự nhiên); `clampCanvasItem` để nằm trong khung.
-  - Giữ `layerOrder` outerwear **trên** lớp nền.
+  - **Giữ nguyên vị trí/kích thước lớp nền** (không dời ⇒ không chồng món khác loại).
+  - Đặt áo khoác **sát bên** (chọn bên còn nhiều chỗ hơn) sao cho **phần chồng ngang ≈
+    `0.20 * baseWidth`**.
+  - Nếu áo khoác không đủ chỗ ở kích thước hiện tại → **thu `scale`** cho vừa khung (sàn `0.15`,
+    không bao giờ phóng to).
+  - Giữ `layerOrder` outerwear **trên** lớp nền; kẹp toàn bộ vào khung.
   - Gọi ở **cả 3 luồng đặt món**: `addItemToCanvas`, `loadFromAIRecommendation`, `loadIntoStudio`
     (+ relayout khi đo được kích thước canvas).
 
 **Rationale**:
-- Bố cục hai cột **dời lớp nền** sang nửa trái → món **khác loại** thêm sau (quần/giày) bị
-  chồng lên nền đã dời; đồng thời áo khoác **né hoàn toàn** áo. Tester báo cả hai lỗi này.
-- Chỉ lệch áo khoác ⇒ nền **không dời** ⇒ không gây chồng chéo với món khác loại; áo khoác vẫn
-  **phủ nhẹ + lộ một phần** nền (chồng kiểu layer).
-- `0.12 * canvasWidth` ≈ `43-52px` trên khung `360-430`: đủ thấy layer, vẫn trong biên sau kẹp.
+- Bản 017 gốc (hai cột) **dời lớp nền** → món khác loại thêm sau bị chồng; bản lệch `0.12*W` tiếp
+  theo vẫn **đè ~75%** áo. Tester muốn **đè ~20%**.
+- Không dời nền ⇒ không gây chồng chéo với món khác loại; áo khoác chồng đúng ~20% (thu nhỏ vừa
+  khung nếu cần) ⇒ luôn quan sát được cả hai.
 
 **Alternatives considered**:
-- *Hai cột tách rời (bản 017 gốc)*: bị bác — né hoàn toàn + dời nền gây chồng món khác loại.
+- *Hai cột tách rời / lệch cố định `0.12*W`*: bị bác (chồng quá nhiều / né hoàn toàn).
+- *Giữ kích thước áo khoác tự nhiên trên khung hẹp*: không thể đạt 20% (áo khoác rộng hơn nửa khung).
 - *Hạ outerwear xuống lớp dưới*: bị loại ở Clarifications Q3.
-- *Thu nhỏ áo khoác để lộ nền nhiều hơn*: trái ý "giữ kích thước tự nhiên".
 - *Xếp dọc (trên/dưới)*: ngoài ý "dịch sang bên".
 
 ---

@@ -63,35 +63,35 @@ class RoleBoundingBox {
 /// Bố cục giải phẫu chuẩn cho trang phục dạng rời (top + bottom + footwear).
 /// Gốc tọa độ (0, 0) tại tâm canvas.
 const roleCoordinatesSeparate = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 80, zIndex: 8),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 60, zIndex: 8),
   CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 100, zIndex: 5),
   CanvasRole.outerwear: RolePlacement(x: -25, y: -145, scale: 105, zIndex: 7),
   CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 100, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 80, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: 40, scale: 85, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 180, scale: 75, zIndex: 2),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 58, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: 40, scale: 64, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 180, scale: 56, zIndex: 2),
   CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 105, zIndex: 5),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 180, scale: 75, zIndex: 2),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 180, scale: 56, zIndex: 2),
 };
 
 /// Bố cục giải phẫu chuẩn cho trang phục dạng liền thân (fullbody + footwear).
 const roleCoordinatesFullbody = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 80, zIndex: 8),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 60, zIndex: 8),
   CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 105, zIndex: 5),
   CanvasRole.outerwear: RolePlacement(x: -25, y: -130, scale: 105, zIndex: 7),
   CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 100, zIndex: 5),
   CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 100, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 80, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: 20, scale: 85, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 170, scale: 75, zIndex: 2),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 170, scale: 75, zIndex: 2),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 58, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: 20, scale: 64, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 170, scale: 56, zIndex: 2),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 170, scale: 56, zIndex: 2),
 };
 
 /// Tọa độ bổ sung dành cho phụ kiện thứ 2 trở lên (phân bổ so le sang cánh phải).
 const secondaryAccessoryCoordinates = <RolePlacement>[
-  RolePlacement(x: 240, y: -100, scale: 75, zIndex: 9), // Phụ kiện 2: cánh phải trên
-  RolePlacement(x: 240, y: 80, scale: 75, zIndex: 9), // Phụ kiện 3: cánh phải dưới
-  RolePlacement(x: -240, y: -120, scale: 75, zIndex: 9), // Phụ kiện 4: cánh trái trên
+  RolePlacement(x: 240, y: -100, scale: 62, zIndex: 9), // Phụ kiện 2: cánh phải trên
+  RolePlacement(x: 240, y: 80, scale: 62, zIndex: 9), // Phụ kiện 3: cánh phải dưới
+  RolePlacement(x: -240, y: -120, scale: 62, zIndex: 9), // Phụ kiện 4: cánh trái trên
 ];
 
 /// Lấy vị trí cho phụ kiện thứ N (0-based: 0 là phụ kiện chính).
@@ -108,7 +108,7 @@ RolePlacement getAccessoryPlacement(int accessoryIndex, {bool hasFullbody = fals
   return RolePlacement(
     x: 240,
     y: 80 + (secIndex - 1) * 60.0,
-    scale: 75,
+    scale: 62,
     zIndex: 9,
   );
 }
@@ -486,18 +486,23 @@ CanvasItem clampCanvasItem(CanvasItem item, double canvasWidth, double canvasHei
   );
 }
 
-/// Lệch nhẹ áo khoác sang bên khi cùng canvas với lớp nền (`top`/`fullbody`).
+/// Áo khoác chồng nhẹ lên lớp nền (`top`/`fullbody`) đúng ~20% bề rộng nền.
 ///
-/// Bản chỉnh 2026-10-13 (R4/INV-6): **không** dời/không thu nhỏ lớp nền (dời nền
-/// khiến món khác loại thêm sau bị chồng lên nền). Chỉ dịch áo khoác sang phải
-/// một khoảng tỉ lệ canvas để nó vẫn chồng nhẹ (kiểu mặc layer) nhưng lộ một phần
-/// lớp nền; sau đó kẹp toàn bộ vào khung. Trả về nguyên trạng nếu thiếu áo khoác
-/// hoặc thiếu lớp nền.
+/// Bản chỉnh 2026-10-13 (R4/INV-6): **giữ nguyên vị trí/kích thước lớp nền**
+/// (không dời nền ⇒ không gây chồng lên món khác loại). Đặt áo khoác sát bên
+/// (phải hoặc trái — chọn bên rộng hơn) sao cho phần chồng ngang bằng
+/// `overlapFraction * baseWidth`; nếu áo khoác không đủ chỗ ở kích thước hiện tại
+/// thì **thu `scale`** cho vừa (sàn 0.15), không bao giờ phóng to. Trả về nguyên
+/// trạng nếu thiếu áo khoác hoặc thiếu lớp nền.
 List<CanvasItem> layoutOuterwearOverBase(
   List<CanvasItem> items, {
   required double canvasWidth,
   required double canvasHeight,
 }) {
+  const double margin = 8.0;
+  const double itemScaleMultiplier = 1.25;
+  const double overlapFraction = 0.20;
+
   final int outerwearIndex =
       items.indexWhere((it) => it.role == CanvasRole.outerwear.name);
   final int baseIndex = items.indexWhere(
@@ -505,11 +510,41 @@ List<CanvasItem> layoutOuterwearOverBase(
   );
   if (outerwearIndex < 0 || baseIndex < 0) return items;
 
-  const double layerOffsetFraction = 0.12;
-  final double dx = canvasWidth * layerOffsetFraction;
   final CanvasItem base = items[baseIndex];
+  final CanvasItem ow = items[outerwearIndex];
 
-  var outerwear = items[outerwearIndex].copyWith(positionX: base.positionX + dx);
+  double widthAtScaleOne(CanvasItem it) =>
+      it.baseScale * it.boxRatioW * itemScaleMultiplier;
+
+  final double baseW = widthAtScaleOne(base) * base.scale;
+  final double overlap = overlapFraction * baseW;
+  final double baseL = base.positionX - baseW / 2;
+  final double baseR = base.positionX + baseW / 2;
+
+  final double minX = -canvasWidth / 2 + margin;
+  final double maxX = canvasWidth / 2 - margin;
+
+  final double unitW = widthAtScaleOne(ow);
+  final double owNaturalW = unitW * ow.scale;
+
+  // Bề rộng tối đa áo khoác được dùng để vẫn nằm trong khung ở mỗi bên.
+  final double roomRight = maxX - (baseR - overlap);
+  final double roomLeft = (baseL + overlap) - minX;
+  final bool useRight = roomRight >= roomLeft;
+  final double room = useRight ? roomRight : roomLeft;
+
+  double owScale = ow.scale;
+  if (room < owNaturalW) {
+    final double fitScale = unitW > 0 ? room / unitW : ow.scale;
+    owScale = fitScale.clamp(0.15, ow.scale);
+  }
+  final double owW = unitW * owScale;
+
+  final double owX = useRight
+      ? (baseR - overlap) + owW / 2
+      : (baseL + overlap) - owW / 2;
+
+  var outerwear = ow.copyWith(positionX: owX, scale: owScale);
   if (outerwear.layerOrder <= base.layerOrder) {
     outerwear = outerwear.copyWith(layerOrder: base.layerOrder + 1);
   }

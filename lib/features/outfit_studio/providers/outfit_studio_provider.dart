@@ -297,9 +297,15 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     );
 
     // Khử trùng theo vai trò TRƯỚC khi chọn toạ độ: mỗi loại cơ bản một món.
+    // Nếu có món cùng vai trò, món mới THAY TẠI CHỖ (giữ vị trí + kích thước cũ).
     final countBeforeRemoval = items.length;
+    CanvasItem? replacedItem;
     if (isExclusiveRole(role)) {
-      items.removeWhere((it) => it.role == role.name);
+      final sameRoleIndex = items.indexWhere((it) => it.role == role.name);
+      if (sameRoleIndex >= 0) {
+        replacedItem = items[sameRoleIndex];
+        items.removeAt(sameRoleIndex);
+      }
       if (role == CanvasRole.fullbody) {
         items.removeWhere((it) => it.role == CanvasRole.top.name);
       } else if (role == CanvasRole.top) {
@@ -323,9 +329,9 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       imageUrl: item.displayImageUrl,
       name: item.displayTitle,
       role: role.name,
-      positionX: placement.x,
-      positionY: placement.y,
-      scale: initialScale,
+      positionX: replacedItem?.positionX ?? placement.x,
+      positionY: replacedItem?.positionY ?? placement.y,
+      scale: replacedItem?.scale ?? initialScale,
       layerOrder: placement.zIndex,
       baseScale: placement.scale,
       boxRatioW: boxRatio.widthRatio,

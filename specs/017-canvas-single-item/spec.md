@@ -15,7 +15,7 @@
 - Q: Phạm vi "mỗi loại một món" gồm những vai trò nào? → A: Chỉ nhóm quần áo cơ bản độc quyền (áo trên, quần, đầm liền thân, áo khoác, giày dép); mũ và phụ kiện được phép nhiều món.
 - Q: Đầm liền thân quan hệ với áo + quần thế nào? → A: Đầm chỉ thay áo (gỡ áo, giữ quần); thêm áo thì gỡ đầm; quần độc lập, được phối cùng đầm.
 - Q: Áo khoác và áo cùng trên canvas hiển thị ra sao? → A: Giữ áo khoác ở lớp trên nhưng dịch sang bên để lộ áo.
-- Q: Vị trí món mới khi thay thế món cùng loại? → A: Đặt theo vị trí chuẩn của loại rồi kẹp trong khung canvas (không kế thừa vị trí món cũ; tỉ lệ giữ theo mức chung của canvas).
+- Q: Vị trí món mới khi thay thế món cùng loại? → A: **Thay tại chỗ** — món mới giữ đúng vị trí và kích thước món cũ (bản chỉnh 2026-10-13; trước đó đặt theo vị trí chuẩn).
 - Q: Áo khoác không được che những lớp nào bên dưới? → A: Mọi lớp nền bên dưới (áo trên **hoặc** đầm liền thân).
 
 ## User Scenarios & Testing *(mandatory)*
@@ -82,9 +82,9 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 
 - **FR-001**: Trên canvas, tại một thời điểm hệ thống MUST giữ tối đa **một** món cho mỗi loại trong **nhóm quần áo cơ bản**: áo trên (top), quần (bottom), đầm liền thân (fullbody), áo khoác (outerwear), giày dép (footwear). Các vai trò còn lại (**mũ, phụ kiện, khác, không xác định**) ĐƯỢC PHÉP có nhiều món cùng lúc.
 - **FR-002**: Khi người dùng thêm một món mà canvas đã có món **cùng loại** (trong nhóm quần áo cơ bản), hệ thống MUST thay thế món cũ bằng món mới (gỡ món cũ), không thêm chồng.
-- **FR-003**: Việc thay thế MUST đặt món mới theo **vị trí chuẩn của loại** (không kế thừa vị trí món cũ), giữ món mới nằm trọn trong khung canvas, và đặt món mới ở trạng thái đang được chọn.
+- **FR-003**: Việc thay thế MUST đặt món mới **tại đúng vị trí và kích thước của món cũ** (thay tại chỗ); món mới được kẹp trong khung canvas và ở trạng thái đang được chọn. (Bản chỉnh 2026-10-13: trước đó đặt theo vị trí chuẩn.)
 - **FR-004**: Đầm liền thân (fullbody) và áo trên (top) loại trừ nhau: thêm đầm khi canvas có áo → gỡ áo (giữ quần nếu có); thêm áo khi canvas có đầm → gỡ đầm. Quần (bottom) **độc lập**, được phép tồn tại cùng đầm.
-- **FR-005**: Khi áo khoác cùng canvas với **lớp nền bên dưới** (áo trên **hoặc** đầm liền thân), hệ thống MUST giữ áo khoác ở lớp trên nhưng **dịch nhẹ sang bên** để **lộ một phần** lớp nền (chồng nhẹ kiểu layer, giữ kích thước tự nhiên); hệ thống **KHÔNG** dời vị trí hay thu nhỏ lớp nền.
+- **FR-005**: Khi áo khoác cùng canvas với **lớp nền bên dưới** (áo trên **hoặc** đầm liền thân), hệ thống MUST đặt áo khoác **sát bên** sao cho phần **chồng ngang ≈ 20% bề rộng lớp nền** (chồng nhẹ, vẫn nhìn thấy lớp nền); hệ thống **KHÔNG** dời vị trí lớp nền; nếu áo khoác không đủ chỗ thì **thu nhỏ áo khoác** cho vừa khung (áo khoác giữ ở lớp trên).
 - **FR-006**: Thêm món khi canvas trống MUST hoạt động như hiện tại (không có gì bị thay).
 - **FR-007**: Thao tác thay thế MUST kèm phản hồi rõ ràng cho người dùng rằng món đã bị thay thế.
 - **FR-008**: Món bị thay thế MUST không còn trong **dữ liệu lưu**: khi lưu bộ phối, danh sách món gửi đi KHÔNG chứa món đã bị gỡ (không lưu món "mồ côi").
@@ -99,7 +99,7 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 ### Measurable Outcomes
 
 - **SC-001**: 100% trường hợp thêm món trùng loại vào canvas đều **thay thế** món cũ, canvas không bao giờ có hai món cùng loại (theo phạm vi FR-001).
-- **SC-002**: Áo khoác và lớp nền (áo trên hoặc đầm) **chồng nhẹ** khi cùng canvas — có lộ một phần nền, không che kín, không tách rời; **lớp nền không bị dời vị trí** (theo INV-6).
+- **SC-002**: Áo khoác chồng lên lớp nền (áo trên hoặc đầm) **≈ 20%** bề rộng nền; **lớp nền không bị dời vị trí** (theo INV-6).
 - **SC-003**: Sau khi thay thế, món mới nằm trọn trong khung canvas (100% trường hợp).
 - **SC-004**: Thêm món vào canvas trống không bị ảnh hưởng (không có món nào bị gỡ nhầm).
 
@@ -109,3 +109,4 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 - Việc thay thế áp dụng cho thao tác **thêm món thủ công**; luồng nạp set AI và khôi phục outfit đã có quy tắc khử trùng lặp riêng và không bị đổi hành vi ngoài phạm vi đã nêu.
 - Đã chốt (Clarifications 2026-10-13): nhóm quần áo cơ bản một món mỗi loại; **mũ và phụ kiện được phép nhiều món**; đầm chỉ thay áo (được phối cùng quần); áo khoác giữ lớp trên nhưng dịch sang bên để lộ áo.
 - Thay thế gỡ món cũ hoàn toàn; người dùng có thể thêm lại nếu muốn.
+- Giày, nón, phụ kiện và món "khác" dùng **kích thước cơ sở nhỏ hơn** nhóm quần áo chính để tiết kiệm diện tích canvas nhưng vẫn nhìn rõ (bản chỉnh 2026-10-13: giảm `baseScale` các vai trò này).

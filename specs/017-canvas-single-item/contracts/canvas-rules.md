@@ -24,16 +24,17 @@
 
 ### 3. Vị trí món mới
 
-- Đặt theo **toạ độ chuẩn của vai trò** (`roleCoordinatesSeparate/Fullbody`), không kế thừa vị
-  trí món cũ; `scale` giữ theo mức tỉ lệ chung của canvas (trung bình, `1.0` khi trống).
+- Khi thay món **cùng vai trò**: món mới giữ **đúng vị trí + kích thước món cũ** (thay tại chỗ).
+  Khi thêm mới (không có món cùng vai trò): đặt theo toạ độ chuẩn của vai trò; `scale` = mức tỉ lệ
+  chung của canvas (trung bình, `1.0` khi trống). Luôn kẹp trong khung.
 - Luôn `clampCanvasItem` để nằm trọn trong khung.
 
 ### 4. Áo khoác không chồng lớp nền
 
-- Khi cùng canvas có `outerwear` và lớp nền (`top` hoặc `fullbody`): **giữ nguyên vị trí/tỉ lệ
-  lớp nền**; dịch nhẹ áo khoác sang phải một khoảng tỉ lệ canvas (`0.12 * canvasWidth`) để
-  **chồng nhẹ** (vẫn phủ nhau, lộ một phần nền); outerwear ở lớp trên; kẹp trong khung.
-- Chỉ áp dụng ở thao tác thêm/đặt món (add, nạp set AI, khôi phục outfit); không đụng món khác loại.
+- Khi cùng canvas có `outerwear` và lớp nền (`top`/`fullbody`): **giữ nguyên vị trí/tỉ lệ lớp nền**;
+  đặt áo khoác **sát bên** sao cho **chồng ngang ≈ 20% bề rộng nền**; nếu thiếu chỗ, **thu `scale`
+  áo khoác** (sàn `0.15`) cho vừa khung; outerwear ở lớp trên; kẹp trong khung.
+- Áp dụng ở cả 3 luồng đặt món (thêm tay / nạp set AI / khôi phục outfit); không đụng món khác loại.
 
 ## Bất biến kiểm chứng được
 
@@ -42,7 +43,7 @@
 | INV-1 | `count(role==r) ≤ 1` với `r` ∈ tập độc quyền |
 | INV-3 | thêm `fullbody` ⟹ không còn `top`; thêm `top` ⟹ không còn `fullbody`; `bottom` không đổi |
 | INV-5 | mọi món trong khung |
-| INV-6 | có outerwear + lớp nền ⟹ chồng nhẹ (nền lộ một phần, nền KHÔNG dời) |
+| INV-6 | có outerwear + lớp nền ⟹ chồng ~20% nền; nền KHÔNG dời |
 
 ## Ngoài phạm vi
 
