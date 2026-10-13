@@ -7,6 +7,7 @@ import '../../../shared/widgets/closy_network_image.dart';
 import '../models/stylist_models.dart';
 import '../providers/stylist_provider.dart';
 import '../../../shared/widgets/closy_toast.dart';
+import 'widgets/stylist_markdown_text.dart';
 
 class StylistScreen extends ConsumerStatefulWidget {
   const StylistScreen({super.key});
@@ -585,14 +586,20 @@ class _StylistScreenState extends ConsumerState<StylistScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        msg.cleanContent.isEmpty && msg.isStreaming ? 'Đang suy nghĩ...' : msg.cleanContent,
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 14,
-                          color: isUser ? const Color(0xFF1A1A1A) : AppColors.textPrimary,
-                          height: 1.5,
+                      if (msg.cleanContent.isEmpty && msg.isStreaming)
+                        Text(
+                          'Đang suy nghĩ...',
+                          style: GoogleFonts.beVietnamPro(
+                            fontSize: 14,
+                            color: isUser ? const Color(0xFF1A1A1A) : AppColors.textPrimary,
+                            height: 1.5,
+                          ),
+                        )
+                      else
+                        StylistMarkdownText(
+                          data: msg.cleanContent,
+                          isUser: isUser,
                         ),
-                      ),
                       if (msg.isStreaming) ...[
                         const SizedBox(height: 6),
                         Row(

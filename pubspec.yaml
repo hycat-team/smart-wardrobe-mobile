@@ -39,6 +39,7 @@ dependencies:
   url_launcher: ^6.3.2
   app_links: ^6.4.1
   video_player: ^2.9.2
+  flutter_markdown_plus: ^1.0.12
 
 dev_dependencies:
   flutter_test:

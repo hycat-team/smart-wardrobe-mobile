@@ -118,10 +118,10 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 ### Implementation for User Story 4
 
-- [ ] T017 [US4] Thêm `flutter_markdown_plus` vào `pubspec.yaml` (mục `dependencies`) và chạy `flutter pub get`
-- [ ] T018 [US4] Tạo `test/stylist_markdown_render_test.dart`: (a) nội dung có `**đậm**`/danh sách render thành widget Markdown, không còn ký tự thô; (b) văn bản thuần + cú pháp chưa đóng (fence/bold dở) render an toàn, không ném exception
-- [ ] T019 [US4] Thay `Text(msg.cleanContent …)` trong `_buildMessageBubble` bằng `MarkdownBody` (`flutter_markdown_plus`) với `MarkdownStyleSheet` Quiet Luxury (Be Vietnam Pro/Playfair, palette dự án) trong `lib/features/stylist/presentation/stylist_screen.dart`; giữ nhánh "Đang suy nghĩ..." khi rỗng + streaming
-- [ ] T020 [US4] Chạy `flutter test test/stylist_markdown_render_test.dart` → pass; QS stream không nhấp nháy lỗi (quickstart WS-D)
+- [X] T017 [US4] Thêm `flutter_markdown_plus` vào `pubspec.yaml` (mục `dependencies`) và chạy `flutter pub get`
+- [X] T018 [US4] Tạo `test/stylist_markdown_render_test.dart`: (a) nội dung có `**đậm**`/danh sách render thành widget Markdown, không còn ký tự thô; (b) văn bản thuần + cú pháp chưa đóng (fence/bold dở) render an toàn, không ném exception
+- [X] T019 [US4] Thay `Text(msg.cleanContent …)` trong `_buildMessageBubble` bằng `MarkdownBody` (`flutter_markdown_plus`) với `MarkdownStyleSheet` Quiet Luxury (Be Vietnam Pro/Playfair, palette dự án) trong `lib/features/stylist/presentation/stylist_screen.dart`; giữ nhánh "Đang suy nghĩ..." khi rỗng + streaming
+- [X] T020 [US4] Chạy `flutter test test/stylist_markdown_render_test.dart` → pass; QS stream không nhấp nháy lỗi (quickstart WS-D)
 
 **Checkpoint**: US1–US4 hoàn tất.
 
