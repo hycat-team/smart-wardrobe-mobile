@@ -123,6 +123,16 @@ chồng lên cột — trái yêu cầu.
 
 ---
 
+## R7 — Căn giữa khối & phóng to đồ
+
+**Decision**: Thêm helper thuần `centerItemsHorizontally(items, {canvasWidth, canvasHeight})`: tính bbox ngang của toàn bộ món, dịch **tất cả** sang ngang để tâm bbox = 0 (chỉ khi có ≥2 món, để không phá "thay tại chỗ" của một món), rồi kẹp. Đồng thời **phóng to** nhóm đồ chính ~1.5× (map `roleCoordinates*`) và tăng khoảng giày–quần ~10px.
+
+**Rationale**: Ảnh tester cho thấy cả khối lệch phải do áo khoác thò sang phải kéo "khối" lệch; và đồ nhìn nhỏ so với khung. Căn giữa theo bbox + phóng to khắc phục cả hai.
+
+**Alternatives considered**: dịch cột bằng hằng số cố định — không thích ứng khi có/không áo khoác; scale tại render (Transform) — thay đổi kiến trúc render, rủi ro.
+
+---
+
 ## Tổng hợp
 
 | # | Ảnh hưởng | File |

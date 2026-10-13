@@ -63,28 +63,28 @@ class RoleBoundingBox {
 /// Bố cục giải phẫu chuẩn cho trang phục dạng rời (top + bottom + footwear).
 /// Gốc tọa độ (0, 0) tại tâm canvas.
 const roleCoordinatesSeparate = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 76, zIndex: 8),
-  CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 112, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -140, scale: 105, zIndex: 7),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 112, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 80, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -190, scale: 74, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 180, scale: 56, zIndex: 2),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 118, zIndex: 5),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 180, scale: 56, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 114, zIndex: 8),
+  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 168, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -210, scale: 158, zIndex: 7),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 168, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 120, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -285, scale: 74, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 270, scale: 56, zIndex: 2),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 177, zIndex: 5),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 270, scale: 56, zIndex: 2),
 };
 
 /// Bố cục giải phẫu chuẩn cho trang phục dạng liền thân (fullbody + footwear).
 const roleCoordinatesFullbody = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 76, zIndex: 8),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 118, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -130, scale: 105, zIndex: 7),
-  CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 112, zIndex: 5),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 112, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 80, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -185, scale: 74, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 170, scale: 56, zIndex: 2),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 170, scale: 56, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 114, zIndex: 8),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 177, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -195, scale: 158, zIndex: 7),
+  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 168, zIndex: 5),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 168, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 120, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -278, scale: 74, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 255, scale: 56, zIndex: 2),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 255, scale: 56, zIndex: 2),
 };
 
 /// Tọa độ bổ sung dành cho phụ kiện thứ 2 trở lên (phân bổ so le sang cánh phải).
@@ -631,6 +631,34 @@ List<CanvasItem> layoutAccessoriesHugColumn(
     placed[i] = clampCanvasItem(placed[i], canvasWidth, canvasHeight);
   }
   return placed;
+}
+
+/// Dịch cả danh sách sang ngang để **tâm bbox trùng tâm canvas** — cột giữa
+/// (áo/quần/nón/giày) nằm chính giữa màn hình dù áo khoác thò sang một bên.
+/// Kẹp lại sau khi dịch để không tràn biên.
+List<CanvasItem> centerItemsHorizontally(
+  List<CanvasItem> items, {
+  required double canvasWidth,
+  required double canvasHeight,
+}) {
+  if (items.length <= 1) return items;
+  const double itemScaleMultiplier = 1.25;
+  double minX = double.infinity;
+  double maxX = -double.infinity;
+  for (final it in items) {
+    final double w = it.baseScale * it.boxRatioW * it.scale * itemScaleMultiplier;
+    if (it.positionX - w / 2 < minX) minX = it.positionX - w / 2;
+    if (it.positionX + w / 2 > maxX) maxX = it.positionX + w / 2;
+  }
+  final double delta = (minX + maxX) / 2;
+  if (delta.abs() < 0.5) return items;
+  final shifted = [
+    for (final it in items) it.copyWith(positionX: it.positionX - delta),
+  ];
+  for (var i = 0; i < shifted.length; i++) {
+    shifted[i] = clampCanvasItem(shifted[i], canvasWidth, canvasHeight);
+  }
+  return shifted;
 }
 
 double _distance(CanvasItem a, CanvasItem b) {

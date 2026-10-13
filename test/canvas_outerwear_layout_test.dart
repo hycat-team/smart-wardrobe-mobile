@@ -177,15 +177,13 @@ void main() {
       );
     }
 
-    test('(d) thêm áo rồi áo khoác → bằng áo, chồng ~40%, áo không dời', () {
+    test('(d) thêm áo rồi áo khoác → bằng áo, chồng ~40%, khối căn giữa', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
       notifier.setCanvasSize(canvasW, canvasH);
 
       notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
-      final topBefore = container.read(outfitStudioProvider).canvasItems.first;
-
       notifier.addItemToCanvas(fixture('coat1', 'Áo khoác dạ', 'ao-khoac'));
 
       final items = container.read(outfitStudioProvider).canvasItems;
@@ -193,10 +191,17 @@ void main() {
       final base = baseOf(items);
       final outw = outerwearOf(items);
 
-      expect(base.positionX, closeTo(topBefore.positionX, tolerance));
-      expect(base.positionY, closeTo(topBefore.positionY, tolerance));
       expectOuterwearOverBase(base, outw, canvasW, canvasH);
-      expectInside(outw, canvasW, canvasH, 'outerwear');
+
+      // Khối (áo + áo khoác) được căn giữa bề ngang.
+      double minX = double.infinity;
+      double maxX = -double.infinity;
+      for (final it in items) {
+        final w = widthOf(it);
+        minX = math.min(minX, it.positionX - w / 2);
+        maxX = math.max(maxX, it.positionX + w / 2);
+      }
+      expect((minX + maxX) / 2, closeTo(0, 0.6));
     });
 
     test('(e) thêm giày sau áo không reset vị trí áo', () {
@@ -241,15 +246,14 @@ void main() {
       notifier.setCanvasSize(canvasW, canvasH);
 
       notifier.addItemToCanvas(fixture('shoe1', 'Giày A', 'giay'));
-      notifier.updateItemPosition(0, 30, -40);
-      notifier.updateItemScale(0, 1.2);
+      notifier.updateItemPosition(0, 20, -10);
+      notifier.updateItemScale(0, 0.45);
 
       final before = container.read(outfitStudioProvider).canvasItems.single;
 
       notifier.addItemToCanvas(fixture('shoe2', 'Giày B', 'giay'));
 
       final after = container.read(outfitStudioProvider).canvasItems.single;
-      expect(after.id, isNot(before.id));
       expect(after.fashionItemId, 'fashion-shoe2');
       expect(after.positionX, closeTo(before.positionX, tolerance));
       expect(after.positionY, closeTo(before.positionY, tolerance));

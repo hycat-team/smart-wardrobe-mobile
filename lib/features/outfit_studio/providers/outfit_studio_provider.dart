@@ -271,10 +271,14 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     // thì bố trí lại một lần (guard ≤1px phía trên chặn vòng rebuild).
     if (state.pendingRelayout) {
       state = state.copyWith(
-        canvasItems: layoutAccessoriesHugColumn(
-          layoutOuterwearOverBase(
-            layoutCanvasItems(
-              state.canvasItems,
+        canvasItems: centerItemsHorizontally(
+          layoutAccessoriesHugColumn(
+            layoutOuterwearOverBase(
+              layoutCanvasItems(
+                state.canvasItems,
+                canvasWidth: width,
+                canvasHeight: height,
+              ),
               canvasWidth: width,
               canvasHeight: height,
             ),
@@ -355,6 +359,11 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       canvasHeight: canvasH,
     );
     finalItems = layoutAccessoriesHugColumn(
+      finalItems,
+      canvasWidth: canvasW,
+      canvasHeight: canvasH,
+    );
+    finalItems = centerItemsHorizontally(
       finalItems,
       canvasWidth: canvasW,
       canvasHeight: canvasH,
@@ -447,9 +456,13 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
 
     final double w = state.canvasWidth ?? 360;
     final double h = state.canvasHeight ?? 520;
-    final laidOut = layoutAccessoriesHugColumn(
-      layoutOuterwearOverBase(
-        layoutCanvasItems(items, canvasWidth: w, canvasHeight: h),
+    final laidOut = centerItemsHorizontally(
+      layoutAccessoriesHugColumn(
+        layoutOuterwearOverBase(
+          layoutCanvasItems(items, canvasWidth: w, canvasHeight: h),
+          canvasWidth: w,
+          canvasHeight: h,
+        ),
         canvasWidth: w,
         canvasHeight: h,
       ),
