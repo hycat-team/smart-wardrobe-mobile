@@ -30,7 +30,7 @@ description: "Task list — Canvas một món mỗi loại + sửa áo khoác đ
 
 **Purpose**: Chốt baseline trước khi sửa
 
-- [ ] T001 Chạy `flutter analyze` + `flutter test` trên nhánh `017-canvas-single-item`, ghi baseline vào `docs/work-log-2026-10-13.md`
+- [X] T001 Chạy `flutter analyze` + `flutter test` trên nhánh `017-canvas-single-item`, ghi baseline vào `docs/work-log-2026-10-13.md` — analyze 0, test 257/2 (pre-existing BE)
 
 ---
 
