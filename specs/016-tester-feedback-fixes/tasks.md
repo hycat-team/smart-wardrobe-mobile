@@ -31,7 +31,7 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 **Purpose**: Chốt baseline trước khi sửa
 
-- [ ] T001 Chạy `flutter analyze` và `flutter test` trên nhánh `016-tester-feedback-fixes`, ghi lại số issues + test fail hiện tại vào `docs/work-log-2026-10-13.md` (mốc so sánh pre-existing)
+- [X] T001 Chạy `flutter analyze` và `flutter test` trên nhánh `016-tester-feedback-fixes`, ghi lại số issues + test fail hiện tại vào `docs/work-log-2026-10-13.md` (mốc so sánh pre-existing) — analyze 0, test 241/3 (pre-existing)
 
 ---
 
