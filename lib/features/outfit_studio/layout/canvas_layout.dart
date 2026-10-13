@@ -656,16 +656,87 @@ List<CanvasItem> decorateAndFitOutfit(
     canvasWidth: canvasWidth,
     canvasHeight: canvasHeight,
   );
-  out = out.length >= 2
-      ? layoutCanvasItems(
-          out,
-          canvasWidth: canvasWidth,
-          canvasHeight: canvasHeight,
-        )
-      : (out.length == 1
-          ? [clampCanvasItem(out.first, canvasWidth, canvasHeight)]
-          : out);
+  out = _fitToReference(out, canvasWidth, canvasHeight);
   return out;
+}
+
+/// Thu **đồng tỉ lệ** theo bố cục chuẩn **đầy đủ** (mọi vai trò trong map) rồi
+/// căn giữa — nhờ vậy một món thêm lẻ có **cùng kích thước** như khi cả set đầy
+/// đủ được hiển thị (fit theo bố cục chuẩn, không theo tập con đang có).
+List<CanvasItem> _fitToReference(
+  List<CanvasItem> items,
+  double canvasWidth,
+  double canvasHeight,
+) {
+  if (items.isEmpty) return items;
+  const double margin = 20.0;
+  const double bottomReserve = 45.0;
+  const double itemScaleMultiplier = 1.25;
+
+  final bool hasFullbody = items.any((it) => it.role == CanvasRole.fullbody.name);
+  final coordinateMap =
+      hasFullbody ? roleCoordinatesFullbody : roleCoordinatesSeparate;
+
+  double minX = double.infinity;
+  double maxX = -double.infinity;
+  double minY = double.infinity;
+  double maxY = -double.infinity;
+  for (final entry in coordinateMap.entries) {
+    final role = entry.key;
+    final placement = entry.value;
+    final box =
+        roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
+    final w = placement.scale * box.widthRatio * itemScaleMultiplier;
+    final h = placement.scale * box.heightRatio * itemScaleMultiplier;
+    if (placement.x - w / 2 < minX) minX = placement.x - w / 2;
+    if (placement.x + w / 2 > maxX) maxX = placement.x + w / 2;
+    if (placement.y - h / 2 < minY) minY = placement.y - h / 2;
+    if (placement.y + h / 2 > maxY) maxY = placement.y + h / 2;
+  }
+  double refW = math.max(1.0, maxX - minX);
+  final double refH = math.max(1.0, maxY - minY);
+
+  // Chừa chỗ cho cặp "áo khoác cạnh áo" (áo khoác rộng bằng áo, chồng 40%):
+  // cặp ~ 1.6 × bề rộng món quần áo rộng nhất.
+  double maxClothingW = 0.0;
+  for (final role in const [
+    CanvasRole.top,
+    CanvasRole.bottom,
+    CanvasRole.fullbody,
+    CanvasRole.outerwear,
+  ]) {
+    final placement = coordinateMap[role];
+    if (placement == null) continue;
+    final box =
+        roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
+    final w = placement.scale * box.widthRatio * itemScaleMultiplier;
+    if (w > maxClothingW) maxClothingW = w;
+  }
+  if (maxClothingW * 1.6 > refW) refW = maxClothingW * 1.6;
+
+  final double availW = math.max(100.0, canvasWidth - (margin * 2));
+  final double availH = math.max(100.0, canvasHeight - margin - bottomReserve);
+  double k = 1.0;
+  if (refW > availW || refH > availH) {
+    k = math.min(availW / refW, availH / refH).clamp(0.2, 1.0);
+  }
+  final double cx = (minX + maxX) / 2;
+  final double cy = (minY + maxY) / 2;
+
+  final scaled = <CanvasItem>[
+    for (final it in items)
+      it.copyWith(
+        positionX: (it.positionX - cx) * k,
+        positionY: (it.positionY - cy) * k,
+        scale: it.scale * k,
+      ),
+  ];
+  // Căn giữa + tách chồng theo tập đang có (đã thu theo bố cục chuẩn).
+  return layoutCanvasItems(
+    scaled,
+    canvasWidth: canvasWidth,
+    canvasHeight: canvasHeight,
+  );
 }
 
 double _distance(CanvasItem a, CanvasItem b) {

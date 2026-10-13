@@ -102,16 +102,13 @@ void main() {
       });
     }
 
-    test('(c) chỉ outerwear (không lớp nền) → không dịch chuyển', () {
+    test('(c) chỉ outerwear (không lớp nền) → fit theo bố cục chuẩn, trong khung', () {
       final items = [roleItem('outerwear', CanvasRole.outerwear)];
-      final before = (items[0].positionX, items[0].positionY, items[0].scale);
 
-      final result = decorateAndFitOutfit(items, canvasWidth: 800, canvasHeight: 1400);
+      final result = decorateAndFitOutfit(items, canvasWidth: 360, canvasHeight: 640);
 
       expect(result.length, 1);
-      expect(result[0].positionX, before.$1);
-      expect(result[0].positionY, before.$2);
-      expect(result[0].scale, before.$3);
+      expectInside(result.first, 360, 640, 'outerwear');
     });
 
     test('(h) phụ kiện bên trái → áo khoác sang phải (đối diện)', () {
