@@ -37,7 +37,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   /// đúng ở đầu vùng này thay vì cuộn tới tận `maxScrollExtent`.
   final GlobalKey _aiResultKey = GlobalKey();
   final DraggableScrollableController _sheetController = DraggableScrollableController();
-  bool _isDrawerExpanded = false;
+  final ValueNotifier<bool> _drawerExpanded = ValueNotifier<bool>(false);
 
   /// Tỉ lệ chiều cao hiện tại của khay outfit thay thế (DraggableScrollableSheet).
   /// Chỉ dùng để theo dõi trạng thái gập/mở; vị trí nút lưu đọc trực tiếp
@@ -86,16 +86,13 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
     final expanded = size > 0.15;
     // Vị trí nút lưu nổi do `ListenableBuilder` đọc trực tiếp
     // `_sheetController` nên không cần setState theo từng frame ở đây.
-    if (expanded != _isDrawerExpanded) {
-      setState(() {
-        _isDrawerExpanded = expanded;
-      });
-    }
+    // `ValueNotifier` chỉ phát thông báo khi giá trị thực sự đổi.
+    _drawerExpanded.value = expanded;
   }
 
   void _toggleDrawer() {
     if (!_sheetController.isAttached) return;
-    if (_isDrawerExpanded) {
+    if (_drawerExpanded.value) {
       _sheetController.animateTo(
         0.065,
         duration: const Duration(milliseconds: 300),
@@ -113,6 +110,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   @override
   void dispose() {
     _sheetController.removeListener(_onSheetScrolled);
+    _drawerExpanded.dispose();
     _sheetController.dispose();
     _tabController.dispose();
     _promptController.dispose();
@@ -1614,9 +1612,9 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                 cat = 'Phụ kiện';
                               }
                               ref.read(outfitStudioProvider.notifier).setDrawerCategory(cat);
+                              _drawerExpanded.value = true;
                               setState(() {
                                 _replacingCanvasIndex = selIdx;
-                                _isDrawerExpanded = true;
                               });
                               if (_sheetController.isAttached) {
                                 _sheetController.animateTo(
@@ -1656,7 +1654,9 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             _kDrawerSnapMax,
           ],
           builder: (context, scrollController) {
-            return Container(
+            return ValueListenableBuilder<bool>(
+              valueListenable: _drawerExpanded,
+              builder: (context, isExpanded, _) => Container(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -1675,7 +1675,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                   SliverPersistentHeader(
                     pinned: true,
                     delegate: _StickyDrawerHeaderDelegate(
-                      height: _isDrawerExpanded ? 108.0 : 48.0,
+                      height: isExpanded ? 116.0 : 48.0,
                       child: _buildStickyDrawerHeader(state),
                     ),
                   ),
@@ -1856,7 +1856,8 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                   const SliverToBoxAdapter(child: SizedBox(height: 40)),
                 ],
               ),
-            );
+            ),
+          );
           },
         ),
 
@@ -1895,7 +1896,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   }
 
   Widget _buildStickyDrawerHeader(OutfitStudioState state) {
-    if (!_isDrawerExpanded) {
+    if (!_drawerExpanded.value) {
       return Material(
         color: Colors.white,
         child: InkWell(
@@ -1986,10 +1987,16 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                     ),
                   ],
                 ),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 20,
-                  color: AppColors.primary,
+                IconButton(
+                  onPressed: _toggleDrawer,
+                  tooltip: 'Thu gọn',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
                 ),
               ],
             ),
@@ -2002,7 +2009,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: ['All', 'Áo', 'Quần', 'Váy', 'Giày', 'Phụ kiện'].map((cat) {
+              children: ['All', 'Áo', 'Áo khoác', 'Quần', 'Váy', 'Giày', 'Phụ kiện'].map((cat) {
                 final isSel = state.selectedDrawerCategory == cat;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),

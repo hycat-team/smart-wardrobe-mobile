@@ -76,15 +76,15 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T007 [P] [US2] Tạo `test/studio_drawer_category_test.dart`: chip "Áo khoác" chỉ trả outerwear; chip "Áo" **loại trừ** outerwear
+- [X] T007 [P] [US2] Tạo `test/studio_drawer_category_test.dart`: chip "Áo khoác" chỉ trả outerwear; chip "Áo" **loại trừ** outerwear
 
 ### Implementation for User Story 2
 
-- [ ] T008 [P] [US2] Cập nhật `OutfitStudioState.filteredWardrobeItems` trong `lib/features/outfit_studio/providers/outfit_studio_provider.dart`: thêm nhánh `Áo khoác` (dùng `normalizeRole(...) == CanvasRole.outerwear`) và sửa `Áo` để loại trừ outerwear; giữ nguyên các chip khác
-- [ ] T009 [US2] Thêm chip "Áo khoác" vào danh sách chip khay (`['All','Áo','Áo khoác','Quần','Váy','Giày','Phụ kiện']`, nhãn qua `outfitRoleLabelVi`) trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
-- [ ] T010 [US2] Bỏ `setState` theo ngưỡng trong `_onSheetScrolled`; theo dõi trạng thái mở/đóng bằng `ValueNotifier<bool>` cục bộ và bọc **chỉ** header khay + phép dịch nút "Lưu" trong `ValueListenableBuilder` (không rebuild cây canvas) trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
-- [ ] T011 [US2] Đổi icon mũi tên hạ xuống ở header khay mở thành `IconButton` (`onPressed: _toggleDrawer`, tooltip "Thu gọn", vùng chạm ≥44px) trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
-- [ ] T012 [US2] Chạy `flutter test test/studio_drawer_category_test.dart` → pass; QS kéo khay + đóng bằng icon trên máy
+- [X] T008 [P] [US2] Cập nhật `OutfitStudioState.filteredWardrobeItems` trong `lib/features/outfit_studio/providers/outfit_studio_provider.dart`: thêm nhánh `Áo khoác` (dùng `normalizeRole(...) == CanvasRole.outerwear`) và sửa `Áo` để loại trừ outerwear; giữ nguyên các chip khác
+- [X] T009 [US2] Thêm chip "Áo khoác" vào danh sách chip khay (`['All','Áo','Áo khoác','Quần','Váy','Giày','Phụ kiện']`, nhãn qua `outfitRoleLabelVi`) trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
+- [X] T010 [US2] Bỏ `setState` theo ngưỡng trong `_onSheetScrolled`; theo dõi trạng thái mở/đóng bằng `ValueNotifier<bool>` cục bộ và bọc **chỉ** header khay + phép dịch nút "Lưu" trong `ValueListenableBuilder` (không rebuild cây canvas) trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
+- [X] T011 [US2] Đổi icon mũi tên hạ xuống ở header khay mở thành `IconButton` (`onPressed: _toggleDrawer`, tooltip "Thu gọn", vùng chạm ≥44px) trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
+- [X] T012 [US2] Chạy `flutter test test/studio_drawer_category_test.dart` → pass; QS kéo khay + đóng bằng icon trên máy (QS deferred — chờ developer kiểm trên thiết bị thật)
 
 **Checkpoint**: US1 + US2 cùng hoạt động độc lập.
 

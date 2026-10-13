@@ -64,8 +64,12 @@ class OutfitStudioState {
         final selected = selectedDrawerCategory.toLowerCase();
 
         bool match = false;
-        if (selected == 'áo') {
-          match = catName.contains('áo') || catSlug.contains('ao') || catSlug.contains('top') || catSlug.contains('shirt');
+        if (selected == 'áo khoác') {
+          match = normalizeRole(null, categorySlug: catSlug, categoryName: catName) == CanvasRole.outerwear;
+        } else if (selected == 'áo') {
+          final role = normalizeRole(null, categorySlug: catSlug, categoryName: catName);
+          match = (catName.contains('áo') || catSlug.contains('ao') || catSlug.contains('top') || catSlug.contains('shirt')) &&
+              role != CanvasRole.outerwear;
         } else if (selected == 'quần') {
           match = catName.contains('quần') || catSlug.contains('quan') || catSlug.contains('pant') || catSlug.contains('jean') || catSlug.contains('bottom');
         } else if (selected == 'váy') {
