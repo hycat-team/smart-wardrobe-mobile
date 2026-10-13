@@ -65,31 +65,28 @@ của vai trò với `scale` = mức chung của canvas (trung bình, `1.0` khi 
 
 ---
 
-## R4 — Bố cục áo khoác + lớp nền (chồng ~20%)
+## R4 — Bố cục áo khoác + lớp nền (bằng áo, chồng ≤40%, đối diện phụ kiện)
 
 **Decision**: Helper thuần `layoutOuterwearOverBase(items, {canvasWidth, canvasHeight})` trong
 `canvas_layout.dart`:
 
-- **Bản chỉnh 2026-10-13 (lần 2, sau feedback tester)**:
+- **Bản chỉnh 2026-10-13 (lần 3, sau feedback tester)**:
   - Kích hoạt khi có **outerwear** và có **lớp nền** (`top`/`fullbody`).
-  - **Giữ nguyên vị trí/kích thước lớp nền** (không dời ⇒ không chồng món khác loại).
-  - Đặt áo khoác **sát bên** (chọn bên còn nhiều chỗ hơn) sao cho **phần chồng ngang ≈
-    `0.20 * baseWidth`**.
-  - Nếu áo khoác không đủ chỗ ở kích thước hiện tại → **thu `scale`** cho vừa khung (sàn `0.15`,
-    không bao giờ phóng to).
-  - Giữ `layerOrder` outerwear **trên** lớp nền; kẹp toàn bộ vào khung.
-  - Gọi ở **cả 3 luồng đặt món**: `addItemToCanvas`, `loadFromAIRecommendation`, `loadIntoStudio`
-    (+ relayout khi đo được kích thước canvas).
+  - Áo khoác **rộng bằng lớp nền** (`owScale = newBaseW / owCoeff`).
+  - Đặt áo khoác ở **phía đối diện phụ kiện** (nếu có phụ kiện); ngược lại chọn phía nhiều chỗ.
+  - Chồng ngang **≤ `0.40 * baseWidth`**; khung hẹp thì **thu cùng tỉ lệ** cả hai (giữ bằng nhau,
+    sàn `0.15`) để vẫn thoả ≤40%.
+  - Lớp nền **không dời vị trí** (cột giữa); outerwear giữ `layerOrder` trên; kẹp toàn bộ vào khung.
+  - Gọi ở các luồng đặt món: `addItemToCanvas` (khi thêm outerwear/top/fullbody/**accessory**),
+    `loadFromAIRecommendation`, `loadIntoStudio` (+ relayout khi đo được kích thước canvas).
 
 **Rationale**:
-- Bản 017 gốc (hai cột) **dời lớp nền** → món khác loại thêm sau bị chồng; bản lệch `0.12*W` tiếp
-  theo vẫn **đè ~75%** áo. Tester muốn **đè ~20%**.
-- Không dời nền ⇒ không gây chồng chéo với món khác loại; áo khoác chồng đúng ~20% (thu nhỏ vừa
-  khung nếu cần) ⇒ luôn quan sát được cả hai.
+- Tester muốn áo khoác **to bằng áo** và **đè ≤40%** (không né hoàn toàn, không che kín); đồng thời
+  **phụ kiện ↔ áo khoác đối diện**, quần áo làm cột giữa.
+- Không dời nền ⇒ không gây chồng chéo với món khác loại.
 
 **Alternatives considered**:
-- *Hai cột tách rời / lệch cố định `0.12*W`*: bị bác (chồng quá nhiều / né hoàn toàn).
-- *Giữ kích thước áo khoác tự nhiên trên khung hẹp*: không thể đạt 20% (áo khoác rộng hơn nửa khung).
+- *Thu nhỏ riêng áo khoác (bản 20%)*: áo khoác nhỏ hơn áo — trái ý "to bằng áo".
 - *Hạ outerwear xuống lớp dưới*: bị loại ở Clarifications Q3.
 - *Xếp dọc (trên/dưới)*: ngoài ý "dịch sang bên".
 

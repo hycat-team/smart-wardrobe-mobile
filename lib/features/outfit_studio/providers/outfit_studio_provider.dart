@@ -344,12 +344,13 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
 
     items.add(clampedItem);
 
-    // Sửa lỗi áo khoác đè lớp nền: chỉ bố trí lại khi món vừa thêm là outerwear
-    // hoặc lớp nền, để thêm giày/phụ kiện không reset vị trí các món khác.
+    // Bố trí áo khoác (đối diện phụ kiện) khi món vừa thêm là áo khoác, lớp nền
+    // hoặc phụ kiện — để phụ kiện và áo khoác luôn ở hai phía.
     var finalItems = items;
     if (role == CanvasRole.outerwear ||
         role == CanvasRole.top ||
-        role == CanvasRole.fullbody) {
+        role == CanvasRole.fullbody ||
+        role == CanvasRole.accessory) {
       finalItems = layoutOuterwearOverBase(
         items,
         canvasWidth: canvasW,

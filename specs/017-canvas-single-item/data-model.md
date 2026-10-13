@@ -45,10 +45,12 @@ Quan hệ chéo: `fullbody` ⇄ `top` **loại trừ nhau** khi thêm tay; `bott
   chuẩn của vai trò và `scale` = mức tỉ lệ chung của canvas (trung bình, `1.0` khi trống). Luôn kẹp
   trong khung.
 - **INV-5 (trong khung)**: Mọi món luôn qua `clampCanvasItem` → hộp giới hạn nằm trong khung.
-- **INV-6 (áo khoác chồng ~20%, nền không dời)**: Nếu có `outerwear` và lớp nền (`top`/`fullbody`):
-  áo khoác đặt **sát bên** sao cho **phần chồng ngang ≈ 20% bề rộng nền**; nếu không đủ chỗ, **thu
-  `scale` áo khoác** (sàn `0.15`) cho vừa khung; **vị trí/tỉ lệ lớp nền KHÔNG đổi**; outerwear giữ
-  `layerOrder` trên; cả hai trong khung. (Bản chỉnh 2026-10-13.)
+- **INV-6 (áo khoác bằng áo, chồng ≤40%, đối diện phụ kiện)**: Nếu có `outerwear` và lớp nền
+  (`top`/`fullbody`): áo khoác có **cùng bề rộng** với lớp nền, đặt ở **phía đối diện phụ kiện**
+  (nếu có phụ kiện; ngược lại chọn phía nhiều chỗ), chồng lên lớp nền **≤ 40%** bề rộng nền; nếu
+  khung hẹp không đủ, **thu cùng tỉ lệ** cả hai (giữ bằng nhau, sàn `0.15`); **vị trí lớp nền
+  KHÔNG đổi** (cột giữa); outerwear giữ `layerOrder` trên; cả hai trong khung. (Bản chỉnh
+  2026-10-13.)
 
 ---
 

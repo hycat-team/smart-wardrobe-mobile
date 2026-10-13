@@ -20,7 +20,7 @@ void main() {
   double widthOf(CanvasItem it) => it.baseScale * it.boxRatioW * it.scale * multiplier;
   double heightOf(CanvasItem it) => it.baseScale * it.boxRatioH * it.scale * multiplier;
 
-  CanvasItem roleItem(String id, CanvasRole role, {required double positionY}) {
+  CanvasItem roleItem(String id, CanvasRole role, {double? positionY, double x = 0}) {
     final placement =
         roleCoordinatesSeparate[role] ?? roleCoordinatesSeparate[CanvasRole.other]!;
     final box = roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
@@ -30,8 +30,8 @@ void main() {
       imageUrl: 'https://example.com/$id.png',
       name: id,
       role: role.name,
-      positionX: placement.x,
-      positionY: positionY,
+      positionX: x,
+      positionY: positionY ?? placement.y,
       scale: 1.0,
       layerOrder: placement.zIndex,
       baseScale: placement.scale,
@@ -58,25 +58,30 @@ void main() {
         reason: '$label tràn dưới trên ${w.toInt()}x${h.toInt()}');
   }
 
-  /// Áo khoác chồng lên lớp nền đúng ~20% bề rộng nền; nền không dời.
-  void expectTwentyPercentOverlap(CanvasItem base, CanvasItem outw, double w, double h) {
+  /// Áo khoác rộng bằng áo và chồng lên áo ≤ 40%; áo khoác ở lớp trên.
+  void expectOuterwearOverBase(CanvasItem base, CanvasItem outw, double w, double h) {
     final baseW = widthOf(base);
+    final owW = widthOf(outw);
     final baseL = base.positionX - baseW / 2;
     final baseR = base.positionX + baseW / 2;
-    final outL = outw.positionX - widthOf(outw) / 2;
-    final outR = outw.positionX + widthOf(outw) / 2;
+    final outL = outw.positionX - owW / 2;
+    final outR = outw.positionX + owW / 2;
     final overlap = (math.min(baseR, outR) - math.max(baseL, outL)).clamp(0.0, double.infinity);
-    expect(overlap, closeTo(0.20 * baseW, 1.5),
-        reason: 'chồng không ~20% nền trên ${w.toInt()}x${h.toInt()} (overlap=$overlap)');
+    expect(overlap, closeTo(0.40 * baseW, 1.5),
+        reason: 'chồng không ~40% nền trên ${w.toInt()}x${h.toInt()} (overlap=$overlap, baseW=$baseW)');
+    expect(overlap, lessThanOrEqualTo(0.40 * baseW + 1.5),
+        reason: 'áo khoác chiếm > 40% áo trên ${w.toInt()}x${h.toInt()}');
+    expect(owW, closeTo(baseW, 1.5),
+        reason: 'áo khoác không bằng kích thước áo trên ${w.toInt()}x${h.toInt()}');
     expect(outw.layerOrder, greaterThan(base.layerOrder));
   }
 
   group('layoutOuterwearOverBase', () {
     for (final size in canvasSizes) {
-      test('(a) top + outerwear chồng ~20%, nền không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
+      test('(a) top + outerwear: bằng áo, chồng ~40%, áo không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
         final items = [
-          roleItem('top', CanvasRole.top, positionY: -140),
-          roleItem('outerwear', CanvasRole.outerwear, positionY: -145),
+          roleItem('top', CanvasRole.top),
+          roleItem('outerwear', CanvasRole.outerwear),
         ];
         final topBefore = items[0];
 
@@ -86,17 +91,16 @@ void main() {
 
         expect(base.positionX, closeTo(topBefore.positionX, tolerance));
         expect(base.positionY, closeTo(topBefore.positionY, tolerance));
-        expect(base.scale, closeTo(topBefore.scale, tolerance));
 
-        expectTwentyPercentOverlap(base, outw, size.w, size.h);
+        expectOuterwearOverBase(base, outw, size.w, size.h);
         expectInside(base, size.w, size.h, 'top');
         expectInside(outw, size.w, size.h, 'outerwear');
       });
 
-      test('(b) fullbody + outerwear chồng ~20%, nền không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
+      test('(b) fullbody + outerwear: bằng áo, chồng ~40%, nền không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
         final items = [
-          roleItem('dress', CanvasRole.fullbody, positionY: -15),
-          roleItem('outerwear', CanvasRole.outerwear, positionY: -145),
+          roleItem('dress', CanvasRole.fullbody),
+          roleItem('outerwear', CanvasRole.outerwear),
         ];
         final dressBefore = items[0];
 
@@ -106,17 +110,16 @@ void main() {
 
         expect(base.positionX, closeTo(dressBefore.positionX, tolerance));
         expect(base.positionY, closeTo(dressBefore.positionY, tolerance));
-        expect(base.scale, closeTo(dressBefore.scale, tolerance));
 
-        expectTwentyPercentOverlap(base, outw, size.w, size.h);
+        expectOuterwearOverBase(base, outw, size.w, size.h);
         expectInside(outw, size.w, size.h, 'outerwear');
       });
     }
 
     test('(c) chỉ outerwear (không lớp nền) → không dịch chuyển', () {
       final items = [
-        roleItem('outerwear', CanvasRole.outerwear, positionY: -145),
-        roleItem('acc', CanvasRole.accessory, positionY: 40),
+        roleItem('outerwear', CanvasRole.outerwear),
+        roleItem('acc', CanvasRole.accessory, x: -240),
       ];
       final beforeX = items.map((i) => i.positionX).toList();
       final beforeY = items.map((i) => i.positionY).toList();
@@ -130,6 +133,30 @@ void main() {
         expect(result[i].positionY, beforeY[i]);
         expect(result[i].scale, beforeScale[i]);
       }
+    });
+
+    test('(h) phụ kiện bên trái → áo khoác sang phải (đối diện)', () {
+      final items = [
+        roleItem('top', CanvasRole.top),
+        roleItem('outerwear', CanvasRole.outerwear),
+        roleItem('acc', CanvasRole.accessory, x: -240),
+      ];
+      final result = layoutOuterwearOverBase(items, canvasWidth: 390, canvasHeight: 700);
+      final base = baseOf(result);
+      final outw = outerwearOf(result);
+      expect(outw.positionX, greaterThan(base.positionX));
+    });
+
+    test('(i) phụ kiện bên phải → áo khoác sang trái (đối diện)', () {
+      final items = [
+        roleItem('top', CanvasRole.top),
+        roleItem('outerwear', CanvasRole.outerwear),
+        roleItem('acc', CanvasRole.accessory, x: 240),
+      ];
+      final result = layoutOuterwearOverBase(items, canvasWidth: 390, canvasHeight: 700);
+      final base = baseOf(result);
+      final outw = outerwearOf(result);
+      expect(outw.positionX, lessThan(base.positionX));
     });
   });
 
@@ -150,7 +177,7 @@ void main() {
       );
     }
 
-    test('(d) thêm áo rồi áo khoác → chồng ~20%, áo không bị dời, trong khung', () {
+    test('(d) thêm áo rồi áo khoác → bằng áo, chồng ~40%, áo không dời', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
@@ -168,11 +195,11 @@ void main() {
 
       expect(base.positionX, closeTo(topBefore.positionX, tolerance));
       expect(base.positionY, closeTo(topBefore.positionY, tolerance));
-      expectTwentyPercentOverlap(base, outw, canvasW, canvasH);
+      expectOuterwearOverBase(base, outw, canvasW, canvasH);
       expectInside(outw, canvasW, canvasH, 'outerwear');
     });
 
-    test('(e) thêm giày/phụ kiện sau áo không reset vị trí áo', () {
+    test('(e) thêm giày sau áo không reset vị trí áo', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);

@@ -47,14 +47,15 @@ flutter test test/studio_single_item_per_role_test.dart test/canvas_outerwear_la
 ### US1c · Thay tại chỗ & kích thước món phụ (bản chỉnh 2026-10-13)
 
 8b. Kéo một đôi giày tới vị trí bất kỳ và đổi kích thước, rồi thêm một đôi giày khác → đôi mới **nằm đúng vị trí + kích thước đôi cũ** (thay tại chỗ), không nhảy về vị trí chuẩn.
-8c. Thêm giày/nón/phụ kiện → kích thước **nhỏ hơn** nhóm áo/quần/đầm để tiết kiệm diện tích; vẫn nhìn rõ.
+8c. Thêm giày/nón/phụ kiện → kích thước **nhỏ hơn** nhóm áo/quần/đầm nhưng đã **to hơn chút** (giày `68`, phụ kiện `72`); **phụ kiện nằm ở vùng trên** (cao hơn áo, thấp hơn nón).
 
 ### US2 · Áo khoác chồng nhẹ, không che kín lớp nền (P1)
 
-9. Thêm **áo**, rồi thêm **áo khoác** → áo khoác **chồng ~20%** lên áo (áp sát bên, có thể thu nhỏ vừa khung); áo **không bị dời**.
+9. Thêm **áo**, rồi thêm **áo khoác** → áo khoác **rộng bằng áo**, chồng **≤ 40%** lên áo, đặt ở **phía đối diện phụ kiện**; áo **không bị dời**.
 10. Lặp với **đầm** rồi **áo khoác**.
 11. Thêm **áo khoác** khi canvas trống (không lớp nền) → không bị lệch bất thường.
 12. Thêm **quần** sau áo + áo khoác → áo **không bị dời**, không chồng lên quần.
+13. Có **phụ kiện** ở bên trái → **áo khoác sang bên phải** (đối diện); thêm phụ kiện bên phải → áo khoác sang trái.
 
 ### US3 · Trải nghiệm thay thế (P2)
 
@@ -67,7 +68,7 @@ flutter test test/studio_single_item_per_role_test.dart test/canvas_outerwear_la
 | SC | Kiểm chứng |
 |---|---|
 | SC-001 | Không bao giờ có 2 món cùng loại cơ bản (bước 3, 5, 7, 8) |
-| SC-002 | Áo khoác chồng ~20% nền, nền không dời (bước 9, 10) |
+| SC-002 | Áo khoác rộng bằng áo, chồng ≤40% áo, đối diện phụ kiện (bước 9, 10, 13) |
 | SC-003 | Món mới nằm trọn trong khung (bước 3–12) |
 | SC-004 | Thêm vào canvas trống không gỡ nhầm (bước 11) |
 | FR-001 | Phụ kiện/mũ nhiều món vẫn giữ (bước 6) |
