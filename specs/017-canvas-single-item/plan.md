@@ -12,10 +12,10 @@ Hai hành vi cho Studio Thủ Công:
    bản** (áo trên, quần, đầm liền thân, áo khoác, giày). Thêm món trùng loại → **thay thế**
    món cũ. Mũ/phụ kiện vẫn nhiều món. Đầm chỉ thay **áo** (giữ quần). Món mới đặt theo **vị
    trí chuẩn của loại** rồi kẹp trong khung (Clarifications 2026-10-13).
-2. **Áo khoác không đè lớp nền** — hiện outerwear (`zIndex 7`) và top (`zIndex 5`) gần như
-   cùng vị trí (`x -25` vs `0`, `y -145` vs `-140`) nên outerwear che lớp nền. Sửa: khi
-   outerwear cùng canvas với lớp nền (áo trên **hoặc** đầm), xếp **hai cột** (lớp nền nửa
-   trái, outerwear nửa phải), thu tỉ lệ để cả hai vừa nửa khung → **không chồng lấn**.
+2. **Áo khoác không che lớp nền** — outerwear (`zIndex 7`) và top (`zIndex 5`) gần như cùng vị
+   trí (`x -25` vs `0`) nên outerwear che nền. Sửa (bản chỉnh 2026-10-13): **giữ nguyên lớp nền**,
+   chỉ **dịch nhẹ áo khoác** sang bên (`+0.12*canvasWidth`) để lộ một phần nền — chồng nhẹ kiểu
+   layer, không né hoàn toàn và không dời nền (tránh gây chồng với món khác loại).
 
 Hướng kỹ thuật: thêm bước "chống trùng theo vai trò" vào `OutfitStudioNotifier.addItemToCanvas`
 (tái dùng bảng vai trò `normalizeRole`/`CanvasRole` đã có), và một helper bố cục mới trong
@@ -71,7 +71,7 @@ Chi tiết và phương án bị loại ở [research.md](./research.md).
 | R1 | Tập vai trò **độc quyền** = `{top, bottom, fullbody, outerwear, footwear}`. `{headwear, accessory, other, unknown}` cho phép nhiều món | R1 |
 | R2 | `addItemToCanvas`: sau khi dựng món mới, **gỡ mọi món xung đột** trong danh sách rồi mới thêm: cùng vai trò (nếu độc quyền) + quy tắc **đầm↔áo** (thêm `fullbody` gỡ `top`; thêm `top` gỡ `fullbody`; `bottom` độc lập) | R2 |
 | R3 | Món mới đặt theo **toạ độ chuẩn của vai trò** (`roleCoordinates*`) rồi `clampCanvasItem` — **không** kế thừa vị trí món cũ; `scale` giữ theo mức chung của canvas (FR-003) | R3 |
-| R4 | Bố cục **outerwear + lớp nền**: chia đôi khung — lớp nền ở nửa trái, outerwear nửa phải; thu tỉ lệ từng món để vừa nửa khung (sàn 0.15) → **không chồng ngang**; giữ `layerOrder` outerwear trên | R4 |
+| R4 | **Áo khoác chồng nhẹ kiểu layer**: giữ nguyên lớp nền (không dời/thu nhỏ); dịch `outerwear.positionX = base.positionX + 0.12*canvasWidth` rồi kẹp; gọi ở cả 3 luồng đặt món (add / nạp set AI / khôi phục outfit) | R4 |
 | R5 | Hồi tiếp thay thế: `addItemToCanvas` trả về `bool` (true khi có gỡ) → screen `ClosyToast.success` (không Dialog, không `successMessage`) | R5 |
 
 ### Phát hiện quan trọng ảnh hưởng thiết kế
@@ -79,11 +79,10 @@ Chi tiết và phương án bị loại ở [research.md](./research.md).
 - `addItemToCanvas` đã đặt món theo `roleCoordinates*` + `clampCanvasItem` (spec 016) → chỉ
   cần chèn bước gỡ xung đột **trước** khi chọn `coordinateMap` (vì `hasFullbody` đổi khi gỡ
   đầm/áo).
-- Outerwear và `accessory` đều dùng `x` âm/lệch — bố cục hai cột ở R4 phải chạy **sau** khi
-  danh sách chốt, và kẹp lại (helper `clampCanvasItem`).
-- Bán kính món khá lớn: top ~`100*2.1*1.25 = 262px`, outerwear ~`105*2.3*1.25 ≈ 302px`
-  (outerwear `baseScale 105`). Trên khung ~390px, hai món cạnh nhau phải thu tỉ lệ (~0.6) mới
-  hết chồng → R4 có thu tỉ lệ.
+- Outerwear và `accessory` đều dùng `x` âm/lệch — bố cục R4 chạy **sau** khi danh sách chốt,
+  rồi kẹp lại (helper `clampCanvasItem`).
+- Bán kính món khá lớn: top ~`262px`, outerwear ~`302px` (`baseScale 105`). Trên khung ~390px,
+  lệch `0.12*canvasWidth` (~47px) cho **chồng nhẹ** mà vẫn kẹp được trong biên.
 
 ## Project Structure
 
@@ -112,7 +111,7 @@ lib/features/outfit_studio/
 
 test/
 ├── studio_single_item_per_role_test.dart  # A: thay thế theo vai trò + quy tắc đầm↔áo
-└── canvas_outerwear_layout_test.dart      # A: outerwear không chồng lớp nền
+└── canvas_outerwear_layout_test.dart      # A: outerwear chồng nhẹ, nền không dời
 ```
 
 **Structure decision**: giữ nguyên feature-first; mọi thay đổi nằm trong `outfit_studio`
@@ -123,7 +122,7 @@ test/
 | File | Loại | Hành vi |
 |---|---|---|
 | `studio_single_item_per_role_test.dart` | Mới | Thêm 2 áo → còn 1; thêm đầm khi có áo+quần → gỡ áo giữ quần; thêm áo khi có đầm → gỡ đầm; phụ kiện/mũ nhiều món vẫn giữ |
-| `canvas_outerwear_layout_test.dart` | Mới | Thêm áo rồi áo khoác → hai món không chồng ngang, đều trong khung; lặp với đầm |
+| `canvas_outerwear_layout_test.dart` | Mới | Thêm áo rồi áo khoác → chồng nhẹ (nền lộ một phần), **nền không dời**, trong khung; lặp với đầm; thêm quần sau không dời áo |
 | `studio_canvas_placement_test.dart` | Regression | Chạy lại để chắc bước gỡ xung đột không phá kẹp-biên (spec 016) |
 | `canvas_layout_test.dart` | (không đổi trừ khi helper đặt trong file này) | — |
 
@@ -155,7 +154,7 @@ Cả hai đụng cùng 2 file nên làm tuần tự trong một phase.
 
 | Rủi ro | Giảm thiểu |
 |---|---|
-| Bố cục hai cột làm món nhỏ hơn kỳ vọng | Chỉ áp dụng khi outerwear + lớp nền cùng tồn tại; thu tỉ lệ có sàn 0.15; kẹp trong khung |
-| Người dùng đã kéo outerwear rồi thêm món khác | Bố cục chỉ chạy khi món vừa thêm là outerwear hoặc lớp nền; không reset khi thêm giày/phụ kiện |
+| Lệch áo khoác có thể bị kẹp về sát nền trên khung rất hẹp | Lệch theo tỉ lệ canvas; `clampCanvasItem` giữ trong biên; chấp nhận lộ ít trên màn hẹp |
+| Người dùng đã kéo outerwear rồi thêm món khác | Bố cục chỉ chạy khi món vừa thêm là outerwear hoặc lớp nền; thêm giày/phụ kiện không reset |
 | Thay thế có thể gỡ nhầm khi vai trò món `unknown` | `unknown/other` không độc quyền → không gỡ |
 | Lưu outfit cũ có nhiều món cùng vai trò | Chỉ chuẩn hoá khi **thêm tay**; luồng khôi phục giữ nguyên (ngoài phạm vi) |

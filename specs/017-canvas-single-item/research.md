@@ -70,25 +70,26 @@ mới, **gỡ mọi món xung đột** khỏi danh sách trước khi chọn to�
 **Decision**: Thêm helper thuần trong `canvas_layout.dart`, ví dụ
 `List<CanvasItem> layoutOuterwearBesideBase(List<CanvasItem> items, {canvasWidth, canvasHeight})`:
 
-- Kích hoạt khi trong danh sách có **outerwear** và có **lớp nền** (`top` hoặc `fullbody`).
-- Chia đôi bề ngang khả dụng (`availW = canvasWidth - 2*margin`): lớp nền canh **nửa trái**,
-  outerwear **nửa phải**.
-- Thu `scale` của từng món sao cho bề rộng món ≤ nửa khả dụng (sàn `0.15`), rồi `clampCanvasItem`.
-- Giữ `layerOrder` outerwear **trên** lớp nền (như hiện tại).
-- Chỉ gọi khi món vừa thêm là outerwear hoặc lớp nền (tránh reset vị trí khi thêm món khác).
+- **Bản chỉnh 2026-10-13** (sau feedback tester, thay cho bố cục hai cột gốc):
+  - Kích hoạt khi có **outerwear** và có **lớp nền** (`top`/`fullbody`).
+  - **Giữ nguyên vị trí/kích thước lớp nền**; chỉ dịch nhẹ áo khoác:
+    `outerwear.positionX = base.positionX + 0.12 * canvasWidth`.
+  - Không thu tỉ lệ (giữ kích thước tự nhiên); `clampCanvasItem` để nằm trong khung.
+  - Giữ `layerOrder` outerwear **trên** lớp nền.
+  - Gọi ở **cả 3 luồng đặt món**: `addItemToCanvas`, `loadFromAIRecommendation`, `loadIntoStudio`
+    (+ relayout khi đo được kích thước canvas).
 
 **Rationale**:
-- Số liệu thật: top ~`100*2.1*1.25 = 262px`, outerwear ~`105*2.3*1.25 ≈ 302px`
-  (`canvas_layout.dart:104-114`, outerwear `baseScale 105`); khung điện thoại ~`360-430px` → để **không chồng ngang**,
-  mỗi món phải vừa ~nửa khung ⇒ cần thu tỉ lệ (~0.6). Đặt lệch nhỏ (như `x -25`) **không đủ**
-  để lộ lớp nền (đã tính: vẫn phủ phần lớn).
-- Chia đôi + thu tỉ lệ cho **bất biến kiểm thử được**: mép phải lớp nền ≤ mép trái outerwear.
-- Dùng `clampCanvasItem` sẵn có để không tràn biên.
+- Bố cục hai cột **dời lớp nền** sang nửa trái → món **khác loại** thêm sau (quần/giày) bị
+  chồng lên nền đã dời; đồng thời áo khoác **né hoàn toàn** áo. Tester báo cả hai lỗi này.
+- Chỉ lệch áo khoác ⇒ nền **không dời** ⇒ không gây chồng chéo với món khác loại; áo khoác vẫn
+  **phủ nhẹ + lộ một phần** nền (chồng kiểu layer).
+- `0.12 * canvasWidth` ≈ `43-52px` trên khung `360-430`: đủ thấy layer, vẫn trong biên sau kẹp.
 
 **Alternatives considered**:
-- *Hạ outerwear xuống lớp dưới (áo trên)*: bị loại ở Clarifications (Q3 chọn B).
-- *Chỉ dịch ngang một lượng cố định, không thu tỉ lệ*: không đủ để hết chồng trên khung hẹp →
-  không thoả SC-002.
+- *Hai cột tách rời (bản 017 gốc)*: bị bác — né hoàn toàn + dời nền gây chồng món khác loại.
+- *Hạ outerwear xuống lớp dưới*: bị loại ở Clarifications Q3.
+- *Thu nhỏ áo khoác để lộ nền nhiều hơn*: trái ý "giữ kích thước tự nhiên".
 - *Xếp dọc (trên/dưới)*: ngoài ý "dịch sang bên".
 
 ---

@@ -486,14 +486,14 @@ CanvasItem clampCanvasItem(CanvasItem item, double canvasWidth, double canvasHei
   );
 }
 
-/// Xếp áo khoác sang cột phải, lớp nền (`top`/`fullbody`) sang cột trái khi
-/// cùng nằm trên canvas (R4/INV-6).
+/// Lệch nhẹ áo khoác sang bên khi cùng canvas với lớp nền (`top`/`fullbody`).
 ///
-/// Chia đôi bề ngang khả dụng: lớp nền canh nửa trái, outerwear canh nửa phải;
-/// thu `scale` mỗi món để bề rộng vừa một nửa khung (sàn 0.15, không tăng), rồi
-/// kẹp toàn bộ danh sách vào khung. Trả về nguyên trạng nếu thiếu `outerwear`
+/// Bản chỉnh 2026-10-13 (R4/INV-6): **không** dời/không thu nhỏ lớp nền (dời nền
+/// khiến món khác loại thêm sau bị chồng lên nền). Chỉ dịch áo khoác sang phải
+/// một khoảng tỉ lệ canvas để nó vẫn chồng nhẹ (kiểu mặc layer) nhưng lộ một phần
+/// lớp nền; sau đó kẹp toàn bộ vào khung. Trả về nguyên trạng nếu thiếu áo khoác
 /// hoặc thiếu lớp nền.
-List<CanvasItem> layoutOuterwearBesideBase(
+List<CanvasItem> layoutOuterwearOverBase(
   List<CanvasItem> items, {
   required double canvasWidth,
   required double canvasHeight,
@@ -505,37 +505,17 @@ List<CanvasItem> layoutOuterwearBesideBase(
   );
   if (outerwearIndex < 0 || baseIndex < 0) return items;
 
-  const double margin = 8.0;
-  const double itemScaleMultiplier = 1.25;
-  final double availW = math.max(0.0, canvasWidth - (margin * 2));
-  final double halfW = availW / 2;
-  final double leftCenterX = -availW / 4;
-  final double rightCenterX = availW / 4;
+  const double layerOffsetFraction = 0.12;
+  final double dx = canvasWidth * layerOffsetFraction;
+  final CanvasItem base = items[baseIndex];
 
-  // Thu scale để bề rộng vừa nửa khung; không bao giờ tăng, sàn 0.15.
-  double halfFitScale(CanvasItem item) {
-    final double unitW = item.baseScale * item.boxRatioW * itemScaleMultiplier;
-    if (unitW <= 0) return item.scale;
-    final double fit = halfW / unitW;
-    return math.min(item.scale, math.max(0.15, fit));
-  }
-
-  final placed = List<CanvasItem>.from(items);
-  final base = placed[baseIndex].copyWith(
-    positionX: leftCenterX,
-    scale: halfFitScale(placed[baseIndex]),
-  );
-  placed[baseIndex] = base;
-
-  var outerwear = placed[outerwearIndex].copyWith(
-    positionX: rightCenterX,
-    scale: halfFitScale(placed[outerwearIndex]),
-  );
+  var outerwear = items[outerwearIndex].copyWith(positionX: base.positionX + dx);
   if (outerwear.layerOrder <= base.layerOrder) {
     outerwear = outerwear.copyWith(layerOrder: base.layerOrder + 1);
   }
-  placed[outerwearIndex] = outerwear;
 
+  final placed = List<CanvasItem>.from(items);
+  placed[outerwearIndex] = outerwear;
   for (var i = 0; i < placed.length; i++) {
     placed[i] = clampCanvasItem(placed[i], canvasWidth, canvasHeight);
   }

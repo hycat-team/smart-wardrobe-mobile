@@ -44,11 +44,12 @@ flutter test test/studio_single_item_per_role_test.dart test/canvas_outerwear_la
 7. Canvas đang có áo + quần. Thêm **đầm** → **áo bị gỡ, quần giữ nguyên** (đầm + quần).
 8. Thêm **áo** trở lại → **đầm bị gỡ**; áo + quần.
 
-### US2 · Áo khoác không đè lớp nền (P1)
+### US2 · Áo khoác chồng nhẹ, không che kín lớp nền (P1)
 
-9. Thêm **áo**, rồi thêm **áo khoác** → hai món **không chồng che** (xếp hai bên), đều thấy rõ.
+9. Thêm **áo**, rồi thêm **áo khoác** → áo khoác **chồng nhẹ** lên áo, **lộ một phần** áo; áo **không bị dời**.
 10. Lặp với **đầm** rồi **áo khoác**.
 11. Thêm **áo khoác** khi canvas trống (không lớp nền) → không bị lệch bất thường.
+12. Thêm **quần** sau áo + áo khoác → áo **không bị dời**, không chồng lên quần.
 
 ### US3 · Trải nghiệm thay thế (P2)
 
@@ -61,7 +62,7 @@ flutter test test/studio_single_item_per_role_test.dart test/canvas_outerwear_la
 | SC | Kiểm chứng |
 |---|---|
 | SC-001 | Không bao giờ có 2 món cùng loại cơ bản (bước 3, 5, 7, 8) |
-| SC-002 | Áo khoác không che lớp nền (bước 9, 10) |
+| SC-002 | Áo khoác chồng nhẹ (lộ một phần nền), nền không dời (bước 9, 10) |
 | SC-003 | Món mới nằm trọn trong khung (bước 3–12) |
 | SC-004 | Thêm vào canvas trống không gỡ nhầm (bước 11) |
 | FR-001 | Phụ kiện/mũ nhiều món vẫn giữ (bước 6) |

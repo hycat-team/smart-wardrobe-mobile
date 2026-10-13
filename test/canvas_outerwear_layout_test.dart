@@ -68,27 +68,40 @@ void main() {
     );
   }
 
-  void expectNoHorizontalOverlap(CanvasItem base, CanvasItem outw, double w, double h) {
-    final baseRight = base.positionX + widthOf(base) / 2;
-    final outLeft = outw.positionX - widthOf(outw) / 2;
+  /// Chồng nhẹ kiểu layer: hai món vẫn phủ lên nhau (không tách rời hoàn toàn),
+  /// nhưng lớp nền lộ ra một phần; áo khoác ở lớp trên và đã dịch khỏi tâm nền.
+  void expectLayerOverlap(CanvasItem base, CanvasItem outw, double w, double h) {
+    final baseL = base.positionX - widthOf(base) / 2;
+    final baseR = base.positionX + widthOf(base) / 2;
+    final outL = outw.positionX - widthOf(outw) / 2;
+    final outR = outw.positionX + widthOf(outw) / 2;
+
+    // Có chồng ngang (không né hoàn toàn).
+    expect(outL, lessThan(baseR), reason: 'outerwear né hoàn toàn nền trên ${w.toInt()}x${h.toInt()}');
+    expect(outR, greaterThan(baseL), reason: 'outerwear né hoàn toàn nền trên ${w.toInt()}x${h.toInt()}');
+
+    // Nền lộ ra một phần (nhô ra ngoài áo khoác ở ít nhất một phía).
     expect(
-      outLeft,
-      greaterThanOrEqualTo(baseRight - tolerance),
-      reason: 'outerwear chồng lớp nền trên ${w.toInt()}x${h.toInt()} '
-          '(outLeft=$outLeft, baseRight=$baseRight)',
+      baseL < outL || baseR > outR,
+      isTrue,
+      reason: 'áo khoác che kín nền (không lộ) trên ${w.toInt()}x${h.toInt()}',
     );
+
+    // Áo khoác dịch khỏi tâm nền (đúng đặc trưng layer).
+    expect(outw.positionX, isNot(closeTo(base.positionX, 0.5)));
     expect(outw.layerOrder, greaterThan(base.layerOrder));
   }
 
-  group('layoutOuterwearBesideBase (US2)', () {
+  group('layoutOuterwearOverBase', () {
     for (final size in canvasSizes) {
-      test('(a) top + outerwear không chồng ngang trên ${size.w.toInt()}x${size.h.toInt()}', () {
+      test('(a) top + outerwear chồng nhẹ & nền không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
         final items = [
           roleItem('top', CanvasRole.top, positionY: -140),
           roleItem('outerwear', CanvasRole.outerwear, positionY: -145),
         ];
+        final topBefore = items[0];
 
-        final result = layoutOuterwearBesideBase(
+        final result = layoutOuterwearOverBase(
           items,
           canvasWidth: size.w,
           canvasHeight: size.h,
@@ -96,18 +109,25 @@ void main() {
 
         final base = baseOf(result);
         final outw = outerwearOf(result);
-        expectNoHorizontalOverlap(base, outw, size.w, size.h);
+
+        // Lớp nền giữ nguyên vị trí & tỉ lệ (không bị dời).
+        expect(base.positionX, closeTo(topBefore.positionX, tolerance));
+        expect(base.positionY, closeTo(topBefore.positionY, tolerance));
+        expect(base.scale, closeTo(topBefore.scale, tolerance));
+
+        expectLayerOverlap(base, outw, size.w, size.h);
         expectInside(base, size.w, size.h, 'top');
         expectInside(outw, size.w, size.h, 'outerwear');
       });
 
-      test('(b) fullbody + outerwear không chồng ngang trên ${size.w.toInt()}x${size.h.toInt()}', () {
+      test('(b) fullbody + outerwear chồng nhẹ & nền không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
         final items = [
           roleItem('dress', CanvasRole.fullbody, positionY: -15),
           roleItem('outerwear', CanvasRole.outerwear, positionY: -145),
         ];
+        final dressBefore = items[0];
 
-        final result = layoutOuterwearBesideBase(
+        final result = layoutOuterwearOverBase(
           items,
           canvasWidth: size.w,
           canvasHeight: size.h,
@@ -115,7 +135,12 @@ void main() {
 
         final base = baseOf(result);
         final outw = outerwearOf(result);
-        expectNoHorizontalOverlap(base, outw, size.w, size.h);
+
+        expect(base.positionX, closeTo(dressBefore.positionX, tolerance));
+        expect(base.positionY, closeTo(dressBefore.positionY, tolerance));
+        expect(base.scale, closeTo(dressBefore.scale, tolerance));
+
+        expectLayerOverlap(base, outw, size.w, size.h);
         expectInside(base, size.w, size.h, 'fullbody');
         expectInside(outw, size.w, size.h, 'outerwear');
       });
@@ -130,7 +155,7 @@ void main() {
       final beforeY = items.map((i) => i.positionY).toList();
       final beforeScale = items.map((i) => i.scale).toList();
 
-      final result = layoutOuterwearBesideBase(
+      final result = layoutOuterwearOverBase(
         items,
         canvasWidth: 390,
         canvasHeight: 700,
@@ -145,7 +170,7 @@ void main() {
     });
   });
 
-  group('Studio addItemToCanvas outerwear layout (US2)', () {
+  group('Studio addItemToCanvas outerwear layout', () {
     const canvasW = 390.0;
     const canvasH = 700.0;
 
@@ -162,13 +187,15 @@ void main() {
       );
     }
 
-    test('(d) thêm áo rồi áo khoác → hai món không chồng ngang, trong khung', () {
+    test('(d) thêm áo rồi áo khoác → chồng nhẹ, áo không bị dời, trong khung', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
       notifier.setCanvasSize(canvasW, canvasH);
 
       notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
+      final topBefore = container.read(outfitStudioProvider).canvasItems.first;
+
       notifier.addItemToCanvas(fixture('coat1', 'Áo khoác dạ', 'ao-khoac'));
 
       final items = container.read(outfitStudioProvider).canvasItems;
@@ -176,12 +203,16 @@ void main() {
 
       final base = baseOf(items);
       final outw = outerwearOf(items);
-      expectNoHorizontalOverlap(base, outw, canvasW, canvasH);
-      expectInside(base, canvasW, canvasH, 'top');
+
+      // Áo thường giữ nguyên vị trí (không bị dời khi thêm áo khoác).
+      expect(base.positionX, closeTo(topBefore.positionX, tolerance));
+      expect(base.positionY, closeTo(topBefore.positionY, tolerance));
+
+      expectLayerOverlap(base, outw, canvasW, canvasH);
       expectInside(outw, canvasW, canvasH, 'outerwear');
     });
 
-    test('(e) thêm giày/phụ kiện sau áo không reset vị trí áo (không gọi layout)', () {
+    test('(e) thêm giày/phụ kiện sau áo không reset vị trí áo', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
@@ -199,6 +230,24 @@ void main() {
       expect(after.positionX, posX);
       expect(after.positionY, posY);
       expect(after.scale, scale);
+    });
+
+    test('(f) thêm quần SAU áo+khoác không chồng/dời áo (món khác loại)', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(outfitStudioProvider.notifier);
+      notifier.setCanvasSize(canvasW, canvasH);
+
+      notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
+      notifier.addItemToCanvas(fixture('coat1', 'Áo khoác dạ', 'ao-khoac'));
+      final topBefore = baseOf(container.read(outfitStudioProvider).canvasItems);
+
+      notifier.addItemToCanvas(fixture('bot1', 'Quần jean', 'quan'));
+
+      final topAfter = baseOf(container.read(outfitStudioProvider).canvasItems);
+      expect(topAfter.positionX, closeTo(topBefore.positionX, tolerance));
+      expect(topAfter.positionY, closeTo(topBefore.positionY, tolerance));
+      expect(topAfter.scale, closeTo(topBefore.scale, tolerance));
     });
   });
 }

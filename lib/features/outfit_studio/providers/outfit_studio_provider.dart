@@ -271,8 +271,12 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     // thì bố trí lại một lần (guard ≤1px phía trên chặn vòng rebuild).
     if (state.pendingRelayout) {
       state = state.copyWith(
-        canvasItems: layoutCanvasItems(
-          state.canvasItems,
+        canvasItems: layoutOuterwearOverBase(
+          layoutCanvasItems(
+            state.canvasItems,
+            canvasWidth: width,
+            canvasHeight: height,
+          ),
           canvasWidth: width,
           canvasHeight: height,
         ),
@@ -340,7 +344,7 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     if (role == CanvasRole.outerwear ||
         role == CanvasRole.top ||
         role == CanvasRole.fullbody) {
-      finalItems = layoutOuterwearBesideBase(
+      finalItems = layoutOuterwearOverBase(
         items,
         canvasWidth: canvasW,
         canvasHeight: canvasH,
@@ -432,8 +436,12 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       );
     }
 
-    final laidOut = layoutCanvasItems(
-      items,
+    final laidOut = layoutOuterwearOverBase(
+      layoutCanvasItems(
+        items,
+        canvasWidth: state.canvasWidth ?? 360,
+        canvasHeight: state.canvasHeight ?? 520,
+      ),
       canvasWidth: state.canvasWidth ?? 360,
       canvasHeight: state.canvasHeight ?? 520,
     );

@@ -42,9 +42,10 @@ Quan hệ chéo: `fullbody` ⇄ `top` **loại trừ nhau** khi thêm tay; `bott
   `fullbody`. `bottom` giữ nguyên trong cả hai.
 - **INV-4 (vị trí chuẩn)**: Món mới có `positionX/Y` từ toạ độ chuẩn của vai trò, **không** kế thừa vị trí món cũ. `scale` giữ theo mức tỉ lệ chung hiện có của canvas (trung bình các món, hoặc `1.0` khi trống) — hành vi sẵn có, không đổi.
 - **INV-5 (trong khung)**: Mọi món luôn qua `clampCanvasItem` → hộp giới hạn nằm trong khung.
-- **INV-6 (outerwear không chồng lớp nền)**: Nếu có `outerwear` và có lớp nền (`top`/`fullbody`):
-  `outerwearLeftEdge ≥ baseRightEdge` (không chồng ngang), cả hai trong khung; outerwear giữ
-  `layerOrder` trên lớp nền.
+- **INV-6 (áo khoác chồng nhẹ, nền không dời)**: Nếu có `outerwear` và lớp nền (`top`/`fullbody`):
+  áo khoác dịch khỏi tâm nền một khoảng tỉ lệ canvas; hai món **vẫn chồng ngang** (không tách rời)
+  và **nền lộ một phần**; **vị trí/tỉ lệ lớp nền KHÔNG đổi**; outerwear giữ `layerOrder` trên;
+  cả hai trong khung. (Bản chỉnh 2026-10-13.)
 
 ---
 

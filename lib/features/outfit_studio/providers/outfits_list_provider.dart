@@ -317,10 +317,12 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
     // Chưa đo được canvas thật (lần đầu mở Studio) → bố trí theo fallback
     // rồi đánh dấu để setCanvasSize() bố trí lại khi có kích thước thật.
     final sizeKnown = studio.canvasWidth != null && studio.canvasHeight != null;
-    final laidOut = layoutCanvasItems(
-      canvasItems,
-      canvasWidth: studio.canvasWidth ?? 360,
-      canvasHeight: studio.canvasHeight ?? 520,
+    final double cw = studio.canvasWidth ?? 360;
+    final double ch = studio.canvasHeight ?? 520;
+    final laidOut = layoutOuterwearOverBase(
+      layoutCanvasItems(canvasItems, canvasWidth: cw, canvasHeight: ch),
+      canvasWidth: cw,
+      canvasHeight: ch,
     );
 
     _ref.read(outfitStudioProvider.notifier).state =

@@ -30,10 +30,10 @@
 
 ### 4. Áo khoác không chồng lớp nền
 
-- Khi cùng canvas có `outerwear` và lớp nền (`top` hoặc `fullbody`): xếp **hai cột** — lớp nền
-  nửa trái, outerwear nửa phải; thu `scale` để mỗi món vừa nửa bề ngang khả dụng (sàn `0.15`);
-  **không chồng ngang** (`outerwearLeftEdge ≥ baseRightEdge`); outerwear giữ `layerOrder` trên.
-- Chỉ áp dụng khi món vừa thêm là `outerwear` hoặc lớp nền.
+- Khi cùng canvas có `outerwear` và lớp nền (`top` hoặc `fullbody`): **giữ nguyên vị trí/tỉ lệ
+  lớp nền**; dịch nhẹ áo khoác sang phải một khoảng tỉ lệ canvas (`0.12 * canvasWidth`) để
+  **chồng nhẹ** (vẫn phủ nhau, lộ một phần nền); outerwear ở lớp trên; kẹp trong khung.
+- Chỉ áp dụng ở thao tác thêm/đặt món (add, nạp set AI, khôi phục outfit); không đụng món khác loại.
 
 ## Bất biến kiểm chứng được
 
@@ -42,7 +42,7 @@
 | INV-1 | `count(role==r) ≤ 1` với `r` ∈ tập độc quyền |
 | INV-3 | thêm `fullbody` ⟹ không còn `top`; thêm `top` ⟹ không còn `fullbody`; `bottom` không đổi |
 | INV-5 | mọi món trong khung |
-| INV-6 | có outerwear + lớp nền ⟹ không chồng ngang |
+| INV-6 | có outerwear + lớp nền ⟹ chồng nhẹ (nền lộ một phần, nền KHÔNG dời) |
 
 ## Ngoài phạm vi
 
