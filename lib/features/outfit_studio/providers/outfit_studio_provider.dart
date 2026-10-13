@@ -493,6 +493,20 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     state = state.copyWith(canvasItems: items);
   }
 
+  /// Phóng/thu TOÀN BỘ món trên canvas theo nút tăng/giảm kích thước.
+  /// Nón và giày dùng hệ số 1.5; các món còn lại 2.0 (mỗi lần nhấn).
+  void scaleAllItems({required bool zoomIn}) {
+    if (state.canvasItems.isEmpty) return;
+    final updated = state.canvasItems.map((it) {
+      final role = normalizeRole(it.role);
+      final isSmall = role == CanvasRole.headwear || role == CanvasRole.footwear;
+      final k = isSmall ? 1.5 : 2.0;
+      final newScale = zoomIn ? it.scale * k : it.scale / k;
+      return it.copyWith(scale: newScale.clamp(0.15, 3.0));
+    }).toList();
+    state = state.copyWith(canvasItems: updated);
+  }
+
   void bringForward(int index) {
     if (index < 0 || index >= state.canvasItems.length - 1) return;
     final items = List<CanvasItem>.from(state.canvasItems);

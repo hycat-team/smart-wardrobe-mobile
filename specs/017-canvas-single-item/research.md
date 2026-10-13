@@ -133,6 +133,18 @@ chồng lên cột — trái yêu cầu.
 
 ---
 
+## R8 — Nút tăng/giảm kích thước (phóng toàn bộ)
+
+**Decision**: Thay nút zoom (trước chỉ phóng 1 món đang chọn ×1.15) bằng hành vi **phóng toàn bộ**:
+`OutfitStudioNotifier.scaleAllItems({required bool zoomIn})` nhân `scale` mọi món (zoomIn) hoặc
+chia (zoomOut): món thường `×2`, nón/giày `×1.5`; kẹp `0.15..3.0`. Nút bật khi canvas có món.
+
+**Rationale**: Tester muốn nút tăng kích thước áp cho **tất cả** món, hệ số 2 (nón/giày 1.5).
+
+**Alternatives considered**: giữ zoom theo món đang chọn — trái yêu cầu; hệ số 1.15 cũ — quá nhỏ.
+
+---
+
 ## Tổng hợp
 
 | # | Ảnh hưởng | File |

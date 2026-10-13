@@ -87,6 +87,7 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 - **FR-005**: Khi áo khoác cùng canvas với **lớp nền** (áo trên **hoặc** đầm), hệ thống MUST đặt áo khoác **rộng bằng lớp nền**, **ngang hàng (cùng mức dọc) với lớp nền**, chồng lên lớp nền một phần nhưng **không quá 40%** bề rộng lớp nền, và ở **phía đối diện phụ kiện** (khi có phụ kiện). Lớp nền giữ làm cột giữa (không dời). Trên khung hẹp, cả hai thu cùng tỉ lệ để vẫn thoả ≤ 40%.
 - **FR-009**: Cột giữa (áo/quần/đầm/nón/giày) MUST căn giữa và là cột mốc; **phụ kiện** MUST nép **sát** cột giữa (cách một khoảng nhỏ) ở **phía đối diện áo khoác** và **không đè** lên cột hay món khác.
 - **FR-010**: Toàn bộ khối trang phục trên canvas MUST được **căn giữa bề ngang** (bbox ngang trùng tâm canvas) để khối không lệch sang một bên khi có áo khoác/phụ kiện.
+- **FR-011**: Nút **tăng kích thước** trên thanh công cụ MUST phóng to **tất cả** món trên canvas — món thường ×2, **nón/giày ×1.5** mỗi lần nhấn; nút **giảm kích thước** dùng hệ số nghịch đảo tương ứng.
 - **FR-006**: Thêm món khi canvas trống MUST hoạt động như hiện tại (không có gì bị thay).
 - **FR-007**: Thao tác thay thế MUST kèm phản hồi rõ ràng cho người dùng rằng món đã bị thay thế.
 - **FR-008**: Món bị thay thế MUST không còn trong **dữ liệu lưu**: khi lưu bộ phối, danh sách món gửi đi KHÔNG chứa món đã bị gỡ (không lưu món "mồ côi").
