@@ -40,10 +40,9 @@ Quan hệ chéo: `fullbody` ⇄ `top` **loại trừ nhau** khi thêm tay; `bott
   thêm món mới; không tồn tại 2 món cùng vai trò độc quyền sau thao tác.
 - **INV-3 (đầm↔áo)**: Sau khi thêm `fullbody`, không còn `top`; sau khi thêm `top`, không còn
   `fullbody`. `bottom` giữ nguyên trong cả hai.
-- **INV-4 (thay tại chỗ)**: Khi thay món **cùng vai trò**, món mới giữ **đúng** `positionX/Y` và
-  `scale` của món cũ. Khi **thêm mới** (không có món cùng vai trò), `positionX/Y` lấy từ toạ độ
-  chuẩn của vai trò và `scale` = mức tỉ lệ chung của canvas (trung bình, `1.0` khi trống). Luôn kẹp
-  trong khung.
+- **INV-4 (bố trí lại theo vai trò)**: Thêm/thay món ⟹ toàn bộ món được đặt lại theo toạ độ chuẩn
+  của vai trò (phụ kiện so le; `scale` reset `1.0`), rồi fit-to-canvas. Vị trí/khoảng cách nhất quán
+  bất kể thứ tự thêm. Món đơn được kẹp vào khung. (Bản chỉnh 2026-10-13 lần 10.)
 - **INV-5 (trong khung)**: Mọi món luôn qua `clampCanvasItem` → hộp giới hạn nằm trong khung.
 - **INV-6 (áo khoác bằng áo, ngang hàng, chồng ≤40%)**: Nếu có `outerwear` và lớp nền
   (`top`/`fullbody`): áo khoác có **cùng bề rộng** và **cùng mức `positionY`** với lớp nền, ở **phía

@@ -602,32 +602,41 @@ List<CanvasItem> layoutAccessoriesHugColumn(
   return placed;
 }
 
-/// Dịch cả danh sách sang ngang để **tâm bbox trùng tâm canvas** — cột giữa
-/// (áo/quần/nón/giày) nằm chính giữa màn hình dù áo khoác thò sang một bên.
-/// Kẹp lại sau khi dịch để không tràn biên.
-List<CanvasItem> centerItemsHorizontally(
+/// Đặt lại vị trí/kích thước của **mọi** món theo **vai trò** (toạ độ chuẩn,
+/// phụ kiện so le, layer) — dùng chung cho luồng thêm tay để khớp bố cục AI.
+/// Reset `scale` về `1.0` để kết quả nhất quán bất kể thứ tự thêm.
+List<CanvasItem> layoutItemsByRole(
   List<CanvasItem> items, {
-  required double canvasWidth,
-  required double canvasHeight,
+  required bool hasFullbody,
 }) {
-  if (items.length <= 1) return items;
-  const double itemScaleMultiplier = 1.25;
-  double minX = double.infinity;
-  double maxX = -double.infinity;
+  final coordinateMap =
+      hasFullbody ? roleCoordinatesFullbody : roleCoordinatesSeparate;
+  final result = <CanvasItem>[];
+  var accessoryCount = 0;
   for (final it in items) {
-    final double w = it.baseScale * it.boxRatioW * it.scale * itemScaleMultiplier;
-    if (it.positionX - w / 2 < minX) minX = it.positionX - w / 2;
-    if (it.positionX + w / 2 > maxX) maxX = it.positionX + w / 2;
+    final role = normalizeRole(it.role);
+    final RolePlacement placement;
+    if (role == CanvasRole.accessory) {
+      placement = getAccessoryPlacement(accessoryCount, hasFullbody: hasFullbody);
+      accessoryCount++;
+    } else {
+      placement = coordinateMap[role] ?? coordinateMap[CanvasRole.other]!;
+    }
+    final box =
+        roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
+    result.add(
+      it.copyWith(
+        positionX: placement.x,
+        positionY: placement.y,
+        scale: 1.0,
+        layerOrder: placement.zIndex,
+        baseScale: placement.scale,
+        boxRatioW: box.widthRatio,
+        boxRatioH: box.heightRatio,
+      ),
+    );
   }
-  final double delta = (minX + maxX) / 2;
-  if (delta.abs() < 0.5) return items;
-  final shifted = [
-    for (final it in items) it.copyWith(positionX: it.positionX - delta),
-  ];
-  for (var i = 0; i < shifted.length; i++) {
-    shifted[i] = clampCanvasItem(shifted[i], canvasWidth, canvasHeight);
-  }
-  return shifted;
+  return result;
 }
 
 /// Bố trí trang trí (áo khoác/ phụ kiện) rồi **fit-to-canvas + căn giữa** nếu có
@@ -653,11 +662,9 @@ List<CanvasItem> decorateAndFitOutfit(
           canvasWidth: canvasWidth,
           canvasHeight: canvasHeight,
         )
-      : centerItemsHorizontally(
-          out,
-          canvasWidth: canvasWidth,
-          canvasHeight: canvasHeight,
-        );
+      : (out.length == 1
+          ? [clampCanvasItem(out.first, canvasWidth, canvasHeight)]
+          : out);
   return out;
 }
 

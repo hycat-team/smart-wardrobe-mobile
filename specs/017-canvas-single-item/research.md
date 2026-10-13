@@ -161,6 +161,22 @@ khi fit — làm món khổng lồ co về tâm rồi chồng lên nhau (đã g�
 
 ---
 
+## R10 — Thêm thủ công dùng chung bố cục với AI
+
+**Decision**: `addItemToCanvas` (sau khi khử trùng) gọi `layoutItemsByRole` để đặt **mọi** món theo
+toạ độ chuẩn của vai trò (phụ kiện so le, `scale` reset 1.0), rồi `decorateAndFitOutfit`
+(fit-to-canvas + căn giữa). Nhờ vậy thêm từng món cho ra bố cục **y hệt** nạp cả set AI; tránh fit
+chồng chất làm vị trí lệch.
+
+**Rationale**: Tester xác nhận bố cục AI đã đúng, nhưng thêm tay vào canvas trống/thiếu loại thì
+món xuất hiện "lung tung" — do mỗi lần thêm lại fit trên vị trí đã biến đổi (compound) và phụ kiện
+không so le.
+
+**Alternatives considered**: giữ nguyên vị trí món cũ + chỉ đặt món mới (bản cũ) — gây lệch/đè;
+"thay tại chỗ" — không còn phù hợp vì cần bố cục nhất quán.
+
+---
+
 ## Tổng hợp
 
 | # | Ảnh hưởng | File |

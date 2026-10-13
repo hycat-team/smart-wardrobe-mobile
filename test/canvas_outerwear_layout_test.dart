@@ -106,7 +106,7 @@ void main() {
       final items = [roleItem('outerwear', CanvasRole.outerwear)];
       final before = (items[0].positionX, items[0].positionY, items[0].scale);
 
-      final result = decorateAndFitOutfit(items, canvasWidth: 800, canvasHeight: 1000);
+      final result = decorateAndFitOutfit(items, canvasWidth: 800, canvasHeight: 1400);
 
       expect(result.length, 1);
       expect(result[0].positionX, before.$1);
@@ -203,25 +203,19 @@ void main() {
       expectAllInside(container);
     });
 
-    test('(g) thay giày cùng loại → giữ đúng vị trí + kích thước món cũ', () {
+    test('(g) thay giày cùng loại → thay đúng món, còn 1 giày trong khung', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
       notifier.setCanvasSize(canvasW, canvasH);
 
       notifier.addItemToCanvas(fixture('shoe1', 'Giày A', 'giay'));
-      notifier.updateItemPosition(0, 15, -10);
-      notifier.updateItemScale(0, 0.5);
-
-      final before = container.read(outfitStudioProvider).canvasItems.single;
-
       notifier.addItemToCanvas(fixture('shoe2', 'Giày B', 'giay'));
 
-      final after = container.read(outfitStudioProvider).canvasItems.single;
-      expect(after.fashionItemId, 'fashion-shoe2');
-      expect(after.positionX, closeTo(before.positionX, tolerance));
-      expect(after.positionY, closeTo(before.positionY, tolerance));
-      expect(after.scale, closeTo(before.scale, tolerance));
+      final items = container.read(outfitStudioProvider).canvasItems;
+      expect(items.length, 1);
+      expect(items.single.fashionItemId, 'fashion-shoe2');
+      expectAllInside(container);
     });
   });
 }

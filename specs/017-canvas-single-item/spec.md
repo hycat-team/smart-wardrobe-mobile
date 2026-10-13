@@ -15,7 +15,7 @@
 - Q: Phạm vi "mỗi loại một món" gồm những vai trò nào? → A: Chỉ nhóm quần áo cơ bản độc quyền (áo trên, quần, đầm liền thân, áo khoác, giày dép); mũ và phụ kiện được phép nhiều món.
 - Q: Đầm liền thân quan hệ với áo + quần thế nào? → A: Đầm chỉ thay áo (gỡ áo, giữ quần); thêm áo thì gỡ đầm; quần độc lập, được phối cùng đầm.
 - Q: Áo khoác và áo cùng trên canvas hiển thị ra sao? → A: Giữ áo khoác ở lớp trên nhưng dịch sang bên để lộ áo.
-- Q: Vị trí món mới khi thay thế món cùng loại? → A: **Thay tại chỗ** — món mới giữ đúng vị trí và kích thước món cũ (bản chỉnh 2026-10-13; trước đó đặt theo vị trí chuẩn).
+- Q: Vị trí món mới khi thay thế món cùng loại? → A: **Bố trí lại toàn bộ theo vai trò** (toạ độ chuẩn, giống luồng AI) rồi fit-to-canvas + căn giữa — vị trí/khoảng cách nhất quán (mục tiêu ~10–20px). (Bản chỉnh 2026-10-13 lần 10; trước đó "thay tại chỗ".)
 - Q: Áo khoác không được che những lớp nào bên dưới? → A: Mọi lớp nền bên dưới (áo trên **hoặc** đầm liền thân).
 - Q: Mũ và phụ kiện có được nhiều món không? → A: **Mũ độc quyền** (1 nón); **phụ kiện nhiều món nhưng không trùng loại** (VD không 2 dây chuyền). (Bản chỉnh 2026-10-13 lần 7.)
 
@@ -84,7 +84,7 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 - **FR-001**: Trên canvas, tại một thời điểm hệ thống MUST giữ tối đa **một** món cho mỗi loại trong **nhóm độc quyền**: áo trên (top), quần (bottom), đầm liền thân (fullbody), áo khoác (outerwear), giày dép (footwear), **mũ (headwear)**.
 - **FR-001b**: **Phụ kiện (accessory)** ĐƯỢC PHÉP nhiều món cùng lúc nhưng **KHÔNG trùng loại** (theo danh mục — VD không thể đeo 2 dây chuyền cùng lúc; thêm dây chuyền khác sẽ thay dây chuyền cũ). `other`/`unknown` không giới hạn.
 - **FR-002**: Khi người dùng thêm một món mà canvas đã có món **cùng loại** (trong nhóm quần áo cơ bản), hệ thống MUST thay thế món cũ bằng món mới (gỡ món cũ), không thêm chồng.
-- **FR-003**: Việc thay thế MUST đặt món mới **tại đúng vị trí và kích thước của món cũ** (thay tại chỗ); món mới được kẹp trong khung canvas và ở trạng thái đang được chọn. (Bản chỉnh 2026-10-13: trước đó đặt theo vị trí chuẩn.)
+- **FR-003**: Khi thêm/thay món, hệ thống MUST **bố trí lại toàn bộ món theo vai trò** (toạ độ chuẩn, phụ kiện so le — giống luồng nạp set AI), rồi fit-to-canvas + căn giữa; nhờ vậy vị trí và khoảng cách (mục tiêu ~10–20px) **nhất quán** dù thêm từng món hay nạp cả set. Món mới ở trạng thái đang chọn. (Bản chỉnh 2026-10-13 lần 10.)
 - **FR-004**: Đầm liền thân (fullbody) và áo trên (top) loại trừ nhau: thêm đầm khi canvas có áo → gỡ áo (giữ quần nếu có); thêm áo khi canvas có đầm → gỡ đầm. Quần (bottom) **độc lập**, được phép tồn tại cùng đầm.
 - **FR-005**: Khi áo khoác cùng canvas với **lớp nền** (áo trên **hoặc** đầm), hệ thống MUST đặt áo khoác **rộng bằng lớp nền**, **ngang hàng (cùng mức dọc)** với lớp nền, chồng lên lớp nền một phần nhưng **không quá 40%** bề rộng lớp nền, và ở **phía đối diện phụ kiện** (khi có phụ kiện). **Lớp nền GIỮ NGUYÊN kích thước** (KHÔNG bị thu nhỏ khi thêm áo khoác).
 - **FR-012**: Khi canvas có **≥2 món**, hệ thống MUST **fit-to-canvas** (thu đồng tỉ lệ cả khối để không món nào tràn khung hay đè nhau) và **căn giữa bề ngang**. Món đơn giữ nguyên.

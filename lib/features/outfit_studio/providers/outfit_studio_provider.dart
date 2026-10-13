@@ -312,38 +312,22 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     //  - phụ kiện: được nhiều món nhưng KHÔNG trùng loại (VD không 2 dây chuyền).
     // Món mới THAY TẠI CHỖ (giữ vị trí + kích thước món bị thay).
     final countBeforeRemoval = items.length;
-    CanvasItem? replacedItem;
     if (isExclusiveRole(role)) {
-      final sameRoleIndex = items.indexWhere((it) => it.role == role.name);
-      if (sameRoleIndex >= 0) {
-        replacedItem = items[sameRoleIndex];
-        items.removeAt(sameRoleIndex);
-      }
+      items.removeWhere((it) => it.role == role.name);
       if (role == CanvasRole.fullbody) {
         items.removeWhere((it) => it.role == CanvasRole.top.name);
       } else if (role == CanvasRole.top) {
         items.removeWhere((it) => it.role == CanvasRole.fullbody.name);
       }
     } else if (role == CanvasRole.accessory && categoryKey.isNotEmpty) {
-      final sameKindIndex = items.indexWhere(
-        (it) =>
-            it.role == CanvasRole.accessory.name && it.categoryKey == categoryKey,
+      items.removeWhere(
+        (it) => it.role == CanvasRole.accessory.name && it.categoryKey == categoryKey,
       );
-      if (sameKindIndex >= 0) {
-        replacedItem = items[sameKindIndex];
-        items.removeAt(sameKindIndex);
-      }
     }
     final replaced = items.length < countBeforeRemoval;
 
     final hasFullbody = items.any((it) => it.role == CanvasRole.fullbody.name);
-    final coordinateMap = hasFullbody ? roleCoordinatesFullbody : roleCoordinatesSeparate;
-    final placement = coordinateMap[role] ?? coordinateMap[CanvasRole.other]!;
     final boxRatio = roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
-
-    final initialScale = items.isNotEmpty
-        ? (items.map((it) => it.scale).reduce((a, b) => a + b) / items.length)
-        : 1.0;
 
     final newItem = CanvasItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -352,25 +336,19 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       name: item.displayTitle,
       role: role.name,
       categoryKey: categoryKey,
-      positionX: replacedItem?.positionX ?? placement.x,
-      positionY: replacedItem?.positionY ?? placement.y,
-      scale: replacedItem?.scale ?? initialScale,
-      layerOrder: placement.zIndex,
-      baseScale: placement.scale,
+      baseScale: roleCoordinatesSeparate[role]?.scale ?? 100,
       boxRatioW: boxRatio.widthRatio,
       boxRatioH: boxRatio.heightRatio,
     );
 
     final canvasW = state.canvasWidth ?? 360.0;
     final canvasH = state.canvasHeight ?? 520.0;
-    final clampedItem = clampCanvasItem(newItem, canvasW, canvasH);
 
-    items.add(clampedItem);
-
-    // Bố trí cột giữa (áo khoác = áo, đối diện phụ kiện; phụ kiện nép sát cột)
-    // + fit-to-canvas + căn giữa khi có ≥2 món (chống đè nhau).
+    // Bố trí TOÀN BỘ theo vai trò (giống luồng AI) → vị trí/khoảng cách nhất quán
+    // dù thêm từng món hay nạp cả set; rồi fit-to-canvas + căn giữa.
+    final placed = layoutItemsByRole(items..add(newItem), hasFullbody: hasFullbody);
     final finalItems = decorateAndFitOutfit(
-      items,
+      placed,
       canvasWidth: canvasW,
       canvasHeight: canvasH,
     );
