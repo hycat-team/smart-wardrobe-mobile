@@ -43,12 +43,6 @@ void main() {
     expect(find.text('Cần chọn danh mục'), findsAtLeastNWidgets(1));
     expect(find.text('Chọn danh mục trang phục:'), findsOneWidget);
     expect(find.text('Gửi phân tích lại'), findsOneWidget);
-
-    // Studio button should be disabled
-    final studioButton = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Phối đồ Studio'),
-    );
-    expect(studioButton.onPressed, isNull);
   });
 
   testWidgets('ItemDetailScreen blocks retry button on invalid image (multiple_items_detected)', (tester) async {
@@ -87,12 +81,6 @@ void main() {
     // CRITICAL: Retry button MUST NOT exist for invalid images!
     expect(find.text('Thử lại phân tích'), findsNothing);
     expect(find.text('Gửi phân tích lại'), findsNothing);
-
-    // Studio button should be disabled
-    final studioButton = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Phối đồ Studio'),
-    );
-    expect(studioButton.onPressed, isNull);
   });
 
   testWidgets('ItemDetailScreen enables retry button on temporary error', (tester) async {
@@ -126,11 +114,5 @@ void main() {
     // Verify badge and retry button
     expect(find.text('Lỗi tạm thời'), findsAtLeastNWidgets(1));
     expect(find.text('Thử lại phân tích'), findsOneWidget);
-
-    // Studio button should be disabled
-    final studioButton = tester.widget<ElevatedButton>(
-      find.widgetWithText(ElevatedButton, 'Phối đồ Studio'),
-    );
-    expect(studioButton.onPressed, isNull);
   });
 }

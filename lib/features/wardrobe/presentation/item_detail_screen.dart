@@ -482,36 +482,16 @@ class _ItemDetailScreenState extends ConsumerState<ItemDetailScreen> {
               ),
               child: SafeArea(
                 top: false,
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _openEditScreen(item),
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        label: const Text('Chỉnh sửa'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openEditScreen(item),
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text('Chỉnh sửa'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 3,
-                      child: ElevatedButton.icon(
-                        onPressed: (item.isProcessing || item.needsReview || item.isFailed)
-                            ? null
-                            : () {
-                                context.push('/studio');
-                              },
-                        icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                        label: const Text('Phối đồ Studio'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

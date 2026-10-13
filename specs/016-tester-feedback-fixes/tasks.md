@@ -150,9 +150,9 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 ### Implementation for User Story 6
 
-- [ ] T023 [US6] Gỡ `ElevatedButton.icon` "Phối đồ Studio" (và `context.push('/studio')` tương ứng) trong `lib/features/wardrobe/presentation/item_detail_screen.dart`; cho `OutlinedButton` "Chỉnh sửa" giãn toàn bộ hàng; gỡ import thừa nếu không dùng
-- [ ] T024 [US6] Cập nhật `test/wardrobe_status_widget_test.dart`: gỡ 3 assert `find.widgetWithText(ElevatedButton, 'Phối đồ Studio')` (nút đã bỏ — thay đổi có chủ đích)
-- [ ] T025 [US6] Chạy `flutter test test/wardrobe_status_widget_test.dart` → pass
+- [X] T023 [US6] Gỡ `ElevatedButton.icon` "Phối đồ Studio" (và `context.push('/studio')` tương ứng) trong `lib/features/wardrobe/presentation/item_detail_screen.dart`; cho `OutlinedButton` "Chỉnh sửa" giãn toàn bộ hàng; gỡ import thừa nếu không dùng
+- [X] T024 [US6] Cập nhật `test/wardrobe_status_widget_test.dart`: gỡ 3 assert `find.widgetWithText(ElevatedButton, 'Phối đồ Studio')` (nút đã bỏ — thay đổi có chủ đích)
+- [X] T025 [US6] Chạy `flutter test test/wardrobe_status_widget_test.dart` → pass
 
 **Checkpoint**: US6 hoàn tất độc lập.
 
