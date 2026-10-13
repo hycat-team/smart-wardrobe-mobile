@@ -1846,7 +1846,15 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                                         setState(() => _replacingCanvasIndex = null);
                                         ClosyToast.success(context, 'Đã đổi món trên canvas');
                                       } else {
-                                        ref.read(outfitStudioProvider.notifier).addItemToCanvas(item);
+                                        final replaced = ref
+                                            .read(outfitStudioProvider.notifier)
+                                            .addItemToCanvas(item);
+                                        if (replaced) {
+                                          ClosyToast.success(
+                                            context,
+                                            'Đã thay thế món cùng loại trên canvas.',
+                                          );
+                                        }
                                       }
                                     },
                               child: Opacity(

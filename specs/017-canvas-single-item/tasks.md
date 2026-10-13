@@ -89,8 +89,8 @@ description: "Task list — Canvas một món mỗi loại + sửa áo khoác đ
 
 ### Implementation for User Story 3
 
-- [ ] T010 [US3] Cho `addItemToCanvas` (`outfit_studio_provider.dart`) **trả về `bool replaced`** (true nếu có ≥1 món bị gỡ do thay thế); trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart` nhánh drawer `onTap` gọi `addItemToCanvas` → nếu `replaced` thì `ClosyToast.success(context, 'Đã thay thế món cùng loại trên canvas.')` (screen hiện KHÔNG hiển thị `successMessage` của `outfitStudioProvider` — vì vậy dùng giá trị trả về, không thêm listener toàn cục)
-- [ ] T011 [US3] Bổ sung assertion vào `test/studio_single_item_per_role_test.dart`: `addItemToCanvas` trả `true` khi có thay thế và `false` khi thêm vào canvas trống/khác loại; chạy test → pass
+- [X] T010 [US3] Cho `addItemToCanvas` (`outfit_studio_provider.dart`) **trả về `bool replaced`** (true nếu có ≥1 món bị gỡ do thay thế); trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart` nhánh drawer `onTap` gọi `addItemToCanvas` → nếu `replaced` thì `ClosyToast.success(context, 'Đã thay thế món cùng loại trên canvas.')` (screen hiện KHÔNG hiển thị `successMessage` của `outfitStudioProvider` — vì vậy dùng giá trị trả về, không thêm listener toàn cục)
+- [X] T011 [US3] Bổ sung assertion vào `test/studio_single_item_per_role_test.dart`: `addItemToCanvas` trả `true` khi có thay thế và `false` khi thêm vào canvas trống/khác loại; chạy test → pass
 
 **Checkpoint**: Cả 3 story độc lập hoạt động.
 

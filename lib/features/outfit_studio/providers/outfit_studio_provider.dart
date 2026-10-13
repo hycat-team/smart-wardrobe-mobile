@@ -281,9 +281,9 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     }
   }
 
-  void addItemToCanvas(WardrobeItemModel item) {
+  bool addItemToCanvas(WardrobeItemModel item) {
     final fashionItem = item.fashionItem;
-    if (fashionItem == null) return;
+    if (fashionItem == null) return false;
 
     final items = List<CanvasItem>.from(state.canvasItems);
     final role = normalizeRole(
@@ -293,6 +293,7 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     );
 
     // Khử trùng theo vai trò TRƯỚC khi chọn toạ độ: mỗi loại cơ bản một món.
+    final countBeforeRemoval = items.length;
     if (isExclusiveRole(role)) {
       items.removeWhere((it) => it.role == role.name);
       if (role == CanvasRole.fullbody) {
@@ -301,6 +302,7 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
         items.removeWhere((it) => it.role == CanvasRole.fullbody.name);
       }
     }
+    final replaced = items.length < countBeforeRemoval;
 
     final hasFullbody = items.any((it) => it.role == CanvasRole.fullbody.name);
     final coordinateMap = hasFullbody ? roleCoordinatesFullbody : roleCoordinatesSeparate;
@@ -349,6 +351,8 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       canvasItems: finalItems,
       selectedIndex: finalItems.length - 1,
     );
+
+    return replaced;
   }
 
   /// Nạp các món được AI gợi ý trực tiếp vào Studio Canvas để user tinh chỉnh.

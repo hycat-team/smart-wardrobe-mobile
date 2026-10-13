@@ -64,8 +64,11 @@ void main() {
   group('Studio single item per role (US1)', () {
     test('(a) thêm 2 áo → chỉ còn 1, là món thứ hai, id món cũ bị gỡ', () {
       final s = setup();
-      s.notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
-      s.notifier.addItemToCanvas(fixture('top2', 'Sơ mi', 'ao'));
+      final firstAdded = s.notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
+      final replaced = s.notifier.addItemToCanvas(fixture('top2', 'Sơ mi', 'ao'));
+
+      expect(firstAdded, isFalse);
+      expect(replaced, isTrue);
 
       final items = itemsOf(s.container);
       final tops = items.where((i) => i.role == 'top').toList();
@@ -123,8 +126,9 @@ void main() {
     test('(f) thêm áo rồi giày → không gỡ áo (khác loại)', () {
       final s = setup();
       s.notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
-      s.notifier.addItemToCanvas(fixture('shoe1', 'Giày sneaker', 'giay'));
+      final added = s.notifier.addItemToCanvas(fixture('shoe1', 'Giày sneaker', 'giay'));
 
+      expect(added, isFalse);
       final items = itemsOf(s.container);
       expect(items.length, 2);
       expect(items.any((i) => i.role == 'top'), isTrue);
@@ -135,8 +139,9 @@ void main() {
       final s = setup();
       expect(itemsOf(s.container), isEmpty);
 
-      s.notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
+      final added = s.notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
 
+      expect(added, isFalse);
       expect(itemsOf(s.container).length, 1);
     });
 
