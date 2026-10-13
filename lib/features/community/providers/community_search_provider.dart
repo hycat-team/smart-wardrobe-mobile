@@ -161,7 +161,7 @@ class CommunitySearchNotifier extends StateNotifier<CommunitySearchState> {
       final res = await _repository.searchCommunity(
         query: q,
         type: targetType,
-        postType: targetPostType,
+        postType: null,
         page: 1,
         limit: 20,
       );
@@ -257,7 +257,7 @@ class CommunitySearchNotifier extends StateNotifier<CommunitySearchState> {
       final res = await _repository.searchCommunity(
         query: state.query,
         type: 'posts',
-        postType: state.postTypeFilter,
+        postType: null,
         page: nextPage,
         limit: 20,
       );

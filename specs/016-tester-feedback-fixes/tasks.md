@@ -166,10 +166,10 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 ### Implementation for User Story 7
 
-- [ ] T026 [US7] Gỡ hàng 2 (chip "Tất cả bài/Bộ phối/Ảnh-Video") và `_buildPostTypeChip`; cố định `preferredSize` chỉ còn hàng segmented trong `lib/features/community/presentation/community_search_screen.dart`
-- [ ] T027 [US7] Ngừng dùng `postTypeFilter` trong luồng tìm kiếm (`lib/features/community/providers/community_search_provider.dart`): `executeSearch`/`loadMorePosts` luôn truyền `postType: null`; giữ field để tránh lan rộng model
-- [ ] T028 [US7] Cập nhật `test/community_search_filter_test.dart`: đổi assert hàng 2 sang `findsNothing` cho `Tất cả bài/Bộ phối/Ảnh-Video` (thay đổi có chủ đích)
-- [ ] T029 [US7] Chạy `flutter test test/community_search_filter_test.dart` → pass
+- [X] T026 [US7] Gỡ hàng 2 (chip "Tất cả bài/Bộ phối/Ảnh-Video") và `_buildPostTypeChip`; cố định `preferredSize` chỉ còn hàng segmented trong `lib/features/community/presentation/community_search_screen.dart`
+- [X] T027 [US7] Ngừng dùng `postTypeFilter` trong luồng tìm kiếm (`lib/features/community/providers/community_search_provider.dart`): `executeSearch`/`loadMorePosts` luôn truyền `postType: null`; giữ field để tránh lan rộng model
+- [X] T028 [US7] Cập nhật `test/community_search_filter_test.dart`: đổi assert hàng 2 sang `findsNothing` cho `Tất cả bài/Bộ phối/Ảnh-Video` (thay đổi có chủ đích)
+- [X] T029 [US7] Chạy `flutter test test/community_search_filter_test.dart` → pass
 
 **Checkpoint**: Tất cả 7 user story độc lập hoạt động.
 

@@ -110,46 +110,16 @@ void main() {
     );
   });
 
-  testWidgets('chip loại bài ôm sát chữ, canh trái, đủ 3 và nằm trong màn',
-      (tester) async {
+  testWidgets('tab "Bài viết" KHÔNG còn chip loại bài', (tester) async {
     await pumpAt(tester, smallScreen, searchType: 'posts');
 
     for (final label in ['Tất cả bài', 'Bộ phối', 'Ảnh/Video']) {
-      expect(find.text(label), findsOneWidget, reason: 'thiếu chip $label');
+      expect(
+        find.text(label),
+        findsNothing,
+        reason: 'hàng lọc loại bài đã gỡ — không còn chip $label',
+      );
     }
-
-    final a = tester.getCenter(find.text('Tất cả bài')).dx;
-    final b = tester.getCenter(find.text('Bộ phối')).dx;
-    final c = tester.getCenter(find.text('Ảnh/Video')).dx;
-
-    // Thứ tự trái → phải.
-    expect(a, lessThan(b));
-    expect(b, lessThan(c));
-
-    // Hàng canh trái: mép trái CHIP (không phải mép chữ) bằng lề 16.
-    final firstChip = find.ancestor(
-      of: find.text('Tất cả bài'),
-      matching: find.byType(AnimatedContainer),
-    );
-    expect(
-      tester.getTopLeft(firstChip).dx,
-      closeTo(16, 1),
-      reason: 'hàng chip phải canh trái từ lề 16 của màn hình',
-    );
-
-    // Hàng chip bọc trong `SingleChildScrollView` ngang → dù có dài hơn màn hình
-    // thì vẫn cuộn tới được, không bị cắt cụt. Không assert "3 chip đều nằm
-    // trong 320px" vì `google_fonts` không tải được font trong test nên dùng
-    // font dự phòng rộng gấp đôi, phép đo đó không phản ánh máy thật.
-    final scroll = find.descendant(
-      of: find.byType(CommunitySearchScreen),
-      matching: find.byType(SingleChildScrollView),
-    );
-    expect(
-      scroll,
-      findsWidgets,
-      reason: 'hàng chip phải cuộn ngang được để không bị cắt',
-    );
   });
 
   testWidgets('segmented control chiếm HẾT bề ngang, không bị co lại',
@@ -236,13 +206,13 @@ void main() {
     );
   });
 
-  testWidgets('hàng 2 chỉ hiện khi chọn tab "Bài viết"', (tester) async {
-    await pumpAt(tester, smallScreen, searchType: 'all');
-    expect(find.text('Tất cả bài'), findsNothing);
-    expect(find.text('Bộ phối'), findsNothing);
-
-    await pumpAt(tester, smallScreen, searchType: 'users');
-    expect(find.text('Bộ phối'), findsNothing);
+  testWidgets('không còn hàng lọc loại bài ở mọi tab', (tester) async {
+    for (final type in ['all', 'users', 'posts']) {
+      await pumpAt(tester, smallScreen, searchType: type);
+      expect(find.text('Tất cả bài'), findsNothing);
+      expect(find.text('Bộ phối'), findsNothing);
+      expect(find.text('Ảnh/Video'), findsNothing);
+    }
   });
 
   testWidgets('CONTROL: cơ chế bắt overflow thực sự hoạt động', (tester) async {

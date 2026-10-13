@@ -13,9 +13,6 @@ import 'widgets/post_card.dart';
 /// Chiều cao hàng 1 (segmented control chọn phạm vi: Tất cả / Tác giả / Bài viết).
 const double kFilterRow1Height = 44;
 
-/// Chiều cao hàng 2 (lọc loại bài) — chỉ hiện khi tab "Bài viết" đang chọn.
-const double kFilterRow2Height = 28;
-
 /// Giá trị `searchType` tương ứng với từng phần của segmented control.
 const List<String> _scopeValues = ['all', 'users', 'posts'];
 
@@ -150,13 +147,8 @@ class _CommunitySearchScreenState extends ConsumerState<CommunitySearchScreen> {
           ),
         ),
         bottom: PreferredSize(
-          // Chiều cao động: hàng 2 (lọc loại bài) chỉ xuất hiện khi đang ở
-          // tab "Bài viết". Trước đây mọi thứ nằm chung một `Row` cao 48px
-          // (3 chip tab + divider + 3 chip loại bài) nên phần chip loại bài bị
-          // `Expanded` nén và tràn khỏi màn hình.
-          preferredSize: Size.fromHeight(
-            kFilterRow1Height + (state.searchType == 'posts' ? kFilterRow2Height : 0) + 1,
-          ),
+          // Chỉ còn hàng segmented chọn phạm vi tìm kiếm.
+          preferredSize: Size.fromHeight(kFilterRow1Height + 1),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             // BẮT BUỘC: mặc định của `Column` là `crossAxisAlignment: center`
@@ -168,15 +160,12 @@ class _CommunitySearchScreenState extends ConsumerState<CommunitySearchScreen> {
             children: [
               // Hàng 1 — chọn phạm vi tìm kiếm: segmented control 3 phần.
               //
-              // Trước đây là 3 pill rời rạc nằm chung hàng với 3 chip loại bài
-              // (tràn màn hình). Sau đó tách 2 hàng nhưng dùng `Expanded` + `Center`
-              // khiến mỗi pill trôi lơ lửng giữa ô rộng 1/3 — trông rời rạc.
-              // Nay dùng đúng segmented control trượt của tab Cộng đồng: các
-              // phần liền mạch trong một khối, viên primary trượt sang phần đang
+              // Dùng đúng segmented control trượt của tab Cộng đồng: các phần
+              // liền mạch trong một khối, viên primary trượt sang phần đang
               // chọn, vừa gọn vừa không bao giờ tràn.
               Padding(
-                // Ngang 16 để khớp hàng chip bên dưới và tab switcher của
-                // trang Cộng đồng; dọc 2 để khối không dính sát mép trên.
+                // Ngang 16 để khớp tab switcher của trang Cộng đồng; dọc 2 để
+                // khối không dính sát mép trên.
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
                 child: ClosySegmentedControl(
                   items: _scopeSegments,
@@ -187,82 +176,12 @@ class _CommunitySearchScreenState extends ConsumerState<CommunitySearchScreen> {
                 ),
               ),
 
-              // Hàng 2 — lọc loại bài, chỉ khi tab "Bài viết" đang chọn.
-              if (state.searchType == 'posts')
-                Container(
-                  height: kFilterRow2Height,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  // Cuộn ngang là **lưới an toàn**: 3 chip đã bỏ icon nên trên
-                  // máy thật vừa khít 288px ở màn 320px, nhưng chỉ còn rất ít
-                  // biên dự phòng — font hệ thống lớn hơn thì vẫn cuộn tới
-                  // được thay vì bị cắt cụt.
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildPostTypeChip('Tất cả bài', null, state.postTypeFilter, () {
-                          notifier.changePostTypeFilter(null);
-                        }),
-                        const SizedBox(width: 6),
-                        _buildPostTypeChip('Bộ phối', 'outfit', state.postTypeFilter, () {
-                          notifier.changePostTypeFilter('outfit');
-                        }),
-                        const SizedBox(width: 6),
-                        _buildPostTypeChip('Ảnh/Video', 'media', state.postTypeFilter, () {
-                          notifier.changePostTypeFilter('media');
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-
               Container(height: 1, color: AppColors.border.withOpacity(0.5)),
             ],
           ),
         ),
       ),
       body: _buildBody(state, notifier),
-    );
-  }
-
-  /// Chip lọc phụ — bo tròn 14, chọn = nền `accentSand` 50%, giống chip sắp xếp
-  /// của trang Cộng đồng (`_buildSortChip`) nhưng **không kèm icon**.
-  ///
-  /// Vì sao bỏ icon: 3 chip ("Tất cả bài" / "Bộ phối" / "Ảnh/Video") cộng 3
-  /// icon 14px + 3 khoảng đệm 20px vừa đúng bề rộng khả dụng 288px ở màn 320px
-  /// — không còn biên dự phòng, dễ tràn. Icon vẫn giữ ở segmented control hàng 1
-  /// (ở đó mỗi phần rộng ~93px nên rất thoải mái).
-  ///
-  /// Không bọc `Expanded` nữa: chip ôm sát chữ và hàng canh trái, nhờ vậy 3 chip
-  /// liền mạch thay vì lơ lửng ở giữa các ô rộng bằng nhau.
-  Widget _buildPostTypeChip(String label, String? value, String? currentValue, VoidCallback onTap) {
-    final isSelected = value == currentValue;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.accentSand.withOpacity(0.5) : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.accentSandDark.withOpacity(0.5)
-                : AppColors.border.withOpacity(0.6),
-            width: 0.6,
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.beVietnamPro(
-            fontSize: 11.5,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            color: isSelected ? AppColors.primary : AppColors.textSecondary,
-          ),
-        ),
-      ),
     );
   }
 
