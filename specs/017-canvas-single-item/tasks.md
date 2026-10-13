@@ -69,13 +69,13 @@ description: "Task list — Canvas một món mỗi loại + sửa áo khoác đ
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T006 [P] [US2] Tạo `test/canvas_outerwear_layout_test.dart`: helper `layoutOuterwearBesideBase` — với (áo+áo khoác) và (đầm+áo khoác): `outerwearLeftEdge ≥ baseRightEdge` (không chồng ngang), cả hai trong khung trên ≥2 kích thước canvas; và bất biến: chỉ outerwear (không lớp nền) → không dịch
+- [X] T006 [P] [US2] Tạo `test/canvas_outerwear_layout_test.dart`: helper `layoutOuterwearBesideBase` — với (áo+áo khoác) và (đầm+áo khoác): `outerwearLeftEdge ≥ baseRightEdge` (không chồng ngang), cả hai trong khung trên ≥2 kích thước canvas; và bất biến: chỉ outerwear (không lớp nền) → không dịch
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US2] Trong `lib/features/outfit_studio/layout/canvas_layout.dart` thêm helper thuần `List<CanvasItem> layoutOuterwearBesideBase(List<CanvasItem> items, {required double canvasWidth, required double canvasHeight})`: nếu có `outerwear` + lớp nền (`top`/`fullbody`) → chia đôi bề ngang khả dụng (nền trái, outerwear phải), thu `scale` mỗi món để vừa nửa khung (sàn 0.15), rồi `clampCanvasItem`; giữ outerwear `layerOrder` trên
-- [ ] T008 [US2] Trong `addItemToCanvas` (`outfit_studio_provider.dart`): gọi `layoutOuterwearBesideBase` sau khi thêm, **chỉ khi** món vừa thêm là `outerwear` hoặc lớp nền (`top`/`fullbody`)
-- [ ] T009 [US2] Chạy `flutter test test/canvas_outerwear_layout_test.dart` → pass
+- [X] T007 [US2] Trong `lib/features/outfit_studio/layout/canvas_layout.dart` thêm helper thuần `List<CanvasItem> layoutOuterwearBesideBase(List<CanvasItem> items, {required double canvasWidth, required double canvasHeight})`: nếu có `outerwear` + lớp nền (`top`/`fullbody`) → chia đôi bề ngang khả dụng (nền trái, outerwear phải), thu `scale` mỗi món để vừa nửa khung (sàn 0.15), rồi `clampCanvasItem`; giữ outerwear `layerOrder` trên
+- [X] T008 [US2] Trong `addItemToCanvas` (`outfit_studio_provider.dart`): gọi `layoutOuterwearBesideBase` sau khi thêm, **chỉ khi** món vừa thêm là `outerwear` hoặc lớp nền (`top`/`fullbody`)
+- [X] T009 [US2] Chạy `flutter test test/canvas_outerwear_layout_test.dart` → pass
 
 **Checkpoint**: US1 + US2 hoạt động độc lập.
 

@@ -331,9 +331,23 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     final clampedItem = clampCanvasItem(newItem, canvasW, canvasH);
 
     items.add(clampedItem);
+
+    // Sửa lỗi áo khoác đè lớp nền: chỉ bố trí lại khi món vừa thêm là outerwear
+    // hoặc lớp nền, để thêm giày/phụ kiện không reset vị trí các món khác.
+    var finalItems = items;
+    if (role == CanvasRole.outerwear ||
+        role == CanvasRole.top ||
+        role == CanvasRole.fullbody) {
+      finalItems = layoutOuterwearBesideBase(
+        items,
+        canvasWidth: canvasW,
+        canvasHeight: canvasH,
+      );
+    }
+
     state = state.copyWith(
-      canvasItems: items,
-      selectedIndex: items.length - 1,
+      canvasItems: finalItems,
+      selectedIndex: finalItems.length - 1,
     );
   }
 

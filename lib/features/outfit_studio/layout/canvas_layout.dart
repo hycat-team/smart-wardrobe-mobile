@@ -486,6 +486,62 @@ CanvasItem clampCanvasItem(CanvasItem item, double canvasWidth, double canvasHei
   );
 }
 
+/// Xếp áo khoác sang cột phải, lớp nền (`top`/`fullbody`) sang cột trái khi
+/// cùng nằm trên canvas (R4/INV-6).
+///
+/// Chia đôi bề ngang khả dụng: lớp nền canh nửa trái, outerwear canh nửa phải;
+/// thu `scale` mỗi món để bề rộng vừa một nửa khung (sàn 0.15, không tăng), rồi
+/// kẹp toàn bộ danh sách vào khung. Trả về nguyên trạng nếu thiếu `outerwear`
+/// hoặc thiếu lớp nền.
+List<CanvasItem> layoutOuterwearBesideBase(
+  List<CanvasItem> items, {
+  required double canvasWidth,
+  required double canvasHeight,
+}) {
+  final int outerwearIndex =
+      items.indexWhere((it) => it.role == CanvasRole.outerwear.name);
+  final int baseIndex = items.indexWhere(
+    (it) => it.role == CanvasRole.top.name || it.role == CanvasRole.fullbody.name,
+  );
+  if (outerwearIndex < 0 || baseIndex < 0) return items;
+
+  const double margin = 8.0;
+  const double itemScaleMultiplier = 1.25;
+  final double availW = math.max(0.0, canvasWidth - (margin * 2));
+  final double halfW = availW / 2;
+  final double leftCenterX = -availW / 4;
+  final double rightCenterX = availW / 4;
+
+  // Thu scale để bề rộng vừa nửa khung; không bao giờ tăng, sàn 0.15.
+  double halfFitScale(CanvasItem item) {
+    final double unitW = item.baseScale * item.boxRatioW * itemScaleMultiplier;
+    if (unitW <= 0) return item.scale;
+    final double fit = halfW / unitW;
+    return math.min(item.scale, math.max(0.15, fit));
+  }
+
+  final placed = List<CanvasItem>.from(items);
+  final base = placed[baseIndex].copyWith(
+    positionX: leftCenterX,
+    scale: halfFitScale(placed[baseIndex]),
+  );
+  placed[baseIndex] = base;
+
+  var outerwear = placed[outerwearIndex].copyWith(
+    positionX: rightCenterX,
+    scale: halfFitScale(placed[outerwearIndex]),
+  );
+  if (outerwear.layerOrder <= base.layerOrder) {
+    outerwear = outerwear.copyWith(layerOrder: base.layerOrder + 1);
+  }
+  placed[outerwearIndex] = outerwear;
+
+  for (var i = 0; i < placed.length; i++) {
+    placed[i] = clampCanvasItem(placed[i], canvasWidth, canvasHeight);
+  }
+  return placed;
+}
+
 double _distance(CanvasItem a, CanvasItem b) {
   final dx = a.positionX - b.positionX;
   final dy = a.positionY - b.positionY;
