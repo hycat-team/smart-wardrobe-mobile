@@ -65,35 +65,35 @@ class RoleBoundingBox {
 /// Bố cục giải phẫu chuẩn cho trang phục dạng rời (top + bottom + footwear).
 /// Gốc tọa độ (0, 0) tại tâm canvas.
 const roleCoordinatesSeparate = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 137, zIndex: 8),
-  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 269, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -210, scale: 253, zIndex: 7),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 269, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 144, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -285, scale: 118, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 270, scale: 90, zIndex: 2),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 283, zIndex: 5),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 270, scale: 90, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -660, scale: 160, zIndex: 8),
+  CanvasRole.top: RolePlacement(x: 0, y: -280, scale: 200, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -280, scale: 210, zIndex: 7),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 220, scale: 200, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 590, scale: 160, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -500, scale: 170, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 300, scale: 150, zIndex: 2),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -30, scale: 210, zIndex: 5),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 300, scale: 150, zIndex: 2),
 };
 
 /// Bố cục giải phẫu chuẩn cho trang phục dạng liền thân (fullbody + footwear).
 const roleCoordinatesFullbody = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 137, zIndex: 8),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 283, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -195, scale: 253, zIndex: 7),
-  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 269, zIndex: 5),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 269, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 144, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -278, scale: 118, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 255, scale: 90, zIndex: 2),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 255, scale: 90, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -660, scale: 160, zIndex: 8),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -30, scale: 210, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -280, scale: 210, zIndex: 7),
+  CanvasRole.top: RolePlacement(x: 0, y: -280, scale: 200, zIndex: 5),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 220, scale: 200, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 590, scale: 160, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -500, scale: 170, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 300, scale: 150, zIndex: 2),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 300, scale: 150, zIndex: 2),
 };
 
 /// Tọa độ bổ sung dành cho phụ kiện thứ 2 trở lên (phân bổ so le sang cánh phải).
 const secondaryAccessoryCoordinates = <RolePlacement>[
-  RolePlacement(x: 240, y: -210, scale: 118, zIndex: 9), // Phụ kiện 2: cánh phải trên
-  RolePlacement(x: 240, y: -150, scale: 118, zIndex: 9), // Phụ kiện 3: cánh phải dưới
-  RolePlacement(x: -240, y: -170, scale: 118, zIndex: 9), // Phụ kiện 4: cánh trái trên
+  RolePlacement(x: 240, y: -560, scale: 170, zIndex: 9), // Phụ kiện 2: cánh phải trên
+  RolePlacement(x: 240, y: -440, scale: 170, zIndex: 9), // Phụ kiện 3: cánh phải dưới
+  RolePlacement(x: -240, y: -520, scale: 170, zIndex: 9), // Phụ kiện 4: cánh trái trên
 ];
 
 /// Lấy vị trí cho phụ kiện thứ N (0-based: 0 là phụ kiện chính).
@@ -109,8 +109,8 @@ RolePlacement getAccessoryPlacement(int accessoryIndex, {bool hasFullbody = fals
   }
   return RolePlacement(
     x: 240,
-    y: 80 + (secIndex - 1) * 60.0,
-    scale: 118,
+    y: -440 + (secIndex - 1) * 80.0,
+    scale: 170,
     zIndex: 9,
   );
 }

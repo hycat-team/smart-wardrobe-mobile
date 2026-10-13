@@ -63,20 +63,20 @@ void main() {
     test('roleCoordinatesSeparate and roleCoordinatesFullbody verify correct coordinates and layers', () {
       final sepTop = roleCoordinatesSeparate[CanvasRole.top]!;
       expect(sepTop.x, 0.0);
-      expect(sepTop.y, -210.0);
-      expect(sepTop.scale, 269.0);
+      expect(sepTop.y, -280.0);
+      expect(sepTop.scale, 200.0);
       expect(sepTop.zIndex, 5);
 
       final fb = roleCoordinatesFullbody[CanvasRole.fullbody]!;
       expect(fb.x, 0.0);
-      expect(fb.y, -20.0);
-      expect(fb.scale, 283.0);
+      expect(fb.y, -30.0);
+      expect(fb.scale, 210.0);
       expect(fb.zIndex, 5);
 
       final outw = roleCoordinatesSeparate[CanvasRole.outerwear]!;
       expect(outw.x, -25.0);
-      expect(outw.y, -210.0);
-      expect(outw.scale, 253.0);
+      expect(outw.y, -280.0);
+      expect(outw.scale, 210.0);
       expect(outw.zIndex, 7);
     });
   });
