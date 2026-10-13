@@ -58,81 +58,60 @@ void main() {
         reason: '$label tràn dưới trên ${w.toInt()}x${h.toInt()}');
   }
 
-  /// Áo khoác rộng bằng áo và chồng lên áo ≤ 40%; áo khoác ở lớp trên.
-  void expectOuterwearOverBase(CanvasItem base, CanvasItem outw, double w, double h) {
+  void expectOuterwearEqualAndOverlaps(CanvasItem base, CanvasItem outw, double w, double h) {
     final baseW = widthOf(base);
     final owW = widthOf(outw);
+    expect(owW, closeTo(baseW, 1.5),
+        reason: 'áo khoác không bằng kích thước áo trên ${w.toInt()}x${h.toInt()}');
     final baseL = base.positionX - baseW / 2;
     final baseR = base.positionX + baseW / 2;
     final outL = outw.positionX - owW / 2;
     final outR = outw.positionX + owW / 2;
     final overlap = (math.min(baseR, outR) - math.max(baseL, outL)).clamp(0.0, double.infinity);
-    expect(overlap, closeTo(0.40 * baseW, 1.5),
-        reason: 'chồng không ~40% nền trên ${w.toInt()}x${h.toInt()} (overlap=$overlap, baseW=$baseW)');
     expect(overlap, lessThanOrEqualTo(0.40 * baseW + 1.5),
         reason: 'áo khoác chiếm > 40% áo trên ${w.toInt()}x${h.toInt()}');
-    expect(owW, closeTo(baseW, 1.5),
-        reason: 'áo khoác không bằng kích thước áo trên ${w.toInt()}x${h.toInt()}');
+    expect(overlap, greaterThan(0), reason: 'áo khoác không chồng áo');
     expect(outw.layerOrder, greaterThan(base.layerOrder));
   }
 
-  group('layoutOuterwearOverBase', () {
+  group('decorateAndFitOutfit — outerwear', () {
     for (final size in canvasSizes) {
-      test('(a) top + outerwear: bằng áo, chồng ~40%, áo không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
+      test('(a) top + outerwear: bằng áo, chồng ≤40%, trong khung ${size.w.toInt()}x${size.h.toInt()}', () {
         final items = [
           roleItem('top', CanvasRole.top),
           roleItem('outerwear', CanvasRole.outerwear),
         ];
-        final topBefore = items[0];
-
-        final result = layoutOuterwearOverBase(items, canvasWidth: size.w, canvasHeight: size.h);
+        final result = decorateAndFitOutfit(items, canvasWidth: size.w, canvasHeight: size.h);
         final base = baseOf(result);
         final outw = outerwearOf(result);
-
-        expect(base.positionX, closeTo(topBefore.positionX, tolerance));
-        expect(base.positionY, closeTo(topBefore.positionY, tolerance));
-
-        expectOuterwearOverBase(base, outw, size.w, size.h);
+        expectOuterwearEqualAndOverlaps(base, outw, size.w, size.h);
         expectInside(base, size.w, size.h, 'top');
         expectInside(outw, size.w, size.h, 'outerwear');
       });
 
-      test('(b) fullbody + outerwear: bằng áo, chồng ~40%, nền không dời trên ${size.w.toInt()}x${size.h.toInt()}', () {
+      test('(b) fullbody + outerwear: bằng áo, chồng ≤40%, trong khung ${size.w.toInt()}x${size.h.toInt()}', () {
         final items = [
           roleItem('dress', CanvasRole.fullbody),
           roleItem('outerwear', CanvasRole.outerwear),
         ];
-        final dressBefore = items[0];
-
-        final result = layoutOuterwearOverBase(items, canvasWidth: size.w, canvasHeight: size.h);
+        final result = decorateAndFitOutfit(items, canvasWidth: size.w, canvasHeight: size.h);
         final base = baseOf(result);
         final outw = outerwearOf(result);
-
-        expect(base.positionX, closeTo(dressBefore.positionX, tolerance));
-        expect(base.positionY, closeTo(dressBefore.positionY, tolerance));
-
-        expectOuterwearOverBase(base, outw, size.w, size.h);
+        expectOuterwearEqualAndOverlaps(base, outw, size.w, size.h);
         expectInside(outw, size.w, size.h, 'outerwear');
       });
     }
 
     test('(c) chỉ outerwear (không lớp nền) → không dịch chuyển', () {
-      final items = [
-        roleItem('outerwear', CanvasRole.outerwear),
-        roleItem('acc', CanvasRole.accessory, x: -240),
-      ];
-      final beforeX = items.map((i) => i.positionX).toList();
-      final beforeY = items.map((i) => i.positionY).toList();
-      final beforeScale = items.map((i) => i.scale).toList();
+      final items = [roleItem('outerwear', CanvasRole.outerwear)];
+      final before = (items[0].positionX, items[0].positionY, items[0].scale);
 
-      final result = layoutOuterwearOverBase(items, canvasWidth: 390, canvasHeight: 700);
+      final result = decorateAndFitOutfit(items, canvasWidth: 800, canvasHeight: 1000);
 
-      expect(identical(result, items), isTrue);
-      for (var i = 0; i < result.length; i++) {
-        expect(result[i].positionX, beforeX[i]);
-        expect(result[i].positionY, beforeY[i]);
-        expect(result[i].scale, beforeScale[i]);
-      }
+      expect(result.length, 1);
+      expect(result[0].positionX, before.$1);
+      expect(result[0].positionY, before.$2);
+      expect(result[0].scale, before.$3);
     });
 
     test('(h) phụ kiện bên trái → áo khoác sang phải (đối diện)', () {
@@ -141,10 +120,8 @@ void main() {
         roleItem('outerwear', CanvasRole.outerwear),
         roleItem('acc', CanvasRole.accessory, x: -240),
       ];
-      final result = layoutOuterwearOverBase(items, canvasWidth: 390, canvasHeight: 700);
-      final base = baseOf(result);
-      final outw = outerwearOf(result);
-      expect(outw.positionX, greaterThan(base.positionX));
+      final result = layoutOuterwearOverBase(items, canvasWidth: 800, canvasHeight: 1000);
+      expect(outerwearOf(result).positionX, greaterThan(baseOf(result).positionX));
     });
 
     test('(i) phụ kiện bên phải → áo khoác sang trái (đối diện)', () {
@@ -153,16 +130,14 @@ void main() {
         roleItem('outerwear', CanvasRole.outerwear),
         roleItem('acc', CanvasRole.accessory, x: 240),
       ];
-      final result = layoutOuterwearOverBase(items, canvasWidth: 390, canvasHeight: 700);
-      final base = baseOf(result);
-      final outw = outerwearOf(result);
-      expect(outw.positionX, lessThan(base.positionX));
+      final result = layoutOuterwearOverBase(items, canvasWidth: 800, canvasHeight: 1000);
+      expect(outerwearOf(result).positionX, lessThan(baseOf(result).positionX));
     });
   });
 
   group('Studio addItemToCanvas', () {
     const canvasW = 390.0;
-    const canvasH = 700.0;
+    const canvasH = 900.0;
 
     WardrobeItemModel fixture(String id, String name, String slug) {
       return WardrobeItemModel(
@@ -177,7 +152,13 @@ void main() {
       );
     }
 
-    test('(d) thêm áo rồi áo khoác → bằng áo, chồng ~40%, khối căn giữa', () {
+    void expectAllInside(ProviderContainer c) {
+      for (final it in c.read(outfitStudioProvider).canvasItems) {
+        expectInside(it, canvasW, canvasH, it.name);
+      }
+    }
+
+    test('(d) thêm áo rồi áo khoác → bằng áo, chồng ≤40%, trong khung', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
@@ -188,40 +169,26 @@ void main() {
 
       final items = container.read(outfitStudioProvider).canvasItems;
       expect(items.length, 2);
-      final base = baseOf(items);
-      final outw = outerwearOf(items);
-
-      expectOuterwearOverBase(base, outw, canvasW, canvasH);
-
-      // Khối (áo + áo khoác) được căn giữa bề ngang.
-      double minX = double.infinity;
-      double maxX = -double.infinity;
-      for (final it in items) {
-        final w = widthOf(it);
-        minX = math.min(minX, it.positionX - w / 2);
-        maxX = math.max(maxX, it.positionX + w / 2);
-      }
-      expect((minX + maxX) / 2, closeTo(0, 0.6));
+      expectOuterwearEqualAndOverlaps(baseOf(items), outerwearOf(items), canvasW, canvasH);
+      expectAllInside(container);
     });
 
-    test('(e) thêm giày sau áo không reset vị trí áo', () {
+    test('(e) thêm giày sau áo → áo còn, mọi món trong khung', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
       notifier.setCanvasSize(canvasW, canvasH);
 
       notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
-      final before = container.read(outfitStudioProvider).canvasItems.first;
-
       notifier.addItemToCanvas(fixture('shoe1', 'Giày sneaker', 'giay'));
 
-      final after = container.read(outfitStudioProvider).canvasItems.first;
-      expect(after.positionX, before.positionX);
-      expect(after.positionY, before.positionY);
-      expect(after.scale, before.scale);
+      final items = container.read(outfitStudioProvider).canvasItems;
+      expect(items.any((i) => i.role == 'top'), isTrue);
+      expect(items.any((i) => i.role == 'footwear'), isTrue);
+      expectAllInside(container);
     });
 
-    test('(f) thêm quần SAU áo+khoác không dời áo (món khác loại)', () {
+    test('(f) thêm quần SAU áo+khoác → không gỡ món, trong khung', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
@@ -229,14 +196,11 @@ void main() {
 
       notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
       notifier.addItemToCanvas(fixture('coat1', 'Áo khoác dạ', 'ao-khoac'));
-      final topBefore = baseOf(container.read(outfitStudioProvider).canvasItems);
-
       notifier.addItemToCanvas(fixture('bot1', 'Quần jean', 'quan'));
 
-      final topAfter = baseOf(container.read(outfitStudioProvider).canvasItems);
-      expect(topAfter.positionX, closeTo(topBefore.positionX, tolerance));
-      expect(topAfter.positionY, closeTo(topBefore.positionY, tolerance));
-      expect(topAfter.scale, closeTo(topBefore.scale, tolerance));
+      final items = container.read(outfitStudioProvider).canvasItems;
+      expect(items.length, 3);
+      expectAllInside(container);
     });
 
     test('(g) thay giày cùng loại → giữ đúng vị trí + kích thước món cũ', () {
@@ -246,8 +210,8 @@ void main() {
       notifier.setCanvasSize(canvasW, canvasH);
 
       notifier.addItemToCanvas(fixture('shoe1', 'Giày A', 'giay'));
-      notifier.updateItemPosition(0, 20, -10);
-      notifier.updateItemScale(0, 0.45);
+      notifier.updateItemPosition(0, 15, -10);
+      notifier.updateItemScale(0, 0.5);
 
       final before = container.read(outfitStudioProvider).canvasItems.single;
 

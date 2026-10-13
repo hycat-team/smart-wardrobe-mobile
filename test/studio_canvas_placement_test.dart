@@ -75,24 +75,18 @@ void main() {
       );
     }
 
-    test('only the newly added item is clamped; existing items keep placement (INV-3)', () {
+    test('thêm món thứ hai → cả hai nằm trong khung (fit-to-canvas)', () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
       final notifier = container.read(outfitStudioProvider.notifier);
       notifier.setCanvasSize(320, 520);
 
       notifier.addItemToCanvas(fixture('top', 'Áo thun', 'ao'));
-      final before = container.read(outfitStudioProvider).canvasItems.first;
-      final posX = before.positionX;
-      final posY = before.positionY;
-      final scale = before.scale;
-
       notifier.addItemToCanvas(fixture('acc', 'Túi xách', 'phu-kien'));
 
-      final after = container.read(outfitStudioProvider).canvasItems.first;
-      expect(after.positionX, posX);
-      expect(after.positionY, posY);
-      expect(after.scale, scale);
+      final items = container.read(outfitStudioProvider).canvasItems;
+      expect(items.length, 2);
+      expectInsideCanvas(items, 320, 520);
     });
   });
 }

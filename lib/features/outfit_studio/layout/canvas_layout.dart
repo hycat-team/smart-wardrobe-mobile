@@ -65,35 +65,35 @@ class RoleBoundingBox {
 /// Bố cục giải phẫu chuẩn cho trang phục dạng rời (top + bottom + footwear).
 /// Gốc tọa độ (0, 0) tại tâm canvas.
 const roleCoordinatesSeparate = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 171, zIndex: 8),
-  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 336, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -210, scale: 316, zIndex: 7),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 336, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 180, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -285, scale: 148, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 270, scale: 112, zIndex: 2),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 354, zIndex: 5),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 270, scale: 112, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 137, zIndex: 8),
+  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 269, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -210, scale: 253, zIndex: 7),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 269, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 144, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -285, scale: 118, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 270, scale: 90, zIndex: 2),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 283, zIndex: 5),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 270, scale: 90, zIndex: 2),
 };
 
 /// Bố cục giải phẫu chuẩn cho trang phục dạng liền thân (fullbody + footwear).
 const roleCoordinatesFullbody = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 171, zIndex: 8),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 354, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -195, scale: 316, zIndex: 7),
-  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 336, zIndex: 5),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 336, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 180, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -278, scale: 148, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 255, scale: 112, zIndex: 2),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 255, scale: 112, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 137, zIndex: 8),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 283, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -195, scale: 253, zIndex: 7),
+  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 269, zIndex: 5),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 269, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 144, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -278, scale: 118, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 255, scale: 90, zIndex: 2),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 255, scale: 90, zIndex: 2),
 };
 
 /// Tọa độ bổ sung dành cho phụ kiện thứ 2 trở lên (phân bổ so le sang cánh phải).
 const secondaryAccessoryCoordinates = <RolePlacement>[
-  RolePlacement(x: 240, y: -210, scale: 148, zIndex: 9), // Phụ kiện 2: cánh phải trên
-  RolePlacement(x: 240, y: -150, scale: 148, zIndex: 9), // Phụ kiện 3: cánh phải dưới
-  RolePlacement(x: -240, y: -170, scale: 148, zIndex: 9), // Phụ kiện 4: cánh trái trên
+  RolePlacement(x: 240, y: -210, scale: 118, zIndex: 9), // Phụ kiện 2: cánh phải trên
+  RolePlacement(x: 240, y: -150, scale: 118, zIndex: 9), // Phụ kiện 3: cánh phải dưới
+  RolePlacement(x: -240, y: -170, scale: 118, zIndex: 9), // Phụ kiện 4: cánh trái trên
 ];
 
 /// Lấy vị trí cho phụ kiện thứ N (0-based: 0 là phụ kiện chính).
@@ -110,7 +110,7 @@ RolePlacement getAccessoryPlacement(int accessoryIndex, {bool hasFullbody = fals
   return RolePlacement(
     x: 240,
     y: 80 + (secIndex - 1) * 60.0,
-    scale: 148,
+    scale: 118,
     zIndex: 9,
   );
 }
@@ -501,10 +501,8 @@ List<CanvasItem> layoutOuterwearOverBase(
   required double canvasWidth,
   required double canvasHeight,
 }) {
-  const double margin = 8.0;
-  const double itemScaleMultiplier = 1.25;
   const double overlapFraction = 0.40;
-  const double minScale = 0.15;
+  const double itemScaleMultiplier = 1.25;
 
   final int outerwearIndex =
       items.indexWhere((it) => it.role == CanvasRole.outerwear.name);
@@ -519,66 +517,37 @@ List<CanvasItem> layoutOuterwearOverBase(
   final double baseCoeff = coeff(base);
   final double owCoeff = coeff(ow);
 
-  final double minX = -canvasWidth / 2 + margin;
-  final double maxX = canvasWidth / 2 - margin;
-  final double baseX = base.positionX;
+  // Giữ NGUYÊN kích thước áo; áo khoác rộng BẰNG áo.
+  final double baseW = baseCoeff * base.scale;
+  final double owScale =
+      owCoeff > 0 ? (baseW / owCoeff).clamp(0.15, 3.0) : ow.scale;
+  final double owW = owCoeff * owScale;
+  final double overlap = overlapFraction * baseW;
 
-  // Với áo khoác rộng bằng áo và chồng `overlapFraction` bề rộng áo:
-  //   phải: baseX + (1.1)*baseW ≤ maxX  → baseW ≤ (maxX - baseX) / 1.1
-  final double denom = 1.0 + 0.5 - overlapFraction; // 1.1
-  final double roomRightBaseW = (maxX - baseX) / denom;
-  final double roomLeftBaseW = (baseX - minX) / denom;
-
-  // Áo khoác luôn ĐỐI DIỆN phụ kiện.
+  // Áo khoác ĐỐI DIỆN phụ kiện (nếu có), ngược lại bên phải.
   final accessories = items.where((it) => it.role == CanvasRole.accessory.name);
-  final bool hasLeftAcc = accessories.any((it) => it.positionX < 0);
-  final bool hasRightAcc = accessories.any((it) => it.positionX > 0);
-  final bool useRight;
-  if (hasLeftAcc && !hasRightAcc) {
-    useRight = true;
-  } else if (hasRightAcc && !hasLeftAcc) {
-    useRight = false;
-  } else {
-    useRight = roomRightBaseW >= roomLeftBaseW;
-  }
+  final bool accRight = accessories.any((it) => it.positionX > 0);
+  final bool accLeft = accessories.any((it) => it.positionX < 0);
+  final bool useRight =
+      (accLeft && !accRight) ? true : (accRight && !accLeft) ? false : true;
 
-  final double baseWnat = baseCoeff * base.scale;
-  final double allowedBaseW = math.max(
-    0.0,
-    math.min(baseWnat, useRight ? roomRightBaseW : roomLeftBaseW),
-  );
-  final double targetBaseScale = baseCoeff > 0 ? allowedBaseW / baseCoeff : base.scale;
-  final double newBaseScale = base.scale < minScale
-      ? base.scale
-      : targetBaseScale.clamp(minScale, base.scale);
-  final double newBaseW = baseCoeff * newBaseScale;
-
-  // Áo khoác rộng bằng áo (cùng kích thước).
-  final double newOwScale =
-      owCoeff > 0 ? (newBaseW / owCoeff).clamp(minScale, 3.0) : ow.scale;
-  final double newOwW = owCoeff * newOwScale;
-  final double overlap = overlapFraction * newBaseW;
-
-  final double baseL = baseX - newBaseW / 2;
-  final double baseR = baseX + newBaseW / 2;
+  final double baseL = base.positionX - baseW / 2;
+  final double baseR = base.positionX + baseW / 2;
   final double owX = useRight
-      ? (baseR - overlap) + newOwW / 2
-      : (baseL + overlap) - newOwW / 2;
+      ? (baseR - overlap) + owW / 2
+      : (baseL + overlap) - owW / 2;
 
   final placed = List<CanvasItem>.from(items);
-  placed[baseIndex] = base.copyWith(scale: newBaseScale);
   var outerwear = ow.copyWith(
     positionX: owX,
     positionY: base.positionY,
-    scale: newOwScale,
+    scale: owScale,
   );
   if (outerwear.layerOrder <= base.layerOrder) {
     outerwear = outerwear.copyWith(layerOrder: base.layerOrder + 1);
   }
   placed[outerwearIndex] = outerwear;
-  for (var i = 0; i < placed.length; i++) {
-    placed[i] = clampCanvasItem(placed[i], canvasWidth, canvasHeight);
-  }
+  // Không kẹp ở đây — để `decorateAndFitOutfit` fit-to-canvas sau cùng.
   return placed;
 }
 
@@ -629,9 +598,7 @@ List<CanvasItem> layoutAccessoriesHugColumn(
         placeLeft ? colLeft - gap - w / 2 : colRight + gap + w / 2;
     placed[i] = it.copyWith(positionX: x);
   }
-  for (var i = 0; i < placed.length; i++) {
-    placed[i] = clampCanvasItem(placed[i], canvasWidth, canvasHeight);
-  }
+  // Không kẹp ở đây — để `decorateAndFitOutfit` fit-to-canvas sau cùng.
   return placed;
 }
 
@@ -661,6 +628,37 @@ List<CanvasItem> centerItemsHorizontally(
     shifted[i] = clampCanvasItem(shifted[i], canvasWidth, canvasHeight);
   }
   return shifted;
+}
+
+/// Bố trí trang trí (áo khoác/ phụ kiện) rồi **fit-to-canvas + căn giữa** nếu có
+/// ≥2 món — gộp 3 bước dùng chung cho mọi luồng đặt món.
+List<CanvasItem> decorateAndFitOutfit(
+  List<CanvasItem> items, {
+  required double canvasWidth,
+  required double canvasHeight,
+}) {
+  var out = layoutOuterwearOverBase(
+    items,
+    canvasWidth: canvasWidth,
+    canvasHeight: canvasHeight,
+  );
+  out = layoutAccessoriesHugColumn(
+    out,
+    canvasWidth: canvasWidth,
+    canvasHeight: canvasHeight,
+  );
+  out = out.length >= 2
+      ? layoutCanvasItems(
+          out,
+          canvasWidth: canvasWidth,
+          canvasHeight: canvasHeight,
+        )
+      : centerItemsHorizontally(
+          out,
+          canvasWidth: canvasWidth,
+          canvasHeight: canvasHeight,
+        );
+  return out;
 }
 
 double _distance(CanvasItem a, CanvasItem b) {

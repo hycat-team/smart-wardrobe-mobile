@@ -322,19 +322,7 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
     final sizeKnown = studio.canvasWidth != null && studio.canvasHeight != null;
     final double cw = studio.canvasWidth ?? 360;
     final double ch = studio.canvasHeight ?? 520;
-    final laidOut = centerItemsHorizontally(
-      layoutAccessoriesHugColumn(
-        layoutOuterwearOverBase(
-          layoutCanvasItems(canvasItems, canvasWidth: cw, canvasHeight: ch),
-          canvasWidth: cw,
-          canvasHeight: ch,
-        ),
-        canvasWidth: cw,
-        canvasHeight: ch,
-      ),
-      canvasWidth: cw,
-      canvasHeight: ch,
-    );
+    final laidOut = decorateAndFitOutfit(canvasItems, canvasWidth: cw, canvasHeight: ch);
 
     _ref.read(outfitStudioProvider.notifier).state =
         _ref.read(outfitStudioProvider.notifier).state.copyWith(

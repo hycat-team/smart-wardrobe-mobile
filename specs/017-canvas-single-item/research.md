@@ -146,6 +146,21 @@ nhầm mọi phụ kiện.
 
 ---
 
+## R9 — Fit-to-canvas & giữ kích thước áo
+
+**Decision**: `layoutOuterwearOverBase` **không** kẹp và **không** thu nhỏ lớp nền — chỉ đặt áo khoác
+rộng bằng nền, ngang hàng, chồng ≤40%. `layoutAccessoriesHugColumn` cũng không kẹp. Bước cuối
+`decorateAndFitOutfit` gọi `layoutCanvasItems` (fit-to-canvas + căn giữa) khi ≥2 món; món đơn giữ
+nguyên.
+
+**Rationale**: Khung hẹp khiến áo khoác + áo không vừa; nếu kẹp/thu từng món sẽ mất hình dạng →
+thu cả khối đồng tỉ lệ vừa khung, không đè. Giữ kích thước áo khi thêm áo khoác (tester yêu cầu).
+
+**Alternatives considered**: thu nhỏ lớp nền để vừa cặp (bản cũ) — tester bác; kẹp từng món trước
+khi fit — làm món khổng lồ co về tâm rồi chồng lên nhau (đã gặp).
+
+---
+
 ## Tổng hợp
 
 | # | Ảnh hưởng | File |

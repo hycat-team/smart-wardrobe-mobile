@@ -45,12 +45,12 @@ Quan hệ chéo: `fullbody` ⇄ `top` **loại trừ nhau** khi thêm tay; `bott
   chuẩn của vai trò và `scale` = mức tỉ lệ chung của canvas (trung bình, `1.0` khi trống). Luôn kẹp
   trong khung.
 - **INV-5 (trong khung)**: Mọi món luôn qua `clampCanvasItem` → hộp giới hạn nằm trong khung.
-- **INV-6 (áo khoác bằng áo, ngang hàng, chồng ≤40%, đối diện phụ kiện)**: Nếu có `outerwear` và lớp
-  nền (`top`/`fullbody`): áo khoác có **cùng bề rộng** và **cùng mức `positionY`** với lớp nền, đặt ở
-  **phía đối diện phụ kiện** (nếu không có phụ kiện thì chọn phía nhiều chỗ), chồng lên lớp nền
-  **≤ 40%** bề rộng nền; khung hẹp thì **thu cùng tỉ lệ** cả hai (giữ bằng nhau, sàn `0.15`); **vị
-  trí lớp nền KHÔNG đổi** (cột giữa); outerwear giữ `layerOrder` trên; cả hai trong khung.
-  (Bản chỉnh 2026-10-13.)
+- **INV-6 (áo khoác bằng áo, ngang hàng, chồng ≤40%)**: Nếu có `outerwear` và lớp nền
+  (`top`/`fullbody`): áo khoác có **cùng bề rộng** và **cùng mức `positionY`** với lớp nền, ở **phía
+  đối diện phụ kiện**, chồng lên lớp nền **≤ 40%**; **vị trí và kích thước lớp nền KHÔNG đổi**;
+  outerwear giữ `layerOrder` trên. (Bản chỉnh 2026-10-13.)
+- **INV-9 (fit-to-canvas)**: Khi có ≥2 món, toàn bộ khối được thu **đồng tỉ lệ** để vừa khung (không
+  tràn/đè) và căn giữa bề ngang. Món đơn giữ nguyên. (Bản chỉnh 2026-10-13 lần 8.)
 - **INV-7 (phụ kiện nép sát cột)**: Mỗi `accessory` nằm ở **phía đối diện `outerwear`** (không có
   outerwear → bên trái), nép sát mép cột giữa (`top/bottom/fullbody/headwear/footwear`) một khoảng
   `gap` nhỏ và **không chồng** lên cột; kẹp trong khung. (Bản chỉnh 2026-10-13.)

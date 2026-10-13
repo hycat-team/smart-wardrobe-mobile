@@ -279,20 +279,8 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     // thì bố trí lại một lần (guard ≤1px phía trên chặn vòng rebuild).
     if (state.pendingRelayout) {
       state = state.copyWith(
-        canvasItems: centerItemsHorizontally(
-          layoutAccessoriesHugColumn(
-            layoutOuterwearOverBase(
-              layoutCanvasItems(
-                state.canvasItems,
-                canvasWidth: width,
-                canvasHeight: height,
-              ),
-              canvasWidth: width,
-              canvasHeight: height,
-            ),
-            canvasWidth: width,
-            canvasHeight: height,
-          ),
+        canvasItems: decorateAndFitOutfit(
+          state.canvasItems,
           canvasWidth: width,
           canvasHeight: height,
         ),
@@ -379,19 +367,10 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
 
     items.add(clampedItem);
 
-    // Bố trí cột giữa: áo khoác ngang hàng áo (đối diện phụ kiện) + phụ kiện nép sát cột.
-    var finalItems = layoutOuterwearOverBase(
+    // Bố trí cột giữa (áo khoác = áo, đối diện phụ kiện; phụ kiện nép sát cột)
+    // + fit-to-canvas + căn giữa khi có ≥2 món (chống đè nhau).
+    final finalItems = decorateAndFitOutfit(
       items,
-      canvasWidth: canvasW,
-      canvasHeight: canvasH,
-    );
-    finalItems = layoutAccessoriesHugColumn(
-      finalItems,
-      canvasWidth: canvasW,
-      canvasHeight: canvasH,
-    );
-    finalItems = centerItemsHorizontally(
-      finalItems,
       canvasWidth: canvasW,
       canvasHeight: canvasH,
     );
@@ -486,19 +465,7 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
 
     final double w = state.canvasWidth ?? 360;
     final double h = state.canvasHeight ?? 520;
-    final laidOut = centerItemsHorizontally(
-      layoutAccessoriesHugColumn(
-        layoutOuterwearOverBase(
-          layoutCanvasItems(items, canvasWidth: w, canvasHeight: h),
-          canvasWidth: w,
-          canvasHeight: h,
-        ),
-        canvasWidth: w,
-        canvasHeight: h,
-      ),
-      canvasWidth: w,
-      canvasHeight: h,
-    );
+    final laidOut = decorateAndFitOutfit(items, canvasWidth: w, canvasHeight: h);
     state = state.copyWith(
       canvasItems: laidOut,
       clearSelection: true,
