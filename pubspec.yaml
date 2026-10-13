@@ -1,9 +1,9 @@
 name: smart_wardrobe
 description: "Smart Wardrobe Mobile App - Quiet Luxury AI Stylist & Fashion Wardrobe"
 publish_to: 'none'
-# versionCode (+N) PHẢI lớn hơn mọi bản đã upload Play. Đã phát hành 1.0.0+1
-# lên Play (Internal testing, released 2026-09-30) → bản tiếp theo là +2.
-version: 1.0.0+2
+# versionCode (+N) PHẢI lớn hơn mọi bản đã upload Play. Play đã dùng vc=2
+# (báo "Version code 2 has already been used") → bản tiếp theo là +3.
+version: 1.0.0+3
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
