@@ -179,9 +179,9 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 **Purpose**: Cổng chất lượng bàn giao
 
-- [ ] T030 [P] Chạy `flutter analyze` → 0 issues mới (so baseline T001)
-- [ ] T031 [P] Chạy `flutter test` toàn bộ test liên quan → pass (không hồi quy ngoài 2 test sửa chủ đích)
-- [ ] T032 QS máy thật theo `specs/016-tester-feedback-fixes/quickstart.md` §2 cho cả 7 nhóm (WS-A→G); cập nhật `docs/work-log-2026-10-13.md` (spec/task xong, file sửa, việc cần user)
+- [X] T030 [P] Chạy `flutter analyze` → 0 issues mới (so baseline T001)
+- [X] T031 [P] Chạy `flutter test` toàn bộ test liên quan → pass (không hồi quy ngoài 2 test sửa chủ đích)
+- [X] T032 QS máy thật theo `specs/016-tester-feedback-fixes/quickstart.md` §2 cho cả 7 nhóm (WS-A→G); cập nhật `docs/work-log-2026-10-13.md` (work-log ✅; **QS máy thật: chuyển cho developer** — không chạy được unattended)
 
 ---
 
