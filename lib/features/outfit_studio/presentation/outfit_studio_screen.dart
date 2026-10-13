@@ -171,6 +171,42 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
     afterLoad();
   }
 
+  /// Hỏi xác nhận trước khi gỡ toàn bộ món trên canvas (US3, FR-008).
+  Future<void> _confirmClearCanvas() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Xóa toàn bộ canvas?',
+          style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w600, fontSize: 20),
+        ),
+        content: const Text(
+          'Toàn bộ món đang dàn trên canvas sẽ bị gỡ. Tiếp tục?',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            child: const Text('Xóa tất cả'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      ref.read(outfitStudioProvider.notifier).clearCanvas();
+    }
+  }
+
   void _showSaveLookDialog() {
     final studioState = ref.read(outfitStudioProvider);
     if (studioState.canvasItems.isEmpty) {
@@ -1364,6 +1400,8 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
   // -------------------------------------------------------------
   Widget _buildManualStudioTab(OutfitStudioState state) {
     final filteredItems = state.filteredWardrobeItems;
+    final hasSelection =
+        state.selectedIndex != null && state.selectedIndex! < state.canvasItems.length;
 
     // LayoutBuilder để nút "Lưu Look" nổi neo đúng theo chiều cao thật của
     // vùng vẽ — khớp chính xác mép trên của khay outfit thay thế.
@@ -1541,7 +1579,7 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                 ),
 
                 // Floating Toolbar
-                if (state.selectedIndex != null && state.selectedIndex! < state.canvasItems.length)
+                if (state.canvasItems.isNotEmpty)
                   Positioned(
                     top: 20,
                     right: 16,
@@ -1563,74 +1601,95 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                           IconButton(
                             icon: const Icon(Icons.flip_to_front_rounded, size: 20, color: AppColors.primary),
                             tooltip: 'Đưa lên lớp trên',
-                            onPressed: () =>
-                                ref.read(outfitStudioProvider.notifier).bringForward(state.selectedIndex!),
+                            onPressed: hasSelection
+                                ? () => ref
+                                    .read(outfitStudioProvider.notifier)
+                                    .bringForward(state.selectedIndex!)
+                                : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.flip_to_back_rounded, size: 20, color: AppColors.primary),
                             tooltip: 'Hạ xuống lớp dưới',
-                            onPressed: () =>
-                                ref.read(outfitStudioProvider.notifier).sendBackward(state.selectedIndex!),
+                            onPressed: hasSelection
+                                ? () => ref
+                                    .read(outfitStudioProvider.notifier)
+                                    .sendBackward(state.selectedIndex!)
+                                : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.zoom_in_rounded, size: 20, color: AppColors.primary),
                             tooltip: 'Phóng to',
-                            onPressed: () {
-                              final curScale = state.canvasItems[state.selectedIndex!].scale;
-                              ref
-                                  .read(outfitStudioProvider.notifier)
-                                  .updateItemScale(state.selectedIndex!, (curScale * 1.15).clamp(0.15, 3.0));
-                            },
+                            onPressed: hasSelection
+                                ? () {
+                                    final curScale = state.canvasItems[state.selectedIndex!].scale;
+                                    ref
+                                        .read(outfitStudioProvider.notifier)
+                                        .updateItemScale(state.selectedIndex!, (curScale * 1.15).clamp(0.15, 3.0));
+                                  }
+                                : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.zoom_out_rounded, size: 20, color: AppColors.primary),
                             tooltip: 'Thu nhỏ',
-                            onPressed: () {
-                              final curScale = state.canvasItems[state.selectedIndex!].scale;
-                              ref
-                                  .read(outfitStudioProvider.notifier)
-                                  .updateItemScale(state.selectedIndex!, (curScale * 0.85).clamp(0.15, 3.0));
-                            },
+                            onPressed: hasSelection
+                                ? () {
+                                    final curScale = state.canvasItems[state.selectedIndex!].scale;
+                                    ref
+                                        .read(outfitStudioProvider.notifier)
+                                        .updateItemScale(state.selectedIndex!, (curScale * 0.85).clamp(0.15, 3.0));
+                                  }
+                                : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.swap_horiz_rounded, size: 20, color: AppColors.primary),
                             tooltip: 'Đổi món này từ tủ đồ',
-                            onPressed: () {
-                              final selIdx = state.selectedIndex!;
-                              final selItem = state.canvasItems[selIdx];
-                              final selRole = normalizeRole(selItem.role);
-                              String cat = 'All';
-                              if (selRole == CanvasRole.top || selRole == CanvasRole.outerwear) {
-                                cat = 'Áo';
-                              } else if (selRole == CanvasRole.bottom) {
-                                cat = 'Quần';
-                              } else if (selRole == CanvasRole.fullbody) {
-                                cat = 'Váy';
-                              } else if (selRole == CanvasRole.footwear) {
-                                cat = 'Giày';
-                              } else if (selRole == CanvasRole.accessory || selRole == CanvasRole.headwear) {
-                                cat = 'Phụ kiện';
-                              }
-                              ref.read(outfitStudioProvider.notifier).setDrawerCategory(cat);
-                              _drawerExpanded.value = true;
-                              setState(() {
-                                _replacingCanvasIndex = selIdx;
-                              });
-                              if (_sheetController.isAttached) {
-                                _sheetController.animateTo(
-                                  0.42,
-                                  duration: const Duration(milliseconds: 320),
-                                  curve: Curves.easeOutCubic,
-                                );
-                              }
-                            },
+                            onPressed: hasSelection
+                                ? () {
+                                    final selIdx = state.selectedIndex!;
+                                    final selItem = state.canvasItems[selIdx];
+                                    final selRole = normalizeRole(selItem.role);
+                                    String cat = 'All';
+                                    if (selRole == CanvasRole.top || selRole == CanvasRole.outerwear) {
+                                      cat = 'Áo';
+                                    } else if (selRole == CanvasRole.bottom) {
+                                      cat = 'Quần';
+                                    } else if (selRole == CanvasRole.fullbody) {
+                                      cat = 'Váy';
+                                    } else if (selRole == CanvasRole.footwear) {
+                                      cat = 'Giày';
+                                    } else if (selRole == CanvasRole.accessory || selRole == CanvasRole.headwear) {
+                                      cat = 'Phụ kiện';
+                                    }
+                                    ref.read(outfitStudioProvider.notifier).setDrawerCategory(cat);
+                                    _drawerExpanded.value = true;
+                                    setState(() {
+                                      _replacingCanvasIndex = selIdx;
+                                    });
+                                    if (_sheetController.isAttached) {
+                                      _sheetController.animateTo(
+                                        0.42,
+                                        duration: const Duration(milliseconds: 320),
+                                        curve: Curves.easeOutCubic,
+                                      );
+                                    }
+                                  }
+                                : null,
                           ),
                           const Divider(height: 10),
                           IconButton(
                             icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.redAccent),
                             tooltip: 'Xoá món',
-                            onPressed: () =>
-                                ref.read(outfitStudioProvider.notifier).removeItem(state.selectedIndex!),
+                            onPressed: hasSelection
+                                ? () => ref
+                                    .read(outfitStudioProvider.notifier)
+                                    .removeItem(state.selectedIndex!)
+                                : null,
+                          ),
+                          const Divider(height: 10),
+                          IconButton(
+                            icon: const Icon(Icons.delete_sweep_rounded, size: 20, color: AppColors.primary),
+                            tooltip: 'Xóa tất cả',
+                            onPressed: () => _confirmClearCanvas(),
                           ),
                         ],
                       ),

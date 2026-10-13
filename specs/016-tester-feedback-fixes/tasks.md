@@ -98,13 +98,13 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T013 [P] [US3] Tạo `test/studio_clear_all_test.dart`: `clearCanvas()` xoá hết `canvasItems` và bỏ chọn
+- [X] T013 [P] [US3] Tạo `test/studio_clear_all_test.dart`: `clearCanvas()` xoá hết `canvasItems` và bỏ chọn
 
 ### Implementation for User Story 3
 
-- [ ] T014 [US3] Đổi điều kiện hiển thị thanh công cụ phải trong `_buildManualStudioTab` sang `state.canvasItems.isNotEmpty`; vô hiệu hoá (không `onPressed`) các nút thao tác món khi `selectedIndex == null` trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
-- [ ] T015 [US3] Thêm `IconButton` "Xóa tất cả" (`Icons.delete_sweep_rounded`, tooltip "Xóa tất cả") + dialog xác nhận Quiet Luxury gọi `ref.read(outfitStudioProvider.notifier).clearCanvas()` trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
-- [ ] T016 [US3] Chạy `flutter test test/studio_clear_all_test.dart` → pass; QS nút ẩn khi canvas trống
+- [X] T014 [US3] Đổi điều kiện hiển thị thanh công cụ phải trong `_buildManualStudioTab` sang `state.canvasItems.isNotEmpty`; vô hiệu hoá (không `onPressed`) các nút thao tác món khi `selectedIndex == null` trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
+- [X] T015 [US3] Thêm `IconButton` "Xóa tất cả" (`Icons.delete_sweep_rounded`, tooltip "Xóa tất cả") + dialog xác nhận Quiet Luxury gọi `ref.read(outfitStudioProvider.notifier).clearCanvas()` trong `lib/features/outfit_studio/presentation/outfit_studio_screen.dart`
+- [X] T016 [US3] Chạy `flutter test test/studio_clear_all_test.dart` → pass; QS nút ẩn khi canvas trống
 
 **Checkpoint**: US1–US3 hoàn tất.
 
