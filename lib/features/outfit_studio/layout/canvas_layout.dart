@@ -15,8 +15,10 @@ enum CanvasRole {
 }
 
 /// Vai trò "độc quyền" — mỗi loại chỉ giữ tối đa một món trên canvas.
-/// `headwear`/`accessory`/`other`/`unknown` nằm ngoài tập này (cho phép nhiều món).
+/// `accessory`/`other`/`unknown` nằm ngoài tập này (cho phép nhiều món; riêng
+/// `accessory` được khử trùng theo **loại** ở tầng provider).
 const Set<CanvasRole> exclusiveRoles = {
+  CanvasRole.headwear,
   CanvasRole.top,
   CanvasRole.bottom,
   CanvasRole.fullbody,
@@ -63,35 +65,35 @@ class RoleBoundingBox {
 /// Bố cục giải phẫu chuẩn cho trang phục dạng rời (top + bottom + footwear).
 /// Gốc tọa độ (0, 0) tại tâm canvas.
 const roleCoordinatesSeparate = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 114, zIndex: 8),
-  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 168, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -210, scale: 158, zIndex: 7),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 168, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 120, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -285, scale: 74, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 270, scale: 56, zIndex: 2),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 177, zIndex: 5),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 270, scale: 56, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 171, zIndex: 8),
+  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 336, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -210, scale: 316, zIndex: 7),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 336, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 180, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -285, scale: 148, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 270, scale: 112, zIndex: 2),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 354, zIndex: 5),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 270, scale: 112, zIndex: 2),
 };
 
 /// Bố cục giải phẫu chuẩn cho trang phục dạng liền thân (fullbody + footwear).
 const roleCoordinatesFullbody = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 114, zIndex: 8),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 177, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -195, scale: 158, zIndex: 7),
-  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 168, zIndex: 5),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 168, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 120, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -278, scale: 74, zIndex: 9),
-  CanvasRole.other: RolePlacement(x: 250, y: 255, scale: 56, zIndex: 2),
-  CanvasRole.unknown: RolePlacement(x: 250, y: 255, scale: 56, zIndex: 2),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -495, scale: 171, zIndex: 8),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -20, scale: 354, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -195, scale: 316, zIndex: 7),
+  CanvasRole.top: RolePlacement(x: 0, y: -210, scale: 336, zIndex: 5),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 165, scale: 336, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 452, scale: 180, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -278, scale: 148, zIndex: 9),
+  CanvasRole.other: RolePlacement(x: 250, y: 255, scale: 112, zIndex: 2),
+  CanvasRole.unknown: RolePlacement(x: 250, y: 255, scale: 112, zIndex: 2),
 };
 
 /// Tọa độ bổ sung dành cho phụ kiện thứ 2 trở lên (phân bổ so le sang cánh phải).
 const secondaryAccessoryCoordinates = <RolePlacement>[
-  RolePlacement(x: 240, y: -210, scale: 74, zIndex: 9), // Phụ kiện 2: cánh phải trên
-  RolePlacement(x: 240, y: -150, scale: 74, zIndex: 9), // Phụ kiện 3: cánh phải dưới
-  RolePlacement(x: -240, y: -170, scale: 74, zIndex: 9), // Phụ kiện 4: cánh trái trên
+  RolePlacement(x: 240, y: -210, scale: 148, zIndex: 9), // Phụ kiện 2: cánh phải trên
+  RolePlacement(x: 240, y: -150, scale: 148, zIndex: 9), // Phụ kiện 3: cánh phải dưới
+  RolePlacement(x: -240, y: -170, scale: 148, zIndex: 9), // Phụ kiện 4: cánh trái trên
 ];
 
 /// Lấy vị trí cho phụ kiện thứ N (0-based: 0 là phụ kiện chính).
@@ -108,7 +110,7 @@ RolePlacement getAccessoryPlacement(int accessoryIndex, {bool hasFullbody = fals
   return RolePlacement(
     x: 240,
     y: 80 + (secIndex - 1) * 60.0,
-    scale: 74,
+    scale: 148,
     zIndex: 9,
   );
 }

@@ -259,32 +259,5 @@ void main() {
       expect(after.positionY, closeTo(before.positionY, tolerance));
       expect(after.scale, closeTo(before.scale, tolerance));
     });
-
-    test('(j) scaleAllItems: thường ×2, nón/giày ×1.5', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-      final notifier = container.read(outfitStudioProvider.notifier);
-      notifier.setCanvasSize(canvasW, canvasH);
-
-      notifier.addItemToCanvas(fixture('top1', 'Áo thun', 'ao'));
-      notifier.addItemToCanvas(fixture('hat1', 'Mũ', 'mu'));
-      notifier.addItemToCanvas(fixture('shoe1', 'Giày', 'giay'));
-
-      final before = {
-        for (final it in container.read(outfitStudioProvider).canvasItems)
-          it.role: it.scale,
-      };
-
-      notifier.scaleAllItems(zoomIn: true);
-
-      final after = {
-        for (final it in container.read(outfitStudioProvider).canvasItems)
-          it.role: it.scale,
-      };
-
-      expect(after['top'], closeTo(before['top']! * 2.0, 0.001));
-      expect(after['headwear'], closeTo(before['headwear']! * 1.5, 0.001));
-      expect(after['footwear'], closeTo(before['footwear']! * 1.5, 0.001));
-    });
   });
 }

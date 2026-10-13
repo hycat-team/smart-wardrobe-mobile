@@ -160,5 +160,30 @@ void main() {
       );
       expectInsideCanvas(items);
     });
+
+    test('(i) nón độc quyền: thêm 2 nón → chỉ còn 1 (món mới)', () {
+      final s = setup();
+      s.notifier.addItemToCanvas(fixture('hat1', 'Mũ lưỡi trai', 'mu'));
+      s.notifier.addItemToCanvas(fixture('hat2', 'Mũ beanie', 'non'));
+
+      final hats =
+          itemsOf(s.container).where((i) => i.role == 'headwear').toList();
+      expect(hats.length, 1);
+      expect(hats.single.fashionItemId, 'fashion-hat2');
+    });
+
+    test('(j) phụ kiện cùng loại bị thay, khác loại thì giữ', () {
+      final s = setup();
+      s.notifier.addItemToCanvas(fixture('acc1', 'Dây chuyền A', 'phu-kien'));
+      s.notifier.addItemToCanvas(fixture('acc2', 'Dây chuyền B', 'phu-kien'));
+
+      var acc = itemsOf(s.container).where((i) => i.role == 'accessory').toList();
+      expect(acc.length, 1);
+      expect(acc.single.fashionItemId, 'fashion-acc2');
+
+      s.notifier.addItemToCanvas(fixture('acc3', 'Túi xách', 'tui'));
+      acc = itemsOf(s.container).where((i) => i.role == 'accessory').toList();
+      expect(acc.length, 2);
+    });
   });
 }

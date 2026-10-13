@@ -221,12 +221,20 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       categoryName: newItem.category?.name ?? fashionItem.category?.name,
     );
     final boxRatio = roleBoundingBoxRatios[role] ?? roleBoundingBoxRatios[CanvasRole.unknown]!;
+    final categoryKey = (newItem.category?.slug ??
+            newItem.category?.name ??
+            fashionItem.category?.slug ??
+            fashionItem.category?.name ??
+            '')
+        .toLowerCase()
+        .trim();
 
     final replaced = oldItem.copyWith(
       fashionItemId: fashionItem.id,
       imageUrl: newItem.displayImageUrl,
       name: newItem.displayTitle,
       role: role.name,
+      categoryKey: categoryKey,
       boxRatioW: boxRatio.widthRatio,
       boxRatioH: boxRatio.heightRatio,
     );
@@ -303,9 +311,18 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       categorySlug: item.category?.slug ?? fashionItem.category?.slug,
       categoryName: item.category?.name ?? fashionItem.category?.name,
     );
+    final categoryKey = (item.category?.slug ??
+            item.category?.name ??
+            fashionItem.category?.slug ??
+            fashionItem.category?.name ??
+            '')
+        .toLowerCase()
+        .trim();
 
-    // Khử trùng theo vai trò TRƯỚC khi chọn toạ độ: mỗi loại cơ bản một món.
-    // Nếu có món cùng vai trò, món mới THAY TẠI CHỖ (giữ vị trí + kích thước cũ).
+    // Khử trùng TRƯỚC khi chọn toạ độ:
+    //  - vai trò độc quyền (áo/quần/đầm/áo khoác/giày/mũ): một món mỗi loại;
+    //  - phụ kiện: được nhiều món nhưng KHÔNG trùng loại (VD không 2 dây chuyền).
+    // Món mới THAY TẠI CHỖ (giữ vị trí + kích thước món bị thay).
     final countBeforeRemoval = items.length;
     CanvasItem? replacedItem;
     if (isExclusiveRole(role)) {
@@ -318,6 +335,15 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
         items.removeWhere((it) => it.role == CanvasRole.top.name);
       } else if (role == CanvasRole.top) {
         items.removeWhere((it) => it.role == CanvasRole.fullbody.name);
+      }
+    } else if (role == CanvasRole.accessory && categoryKey.isNotEmpty) {
+      final sameKindIndex = items.indexWhere(
+        (it) =>
+            it.role == CanvasRole.accessory.name && it.categoryKey == categoryKey,
+      );
+      if (sameKindIndex >= 0) {
+        replacedItem = items[sameKindIndex];
+        items.removeAt(sameKindIndex);
       }
     }
     final replaced = items.length < countBeforeRemoval;
@@ -337,6 +363,7 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       imageUrl: item.displayImageUrl,
       name: item.displayTitle,
       role: role.name,
+      categoryKey: categoryKey,
       positionX: replacedItem?.positionX ?? placement.x,
       positionY: replacedItem?.positionY ?? placement.y,
       scale: replacedItem?.scale ?? initialScale,
@@ -443,6 +470,9 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
           imageUrl: fashionItem.imageUrl,
           name: primary.displayName,
           role: role.name,
+          categoryKey: (fashionItem.category?.slug ?? fashionItem.category?.name ?? '')
+              .toLowerCase()
+              .trim(),
           positionX: placement.x,
           positionY: placement.y,
           scale: 1.0,
@@ -491,20 +521,6 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     final items = List<CanvasItem>.from(state.canvasItems);
     items[index] = items[index].copyWith(scale: newScale.clamp(0.15, 3.0));
     state = state.copyWith(canvasItems: items);
-  }
-
-  /// Phóng/thu TOÀN BỘ món trên canvas theo nút tăng/giảm kích thước.
-  /// Nón và giày dùng hệ số 1.5; các món còn lại 2.0 (mỗi lần nhấn).
-  void scaleAllItems({required bool zoomIn}) {
-    if (state.canvasItems.isEmpty) return;
-    final updated = state.canvasItems.map((it) {
-      final role = normalizeRole(it.role);
-      final isSmall = role == CanvasRole.headwear || role == CanvasRole.footwear;
-      final k = isSmall ? 1.5 : 2.0;
-      final newScale = zoomIn ? it.scale * k : it.scale / k;
-      return it.copyWith(scale: newScale.clamp(0.15, 3.0));
-    }).toList();
-    state = state.copyWith(canvasItems: updated);
   }
 
   void bringForward(int index) {

@@ -26,8 +26,8 @@ Nguồn `CanvasRole` (`canvas_layout.dart:5-15`), `normalizeRole` (`:117-276`).
 
 | Nhóm | Vai trò | Số món tối đa |
 |---|---|---|
-| **Độc quyền** (nhóm cơ bản) | `top`, `bottom`, `fullbody`, `outerwear`, `footwear` | 1 mỗi loại |
-| **Không độc quyền** | `headwear`, `accessory`, `other`, `unknown` | không giới hạn |
+| **Độc quyền** | `top`, `bottom`, `fullbody`, `outerwear`, `footwear`, `headwear` | 1 mỗi loại |
+| **Nhiều món** | `accessory` (mỗi **loại**/danh mục tối đa 1), `other`, `unknown` | accessory: ≤1 mỗi loại; other/unknown: không giới hạn |
 
 Quan hệ chéo: `fullbody` ⇄ `top` **loại trừ nhau** khi thêm tay; `bottom` **độc lập**.
 
@@ -54,6 +54,9 @@ Quan hệ chéo: `fullbody` ⇄ `top` **loại trừ nhau** khi thêm tay; `bott
 - **INV-7 (phụ kiện nép sát cột)**: Mỗi `accessory` nằm ở **phía đối diện `outerwear`** (không có
   outerwear → bên trái), nép sát mép cột giữa (`top/bottom/fullbody/headwear/footwear`) một khoảng
   `gap` nhỏ và **không chồng** lên cột; kẹp trong khung. (Bản chỉnh 2026-10-13.)
+- **INV-8 (phụ kiện không trùng loại)**: Hai `accessory` có cùng `categoryKey` (danh mục) KHÔNG cùng
+  tồn tại; thêm phụ kiện cùng loại → thay tại chỗ món cũ. `categoryKey` rỗng = không xét.
+  (Bản chỉnh 2026-10-13 lần 7.)
 
 ---
 

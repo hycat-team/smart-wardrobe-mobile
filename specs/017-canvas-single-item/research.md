@@ -133,15 +133,16 @@ chồng lên cột — trái yêu cầu.
 
 ---
 
-## R8 — Nút tăng/giảm kích thước (phóng toàn bộ)
+## R8 — Nón độc quyền & phụ kiện không trùng loại
 
-**Decision**: Thay nút zoom (trước chỉ phóng 1 món đang chọn ×1.15) bằng hành vi **phóng toàn bộ**:
-`OutfitStudioNotifier.scaleAllItems({required bool zoomIn})` nhân `scale` mọi món (zoomIn) hoặc
-chia (zoomOut): món thường `×2`, nón/giày `×1.5`; kẹp `0.15..3.0`. Nút bật khi canvas có món.
+**Decision**: Thêm `headwear` vào `exclusiveRoles` (một nón). Thêm `categoryKey` vào `CanvasItem`
+(slug/tên danh mục) và khử trùng `accessory` theo `categoryKey` (cùng loại → thay tại chỗ, giữ
+`role`). Nút tăng/giảm kích thước **giữ nguyên** (phóng/thu món đang chọn ×1.15/×0.85).
 
-**Rationale**: Tester muốn nút tăng kích thước áp cho **tất cả** món, hệ số 2 (nón/giày 1.5).
+**Rationale**: Tester báo thay nón không thay nón cũ; và không thể đeo 2 dây chuyền cùng lúc.
 
-**Alternatives considered**: giữ zoom theo món đang chọn — trái yêu cầu; hệ số 1.15 cũ — quá nhỏ.
+**Alternatives considered**: để nón nhiều món — trái yêu cầu; khử trùng phụ kiện theo `role` — gộp
+nhầm mọi phụ kiện.
 
 ---
 

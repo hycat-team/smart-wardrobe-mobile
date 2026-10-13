@@ -11,9 +11,11 @@
 
 ### 1. Một món mỗi loại (nhóm cơ bản)
 
-- Tập vai trò độc quyền: `top`, `bottom`, `fullbody`, `outerwear`, `footwear` — tối đa **1** món
-  mỗi vai trò.
-- `headwear`, `accessory`, `other`, `unknown` — **không** giới hạn.
+- Tập vai trò độc quyền: `top`, `bottom`, `fullbody`, `outerwear`, `footwear`, `headwear` — tối đa
+  **1** món mỗi vai trò.
+- `other`/`unknown` — **không** giới hạn.
+- `accessory` — **nhiều món nhưng không trùng loại** (`categoryKey` = slug/tên danh mục): thêm phụ
+  kiện cùng loại → **thay tại chỗ** món cũ; khác loại → thêm mới.
 
 ### 2. Thay thế khi trùng loại
 

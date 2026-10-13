@@ -302,6 +302,9 @@ class OutfitsListNotifier extends StateNotifier<OutfitsListState> {
           imageUrl: fItem.imageUrl,
           name: fItem.category?.name ?? 'Món đồ',
           role: role.name,
+          categoryKey: (fItem.category?.slug ?? fItem.category?.name ?? '')
+              .toLowerCase()
+              .trim(),
           positionX: restored.x,
           positionY: restored.y,
           scale: item.scale > 0 ? item.scale : 1.0,

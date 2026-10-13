@@ -57,7 +57,7 @@ flutter test test/studio_single_item_per_role_test.dart test/canvas_outerwear_la
 12. Thêm **quần** sau áo + áo khoác → áo **không bị dời**, không chồng lên quần.
 13. Có **phụ kiện** ở bên trái → **áo khoác sang bên phải** (đối diện); thêm phụ kiện bên phải → áo khoác sang trái.
 14. **Phụ kiện nép sát cột giữa** (áo/quần/nón/giày) nhưng **không đè** lên cột; cột giữa (áo/quần/nón/giày) **căn giữa và to**.
-15. Bấm nút **tăng kích thước** trên thanh công cụ → **tất cả** món to lên: món thường ×2, **nón/giày ×1.5**; nút giảm dùng hệ số nghịch đảo.
+15. Thêm **2 nón** → chỉ còn **1 nón** (món mới). Thêm **2 phụ kiện cùng loại** (VD 2 dây chuyền) → chỉ còn 1; phụ kiện **khác loại** (túi, kính) thì cùng tồn tại. Nút tăng/giảm kích thước giữ nguyên (phóng/thu món đang chọn).
 
 ### US3 · Trải nghiệm thay thế (P2)
 

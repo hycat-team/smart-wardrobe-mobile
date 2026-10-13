@@ -1618,15 +1618,27 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
                           ),
                           IconButton(
                             icon: const Icon(Icons.zoom_in_rounded, size: 20, color: AppColors.primary),
-                            tooltip: 'Phóng to (tất cả món)',
-                            onPressed: () =>
-                                ref.read(outfitStudioProvider.notifier).scaleAllItems(zoomIn: true),
+                            tooltip: 'Phóng to',
+                            onPressed: hasSelection
+                                ? () {
+                                    final curScale = state.canvasItems[state.selectedIndex!].scale;
+                                    ref
+                                        .read(outfitStudioProvider.notifier)
+                                        .updateItemScale(state.selectedIndex!, (curScale * 1.15).clamp(0.15, 3.0));
+                                  }
+                                : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.zoom_out_rounded, size: 20, color: AppColors.primary),
-                            tooltip: 'Thu nhỏ (tất cả món)',
-                            onPressed: () =>
-                                ref.read(outfitStudioProvider.notifier).scaleAllItems(zoomIn: false),
+                            tooltip: 'Thu nhỏ',
+                            onPressed: hasSelection
+                                ? () {
+                                    final curScale = state.canvasItems[state.selectedIndex!].scale;
+                                    ref
+                                        .read(outfitStudioProvider.notifier)
+                                        .updateItemScale(state.selectedIndex!, (curScale * 0.85).clamp(0.15, 3.0));
+                                  }
+                                : null,
                           ),
                           IconButton(
                             icon: const Icon(Icons.swap_horiz_rounded, size: 20, color: AppColors.primary),

@@ -326,6 +326,10 @@ class CanvasItem {
   final String imageUrl;
   final String name;
   final String role;
+
+  /// Khoá "loại" của món (slug/tên danh mục) — dùng để phụ kiện không trùng
+  /// loại (VD không đeo 2 dây chuyền cùng lúc). Rỗng = không xét.
+  final String categoryKey;
   double positionX;
   double positionY;
   double scale;
@@ -340,6 +344,7 @@ class CanvasItem {
     required this.imageUrl,
     required this.name,
     this.role = 'item',
+    this.categoryKey = '',
     this.positionX = 0,
     this.positionY = 0,
     this.scale = 1.0,
@@ -355,6 +360,7 @@ class CanvasItem {
     String? imageUrl,
     String? name,
     String? role,
+    String? categoryKey,
     double? positionX,
     double? positionY,
     double? scale,
@@ -369,6 +375,7 @@ class CanvasItem {
       imageUrl: imageUrl ?? this.imageUrl,
       name: name ?? this.name,
       role: role ?? this.role,
+      categoryKey: categoryKey ?? this.categoryKey,
       positionX: positionX ?? this.positionX,
       positionY: positionY ?? this.positionY,
       scale: scale ?? this.scale,
