@@ -135,8 +135,8 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 ### Implementation for User Story 5
 
-- [ ] T021 [US5] Gỡ `ActionChip` "Điền mẫu tự động (Demo)" và method `_fillSampleRegister` trong `lib/features/auth/presentation/register_screen.dart`
-- [ ] T022 [US5] QS màn Đăng ký: không còn ô Demo; validate + gửi OTP vẫn chạy
+- [X] T021 [US5] Gỡ `ActionChip` "Điền mẫu tự động (Demo)" và method `_fillSampleRegister` trong `lib/features/auth/presentation/register_screen.dart`
+- [X] T022 [US5] QS màn Đăng ký: không còn ô Demo; validate + gửi OTP vẫn chạy
 
 **Checkpoint**: US5 hoàn tất độc lập.
 

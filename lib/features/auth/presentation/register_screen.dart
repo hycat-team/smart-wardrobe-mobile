@@ -81,21 +81,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
   }
 
-  void _fillSampleRegister() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch % 10000;
-    setState(() {
-      _firstNameController.text = 'Hoàng';
-      _lastNameController.text = 'Nam';
-      _usernameController.text = 'user_$timestamp';
-      _emailController.text = 'nam_$timestamp@smartwardrobe.com';
-      _dobController.text = '1998-05-15';
-      _addressController.text = 'Quận 1, TP. Hồ Chí Minh';
-      _passwordController.text = 'P@ssword123';
-      _confirmPasswordController.text = 'P@ssword123';
-      _selectedGender = 1;
-    });
-  }
-
   Future<void> _selectDate() async {
     final initialDate = DateTime(1998, 1, 1);
     final pickedDate = await showDatePicker(
@@ -279,19 +264,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Text(
             'Khám phá tủ đồ kỹ thuật số và trợ lý AI phong cách cá nhân.',
             style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
-          ),
-          const SizedBox(height: 16),
-
-          // Demo Quick Fill Chip
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ActionChip(
-              avatar: const Icon(Icons.flash_on_rounded, size: 16, color: AppColors.primary),
-              label: const Text('Điền mẫu tự động (Demo)', style: TextStyle(fontSize: 12)),
-              backgroundColor: AppColors.accentSand.withOpacity(0.3),
-              side: const BorderSide(color: AppColors.accentSand, width: 0.8),
-              onPressed: _fillSampleRegister,
-            ),
           ),
           const SizedBox(height: 16),
 
