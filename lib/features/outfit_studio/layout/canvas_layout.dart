@@ -415,7 +415,7 @@ List<CanvasItem> layoutCanvasItems(
     final scaledY = (item.positionY * fitK) - centerBboxY;
     final scaledItemScale = item.scale * fitK;
 
-    placed[i] = _clamp(
+    placed[i] = clampCanvasItem(
       item.copyWith(
         positionX: scaledX,
         positionY: scaledY,
@@ -429,16 +429,47 @@ List<CanvasItem> layoutCanvasItems(
   return placed;
 }
 
-CanvasItem _clamp(CanvasItem item, double w, double h) {
+/// Kẹp một món vào biên canvas (tâm tọa độ canvas là gốc 0,0).
+///
+/// Nếu món ở scale hiện tại lớn hơn vùng khả dụng, [scale] được giảm trước
+/// (sàn 0.15) rồi mới kẹp vị trí. Dùng đúng công thức kích thước của render:
+/// `baseScale * boxRatio * scale * 1.25`.
+CanvasItem clampCanvasItem(CanvasItem item, double canvasWidth, double canvasHeight) {
   const double itemScaleMultiplier = 1.25;
-  final itemW = item.baseScale * item.boxRatioW * item.scale * itemScaleMultiplier;
-  final itemH = item.baseScale * item.boxRatioH * item.scale * itemScaleMultiplier;
-  const margin = 8.0;
-  final maxX = math.max(0.0, (w - itemW) / 2 - margin);
-  final maxY = math.max(0.0, (h - itemH) / 2 - margin);
+  const double margin = 8.0;
+
+  final double baseScale = item.baseScale > 0 ? item.baseScale : 100.0;
+  final double ratioW = item.boxRatioW > 0 ? item.boxRatioW : 2.0;
+  final double ratioH = item.boxRatioH > 0 ? item.boxRatioH : 2.0;
+
+  final double availW = math.max(0.0, canvasWidth - (margin * 2));
+  final double availH = math.max(0.0, canvasHeight - (margin * 2));
+
+  double scale = item.scale;
+  double itemW = baseScale * ratioW * scale * itemScaleMultiplier;
+  double itemH = baseScale * ratioH * scale * itemScaleMultiplier;
+
+  if (itemW > availW || itemH > availH) {
+    final double unitW = baseScale * ratioW * itemScaleMultiplier;
+    final double unitH = baseScale * ratioH * itemScaleMultiplier;
+    double targetScale = scale;
+    if (unitW > 0 && itemW > availW) {
+      targetScale = math.min(targetScale, availW / unitW);
+    }
+    if (unitH > 0 && itemH > availH) {
+      targetScale = math.min(targetScale, availH / unitH);
+    }
+    scale = targetScale.clamp(0.15, 3.0);
+    itemW = baseScale * ratioW * scale * itemScaleMultiplier;
+    itemH = baseScale * ratioH * scale * itemScaleMultiplier;
+  }
+
+  final double maxX = math.max(0.0, (canvasWidth - itemW) / 2 - margin);
+  final double maxY = math.max(0.0, (canvasHeight - itemH) / 2 - margin);
   return item.copyWith(
     positionX: item.positionX.clamp(-maxX, maxX),
     positionY: item.positionY.clamp(-maxY, maxY),
+    scale: scale,
   );
 }
 

@@ -55,14 +55,14 @@ description: "Task list — Sửa lỗi theo phản hồi tester (đợt 1)"
 
 ### Tests for User Story 1 ⚠️ (viết trước, phải FAIL khi chưa sửa)
 
-- [ ] T002 [P] [US1] Thêm test cho `clampCanvasItem` (kẹp 1 món vượt biên; thu nhỏ khi món quá khổ) vào `test/canvas_layout_test.dart`
-- [ ] T003 [P] [US1] Tạo `test/studio_canvas_placement_test.dart`: `addItemToCanvas` cho accessory/footwear/other trên **3 kích thước canvas** (320×520, 390×700, 430×932) → mọi món nằm trong biên (INV-1..3; thoả SC-001)
+- [X] T002 [P] [US1] Thêm test cho `clampCanvasItem` (kẹp 1 món vượt biên; thu nhỏ khi món quá khổ) vào `test/canvas_layout_test.dart`
+- [X] T003 [P] [US1] Tạo `test/studio_canvas_placement_test.dart`: `addItemToCanvas` cho accessory/footwear/other trên **3 kích thước canvas** (320×520, 390×700, 430×932) → mọi món nằm trong biên (INV-1..3; thoả SC-001)
 
 ### Implementation for User Story 1
 
-- [ ] T004 [US1] Thêm helper công khai `clampCanvasItem(CanvasItem, canvasWidth, canvasHeight)` trong `lib/features/outfit_studio/layout/canvas_layout.dart` (tổng quát hoá `_clamp`, margin 8px, thêm nhánh giảm `scale` nếu `itemW/H` lớn hơn vùng khả dụng)
-- [ ] T005 [US1] Cập nhật `addItemToCanvas` trong `lib/features/outfit_studio/providers/outfit_studio_provider.dart`: sau khi đặt theo `coordinateMap[role]`, gọi `clampCanvasItem` với `state.canvasWidth/Height` (fallback 360×520); **chỉ** kẹp món mới
-- [ ] T006 [US1] Chạy `flutter test test/canvas_layout_test.dart test/studio_canvas_placement_test.dart` → pass; xác nhận không đổi vị trí món đã có
+- [X] T004 [US1] Thêm helper công khai `clampCanvasItem(CanvasItem, canvasWidth, canvasHeight)` trong `lib/features/outfit_studio/layout/canvas_layout.dart` (tổng quát hoá `_clamp`, margin 8px, thêm nhánh giảm `scale` nếu `itemW/H` lớn hơn vùng khả dụng)
+- [X] T005 [US1] Cập nhật `addItemToCanvas` trong `lib/features/outfit_studio/providers/outfit_studio_provider.dart`: sau khi đặt theo `coordinateMap[role]`, gọi `clampCanvasItem` với `state.canvasWidth/Height` (fallback 360×520); **chỉ** kẹp món mới
+- [X] T006 [US1] Chạy `flutter test test/canvas_layout_test.dart test/studio_canvas_placement_test.dart` → pass; xác nhận không đổi vị trí món đã có
 
 **Checkpoint**: US1 hoàn chỉnh, kiểm thử độc lập được (MVP).
 

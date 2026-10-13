@@ -312,7 +312,11 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       boxRatioH: boxRatio.heightRatio,
     );
 
-    items.add(newItem);
+    final canvasW = state.canvasWidth ?? 360.0;
+    final canvasH = state.canvasHeight ?? 520.0;
+    final clampedItem = clampCanvasItem(newItem, canvasW, canvasH);
+
+    items.add(clampedItem);
     state = state.copyWith(
       canvasItems: items,
       selectedIndex: items.length - 1,

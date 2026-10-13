@@ -220,4 +220,75 @@ void main() {
       expect(curScale, greaterThanOrEqualTo(0.15));
     });
   });
+
+  group('Canvas Layout - clampCanvasItem (US1)', () {
+    test('moves an accessory that overflows back inside bounds', () {
+      final accessory = CanvasItem(
+        id: 'acc',
+        fashionItemId: 'f1',
+        imageUrl: '',
+        name: 'Túi xách',
+        role: CanvasRole.accessory.name,
+        positionX: -240,
+        positionY: 40,
+        scale: 1.0,
+        baseScale: 85,
+        boxRatioW: 1.6,
+        boxRatioH: 1.6,
+      );
+
+      const canvasW = 320.0;
+      const canvasH = 520.0;
+      const margin = 8.0;
+      const multiplier = 1.25;
+
+      final clamped = clampCanvasItem(accessory, canvasW, canvasH);
+
+      final itemW = clamped.baseScale * clamped.boxRatioW * clamped.scale * multiplier;
+      final itemH = clamped.baseScale * clamped.boxRatioH * clamped.scale * multiplier;
+
+      expect(clamped.positionX - itemW / 2, greaterThanOrEqualTo(-canvasW / 2 + margin - 0.01));
+      expect(clamped.positionX + itemW / 2, lessThanOrEqualTo(canvasW / 2 - margin + 0.01));
+      expect(clamped.positionY - itemH / 2, greaterThanOrEqualTo(-canvasH / 2 + margin - 0.01));
+      expect(clamped.positionY + itemH / 2, lessThanOrEqualTo(canvasH / 2 - margin + 0.01));
+
+      // Món vượt trái mạnh (-240) nên phải được dịch vào trong, scale giữ nguyên.
+      expect(clamped.positionX, greaterThan(accessory.positionX));
+      expect(clamped.scale, accessory.scale);
+    });
+
+    test('reduces scale of an oversized item and keeps it inside bounds', () {
+      final oversized = CanvasItem(
+        id: 'big',
+        fashionItemId: 'f2',
+        imageUrl: '',
+        name: 'Đầm maxi',
+        role: CanvasRole.fullbody.name,
+        positionX: 0,
+        positionY: 0,
+        scale: 3.0,
+        baseScale: 100,
+        boxRatioW: 2.0,
+        boxRatioH: 2.0,
+      );
+
+      const canvasW = 320.0;
+      const canvasH = 520.0;
+      const margin = 8.0;
+      const multiplier = 1.25;
+
+      final clamped = clampCanvasItem(oversized, canvasW, canvasH);
+
+      expect(clamped.scale, lessThan(oversized.scale));
+      expect(clamped.scale, greaterThanOrEqualTo(0.15));
+
+      final itemW = clamped.baseScale * clamped.boxRatioW * clamped.scale * multiplier;
+      final itemH = clamped.baseScale * clamped.boxRatioH * clamped.scale * multiplier;
+
+      expect(clamped.positionX - itemW / 2, greaterThanOrEqualTo(-canvasW / 2 + margin - 0.01));
+      expect(clamped.positionX + itemW / 2, lessThanOrEqualTo(canvasW / 2 - margin + 0.01));
+      expect(clamped.positionY - itemH / 2, greaterThanOrEqualTo(-canvasH / 2 + margin - 0.01));
+      expect(clamped.positionY + itemH / 2, lessThanOrEqualTo(canvasH / 2 - margin + 0.01));
+    });
+  });
 }
