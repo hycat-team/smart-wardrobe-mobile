@@ -98,9 +98,9 @@ description: "Task list — Canvas một món mỗi loại + sửa áo khoác đ
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T012 [P] Chạy `flutter analyze` → 0 issues mới (so T001)
-- [ ] T013 [P] Chạy `flutter test` toàn bộ → không hồi quy (ngoài 3 integration cần BE pre-existing)
-- [ ] T014 QS máy thật theo `specs/017-canvas-single-item/quickstart.md` §2 (US1/US1b/US2/US3); cập nhật `docs/work-log-2026-10-13.md`
+- [X] T012 [P] Chạy `flutter analyze` → 0 issues mới (so T001)
+- [X] T013 [P] Chạy `flutter test` toàn bộ → không hồi quy (ngoài 2 integration cần BE pre-existing)
+- [X] T014 QS máy thật theo `specs/017-canvas-single-item/quickstart.md` §2 (US1/US1b/US2/US3); cập nhật `docs/work-log-2026-10-13.md` (work-log ✅; **QS máy thật: chuyển cho developer**)
 
 ---
 
