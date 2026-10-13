@@ -14,6 +14,19 @@ enum CanvasRole {
   unknown,
 }
 
+/// Vai trò "độc quyền" — mỗi loại chỉ giữ tối đa một món trên canvas.
+/// `headwear`/`accessory`/`other`/`unknown` nằm ngoài tập này (cho phép nhiều món).
+const Set<CanvasRole> exclusiveRoles = {
+  CanvasRole.top,
+  CanvasRole.bottom,
+  CanvasRole.fullbody,
+  CanvasRole.outerwear,
+  CanvasRole.footwear,
+};
+
+/// true nếu [role] chỉ nên có một món trên canvas.
+bool isExclusiveRole(CanvasRole role) => exclusiveRoles.contains(role);
+
 /// Dạng cấu trúc phối trang phục.
 enum OutfitCompositionType {
   separatePieces,

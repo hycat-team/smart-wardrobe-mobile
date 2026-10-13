@@ -49,13 +49,13 @@ description: "Task list — Canvas một món mỗi loại + sửa áo khoác đ
 
 ### Tests for User Story 1 ⚠️ (viết trước, phải FAIL)
 
-- [ ] T002 [P] [US1] Tạo `test/studio_single_item_per_role_test.dart` (pure unit, `ProviderContainer` + `addItemToCanvas`): (a) thêm 2 áo → chỉ còn 1 (đúng món mới) và **id món cũ không còn** trong `canvasItems`; (b) thêm 2 quần → thay quần; (c) thêm đầm khi có áo+quần → gỡ áo, **giữ quần**; (d) thêm áo khi có đầm → gỡ đầm; (e) thêm 2 phụ kiện → **cả hai** còn; (f) thêm món khác loại (giày) → không gỡ áo; (g) thêm vào canvas **trống** → không gỡ nhầm (SC-004); (h) sau thay thế, món mới nằm trong khung và `selectedIndex` trỏ món mới (SC-003/FR-003)
+- [X] T002 [P] [US1] Tạo `test/studio_single_item_per_role_test.dart` (pure unit, `ProviderContainer` + `addItemToCanvas`): (a) thêm 2 áo → chỉ còn 1 (đúng món mới) và **id món cũ không còn** trong `canvasItems`; (b) thêm 2 quần → thay quần; (c) thêm đầm khi có áo+quần → gỡ áo, **giữ quần**; (d) thêm áo khi có đầm → gỡ đầm; (e) thêm 2 phụ kiện → **cả hai** còn; (f) thêm món khác loại (giày) → không gỡ áo; (g) thêm vào canvas **trống** → không gỡ nhầm (SC-004); (h) sau thay thế, món mới nằm trong khung và `selectedIndex` trỏ món mới (SC-003/FR-003)
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Trong `lib/features/outfit_studio/layout/canvas_layout.dart` thêm hằng tập vai trò độc quyền (vd `exclusiveRoles = {top,bottom,fullbody,outerwear,footwear}`) + helper `isExclusiveRole(CanvasRole)`
-- [ ] T004 [US1] Cập nhật `addItemToCanvas` trong `lib/features/outfit_studio/providers/outfit_studio_provider.dart`: tính gỡ món xung đột **trước** khi chọn `coordinateMap` — cùng vai trò nếu độc quyền; `fullbody`→gỡ `top`; `top`→gỡ `fullbody`; giữ `bottom`; không gỡ `headwear/accessory/other/unknown`. Sau gỡ mới tính `hasFullbody` và đặt món mới theo toạ độ chuẩn + `clampCanvasItem`
-- [ ] T005 [US1] Chạy `flutter test test/studio_single_item_per_role_test.dart` → pass
+- [X] T003 [US1] Trong `lib/features/outfit_studio/layout/canvas_layout.dart` thêm hằng tập vai trò độc quyền (vd `exclusiveRoles = {top,bottom,fullbody,outerwear,footwear}`) + helper `isExclusiveRole(CanvasRole)`
+- [X] T004 [US1] Cập nhật `addItemToCanvas` trong `lib/features/outfit_studio/providers/outfit_studio_provider.dart`: tính gỡ món xung đột **trước** khi chọn `coordinateMap` — cùng vai trò nếu độc quyền; `fullbody`→gỡ `top`; `top`→gỡ `fullbody`; giữ `bottom`; không gỡ `headwear/accessory/other/unknown`. Sau gỡ mới tính `hasFullbody` và đặt món mới theo toạ độ chuẩn + `clampCanvasItem`
+- [X] T005 [US1] Chạy `flutter test test/studio_single_item_per_role_test.dart` → pass
 
 **Checkpoint**: US1 hoàn chỉnh (MVP) — canvas không còn 2 món cùng loại.
 

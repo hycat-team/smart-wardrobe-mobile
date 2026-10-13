@@ -292,6 +292,16 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       categoryName: item.category?.name ?? fashionItem.category?.name,
     );
 
+    // Khử trùng theo vai trò TRƯỚC khi chọn toạ độ: mỗi loại cơ bản một món.
+    if (isExclusiveRole(role)) {
+      items.removeWhere((it) => it.role == role.name);
+      if (role == CanvasRole.fullbody) {
+        items.removeWhere((it) => it.role == CanvasRole.top.name);
+      } else if (role == CanvasRole.top) {
+        items.removeWhere((it) => it.role == CanvasRole.fullbody.name);
+      }
+    }
+
     final hasFullbody = items.any((it) => it.role == CanvasRole.fullbody.name);
     final coordinateMap = hasFullbody ? roleCoordinatesFullbody : roleCoordinatesSeparate;
     final placement = coordinateMap[role] ?? coordinateMap[CanvasRole.other]!;
