@@ -63,35 +63,35 @@ class RoleBoundingBox {
 /// Bố cục giải phẫu chuẩn cho trang phục dạng rời (top + bottom + footwear).
 /// Gốc tọa độ (0, 0) tại tâm canvas.
 const roleCoordinatesSeparate = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 60, zIndex: 8),
-  CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 100, zIndex: 5),
-  CanvasRole.outerwear: RolePlacement(x: -25, y: -145, scale: 105, zIndex: 7),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 100, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 68, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -190, scale: 72, zIndex: 9),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 76, zIndex: 8),
+  CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 112, zIndex: 5),
+  CanvasRole.outerwear: RolePlacement(x: -25, y: -140, scale: 105, zIndex: 7),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 112, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 80, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -190, scale: 74, zIndex: 9),
   CanvasRole.other: RolePlacement(x: 250, y: 180, scale: 56, zIndex: 2),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 105, zIndex: 5),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 118, zIndex: 5),
   CanvasRole.unknown: RolePlacement(x: 250, y: 180, scale: 56, zIndex: 2),
 };
 
 /// Bố cục giải phẫu chuẩn cho trang phục dạng liền thân (fullbody + footwear).
 const roleCoordinatesFullbody = <CanvasRole, RolePlacement>{
-  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 60, zIndex: 8),
-  CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 105, zIndex: 5),
+  CanvasRole.headwear: RolePlacement(x: 0, y: -330, scale: 76, zIndex: 8),
+  CanvasRole.fullbody: RolePlacement(x: 0, y: -15, scale: 118, zIndex: 5),
   CanvasRole.outerwear: RolePlacement(x: -25, y: -130, scale: 105, zIndex: 7),
-  CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 100, zIndex: 5),
-  CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 100, zIndex: 4),
-  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 68, zIndex: 3),
-  CanvasRole.accessory: RolePlacement(x: -240, y: -185, scale: 72, zIndex: 9),
+  CanvasRole.top: RolePlacement(x: 0, y: -140, scale: 112, zIndex: 5),
+  CanvasRole.bottom: RolePlacement(x: 0, y: 110, scale: 112, zIndex: 4),
+  CanvasRole.footwear: RolePlacement(x: 0, y: 295, scale: 80, zIndex: 3),
+  CanvasRole.accessory: RolePlacement(x: -240, y: -185, scale: 74, zIndex: 9),
   CanvasRole.other: RolePlacement(x: 250, y: 170, scale: 56, zIndex: 2),
   CanvasRole.unknown: RolePlacement(x: 250, y: 170, scale: 56, zIndex: 2),
 };
 
 /// Tọa độ bổ sung dành cho phụ kiện thứ 2 trở lên (phân bổ so le sang cánh phải).
 const secondaryAccessoryCoordinates = <RolePlacement>[
-  RolePlacement(x: 240, y: -210, scale: 70, zIndex: 9), // Phụ kiện 2: cánh phải trên
-  RolePlacement(x: 240, y: -150, scale: 70, zIndex: 9), // Phụ kiện 3: cánh phải dưới
-  RolePlacement(x: -240, y: -170, scale: 70, zIndex: 9), // Phụ kiện 4: cánh trái trên
+  RolePlacement(x: 240, y: -210, scale: 74, zIndex: 9), // Phụ kiện 2: cánh phải trên
+  RolePlacement(x: 240, y: -150, scale: 74, zIndex: 9), // Phụ kiện 3: cánh phải dưới
+  RolePlacement(x: -240, y: -170, scale: 74, zIndex: 9), // Phụ kiện 4: cánh trái trên
 ];
 
 /// Lấy vị trí cho phụ kiện thứ N (0-based: 0 là phụ kiện chính).
@@ -108,7 +108,7 @@ RolePlacement getAccessoryPlacement(int accessoryIndex, {bool hasFullbody = fals
   return RolePlacement(
     x: 240,
     y: 80 + (secIndex - 1) * 60.0,
-    scale: 70,
+    scale: 74,
     zIndex: 9,
   );
 }
@@ -565,11 +565,68 @@ List<CanvasItem> layoutOuterwearOverBase(
 
   final placed = List<CanvasItem>.from(items);
   placed[baseIndex] = base.copyWith(scale: newBaseScale);
-  var outerwear = ow.copyWith(positionX: owX, scale: newOwScale);
+  var outerwear = ow.copyWith(
+    positionX: owX,
+    positionY: base.positionY,
+    scale: newOwScale,
+  );
   if (outerwear.layerOrder <= base.layerOrder) {
     outerwear = outerwear.copyWith(layerOrder: base.layerOrder + 1);
   }
   placed[outerwearIndex] = outerwear;
+  for (var i = 0; i < placed.length; i++) {
+    placed[i] = clampCanvasItem(placed[i], canvasWidth, canvasHeight);
+  }
+  return placed;
+}
+
+/// Đưa phụ kiện **sát cột giữa** (quần áo/nón/giày) nhưng **không đè** lên cột.
+///
+/// Bản chỉnh 2026-10-13: cột giữa gồm `top/bottom/fullbody/headwear/footwear`.
+/// Phụ kiện được đặt ở **phía đối diện áo khoác** (nếu không có áo khoác → bên
+/// trái), nép sát mép cột một khoảng `gap` nhỏ, rồi kẹp vào khung. Trả về nguyên
+/// trạng nếu không có phụ kiện hoặc không có cột.
+List<CanvasItem> layoutAccessoriesHugColumn(
+  List<CanvasItem> items, {
+  required double canvasWidth,
+  required double canvasHeight,
+}) {
+  const double itemScaleMultiplier = 1.25;
+  const double gap = 4.0;
+  const Set<String> columnRoleNames = {
+    'top',
+    'bottom',
+    'fullbody',
+    'headwear',
+    'footwear',
+  };
+
+  double colLeft = double.infinity;
+  double colRight = -double.infinity;
+  for (final it in items) {
+    if (!columnRoleNames.contains(it.role)) continue;
+    final double w = it.baseScale * it.boxRatioW * it.scale * itemScaleMultiplier;
+    if (it.positionX - w / 2 < colLeft) colLeft = it.positionX - w / 2;
+    if (it.positionX + w / 2 > colRight) colRight = it.positionX + w / 2;
+  }
+
+  final accIndexes = <int>[
+    for (var i = 0; i < items.length; i++)
+      if (items[i].role == CanvasRole.accessory.name) i,
+  ];
+  if (accIndexes.isEmpty || colLeft == double.infinity) return items;
+
+  final int owIndex = items.indexWhere((it) => it.role == CanvasRole.outerwear.name);
+  final bool placeLeft = owIndex < 0 || items[owIndex].positionX >= 0;
+
+  final placed = List<CanvasItem>.from(items);
+  for (final i in accIndexes) {
+    final it = placed[i];
+    final double w = it.baseScale * it.boxRatioW * it.scale * itemScaleMultiplier;
+    final double x =
+        placeLeft ? colLeft - gap - w / 2 : colRight + gap + w / 2;
+    placed[i] = it.copyWith(positionX: x);
+  }
   for (var i = 0; i < placed.length; i++) {
     placed[i] = clampCanvasItem(placed[i], canvasWidth, canvasHeight);
   }

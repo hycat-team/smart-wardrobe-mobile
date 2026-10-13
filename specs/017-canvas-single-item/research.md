@@ -72,7 +72,8 @@ của vai trò với `scale` = mức chung của canvas (trung bình, `1.0` khi 
 
 - **Bản chỉnh 2026-10-13 (lần 3, sau feedback tester)**:
   - Kích hoạt khi có **outerwear** và có **lớp nền** (`top`/`fullbody`).
-  - Áo khoác **rộng bằng lớp nền** (`owScale = newBaseW / owCoeff`).
+  - Áo khoác **rộng bằng lớp nền** (`owScale = newBaseW / owCoeff`) và **ngang hàng**
+    (`positionY = base.positionY`).
   - Đặt áo khoác ở **phía đối diện phụ kiện** (nếu có phụ kiện); ngược lại chọn phía nhiều chỗ.
   - Chồng ngang **≤ `0.40 * baseWidth`**; khung hẹp thì **thu cùng tỉ lệ** cả hai (giữ bằng nhau,
     sàn `0.15`) để vẫn thoả ≤40%.
@@ -104,6 +105,21 @@ không đọc `outfitStudioProvider.successMessage`.
 - Tránh Dialog chặn luồng dàn đồ (thao tác liên tục).
 
 **Alternatives considered**: Dialog xác nhận trước khi thay — phiền cho thao tác lặp; bị loại.
+
+---
+
+## R6 — Phụ kiện nép sát cột giữa
+
+**Decision**: Helper `layoutAccessoriesHugColumn(items, {canvasWidth, canvasHeight})`: tính bbox
+ngang của cột giữa (`top/bottom/fullbody/headwear/footwear`); đặt mỗi `accessory` ở **phía đối
+diện `outerwear`** (không có outerwear → bên trái) với `x = colLeft − gap − w/2` (hoặc
+`colRight + gap + w/2`), `gap = 4`, rồi `clampCanvasItem`.
+
+**Rationale**: Tester muốn phụ kiện **sát cột giữa nhưng không đè**. Bố cục trước đặt phụ kiện ở
+`x = −240` cố định → xa/rời rạc khi cột to lên.
+
+**Alternatives considered**: giữ `x` cố định — không nép sát khi kích thước cột đổi; cho phụ kiện
+chồng lên cột — trái yêu cầu.
 
 ---
 

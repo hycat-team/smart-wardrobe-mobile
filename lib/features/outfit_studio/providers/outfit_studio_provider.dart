@@ -271,9 +271,13 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
     // thì bố trí lại một lần (guard ≤1px phía trên chặn vòng rebuild).
     if (state.pendingRelayout) {
       state = state.copyWith(
-        canvasItems: layoutOuterwearOverBase(
-          layoutCanvasItems(
-            state.canvasItems,
+        canvasItems: layoutAccessoriesHugColumn(
+          layoutOuterwearOverBase(
+            layoutCanvasItems(
+              state.canvasItems,
+              canvasWidth: width,
+              canvasHeight: height,
+            ),
             canvasWidth: width,
             canvasHeight: height,
           ),
@@ -344,19 +348,17 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
 
     items.add(clampedItem);
 
-    // Bố trí áo khoác (đối diện phụ kiện) khi món vừa thêm là áo khoác, lớp nền
-    // hoặc phụ kiện — để phụ kiện và áo khoác luôn ở hai phía.
-    var finalItems = items;
-    if (role == CanvasRole.outerwear ||
-        role == CanvasRole.top ||
-        role == CanvasRole.fullbody ||
-        role == CanvasRole.accessory) {
-      finalItems = layoutOuterwearOverBase(
-        items,
-        canvasWidth: canvasW,
-        canvasHeight: canvasH,
-      );
-    }
+    // Bố trí cột giữa: áo khoác ngang hàng áo (đối diện phụ kiện) + phụ kiện nép sát cột.
+    var finalItems = layoutOuterwearOverBase(
+      items,
+      canvasWidth: canvasW,
+      canvasHeight: canvasH,
+    );
+    finalItems = layoutAccessoriesHugColumn(
+      finalItems,
+      canvasWidth: canvasW,
+      canvasHeight: canvasH,
+    );
 
     state = state.copyWith(
       canvasItems: finalItems,
@@ -443,14 +445,16 @@ class OutfitStudioNotifier extends StateNotifier<OutfitStudioState> {
       );
     }
 
-    final laidOut = layoutOuterwearOverBase(
-      layoutCanvasItems(
-        items,
-        canvasWidth: state.canvasWidth ?? 360,
-        canvasHeight: state.canvasHeight ?? 520,
+    final double w = state.canvasWidth ?? 360;
+    final double h = state.canvasHeight ?? 520;
+    final laidOut = layoutAccessoriesHugColumn(
+      layoutOuterwearOverBase(
+        layoutCanvasItems(items, canvasWidth: w, canvasHeight: h),
+        canvasWidth: w,
+        canvasHeight: h,
       ),
-      canvasWidth: state.canvasWidth ?? 360,
-      canvasHeight: state.canvasHeight ?? 520,
+      canvasWidth: w,
+      canvasHeight: h,
     );
     state = state.copyWith(
       canvasItems: laidOut,

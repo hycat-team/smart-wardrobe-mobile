@@ -84,7 +84,8 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 - **FR-002**: Khi người dùng thêm một món mà canvas đã có món **cùng loại** (trong nhóm quần áo cơ bản), hệ thống MUST thay thế món cũ bằng món mới (gỡ món cũ), không thêm chồng.
 - **FR-003**: Việc thay thế MUST đặt món mới **tại đúng vị trí và kích thước của món cũ** (thay tại chỗ); món mới được kẹp trong khung canvas và ở trạng thái đang được chọn. (Bản chỉnh 2026-10-13: trước đó đặt theo vị trí chuẩn.)
 - **FR-004**: Đầm liền thân (fullbody) và áo trên (top) loại trừ nhau: thêm đầm khi canvas có áo → gỡ áo (giữ quần nếu có); thêm áo khi canvas có đầm → gỡ đầm. Quần (bottom) **độc lập**, được phép tồn tại cùng đầm.
-- **FR-005**: Khi áo khoác cùng canvas với **lớp nền** (áo trên **hoặc** đầm), hệ thống MUST đặt áo khoác **rộng bằng lớp nền** và chồng lên lớp nền một phần nhưng **không quá 40%** bề rộng lớp nền; áo khoác MUST ở **phía đối diện phụ kiện** (khi có phụ kiện). Lớp nền giữ làm cột giữa (không dời). Trên khung hẹp, cả hai thu cùng tỉ lệ để vẫn thoả ≤ 40%.
+- **FR-005**: Khi áo khoác cùng canvas với **lớp nền** (áo trên **hoặc** đầm), hệ thống MUST đặt áo khoác **rộng bằng lớp nền**, **ngang hàng (cùng mức dọc) với lớp nền**, chồng lên lớp nền một phần nhưng **không quá 40%** bề rộng lớp nền, và ở **phía đối diện phụ kiện** (khi có phụ kiện). Lớp nền giữ làm cột giữa (không dời). Trên khung hẹp, cả hai thu cùng tỉ lệ để vẫn thoả ≤ 40%.
+- **FR-009**: Cột giữa (áo/quần/đầm/nón/giày) MUST căn giữa và là cột mốc; **phụ kiện** MUST nép **sát** cột giữa (cách một khoảng nhỏ) ở **phía đối diện áo khoác** và **không đè** lên cột hay món khác.
 - **FR-006**: Thêm món khi canvas trống MUST hoạt động như hiện tại (không có gì bị thay).
 - **FR-007**: Thao tác thay thế MUST kèm phản hồi rõ ràng cho người dùng rằng món đã bị thay thế.
 - **FR-008**: Món bị thay thế MUST không còn trong **dữ liệu lưu**: khi lưu bộ phối, danh sách món gửi đi KHÔNG chứa món đã bị gỡ (không lưu món "mồ côi").
@@ -99,9 +100,10 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 ### Measurable Outcomes
 
 - **SC-001**: 100% trường hợp thêm món trùng loại vào canvas đều **thay thế** món cũ, canvas không bao giờ có hai món cùng loại (theo phạm vi FR-001).
-- **SC-002**: Áo khoác **rộng bằng áo** và chồng lên áo **≤ 40%** bề rộng áo; áo khoác ở **phía đối diện phụ kiện**; lớp nền không bị dời (theo INV-6).
+- **SC-002**: Áo khoác **rộng bằng áo, ngang hàng với áo**, chồng lên áo **≤ 40%**; áo khoác ở **phía đối diện phụ kiện**; lớp nền không bị dời (theo INV-6).
 - **SC-003**: Sau khi thay thế, món mới nằm trọn trong khung canvas (100% trường hợp).
 - **SC-004**: Thêm món vào canvas trống không bị ảnh hưởng (không có món nào bị gỡ nhầm).
+- **SC-005**: Phụ kiện nép **sát** cột giữa (khoảng cách nhỏ) và **không chồng** lên cột (theo INV-7).
 
 ## Assumptions
 
@@ -109,4 +111,4 @@ Khi một món bị thay thế, người dùng vẫn thấy thao tác liền m�
 - Việc thay thế áp dụng cho thao tác **thêm món thủ công**; luồng nạp set AI và khôi phục outfit đã có quy tắc khử trùng lặp riêng và không bị đổi hành vi ngoài phạm vi đã nêu.
 - Đã chốt (Clarifications 2026-10-13): nhóm quần áo cơ bản một món mỗi loại; **mũ và phụ kiện được phép nhiều món**; đầm chỉ thay áo (được phối cùng quần); áo khoác giữ lớp trên nhưng dịch sang bên để lộ áo.
 - Thay thế gỡ món cũ hoàn toàn; người dùng có thể thêm lại nếu muốn.
-- Giày/nón/phụ kiện dùng **kích thước cơ sở nhỏ hơn** nhóm quần áo chính để tiết kiệm diện tích nhưng vẫn nhìn rõ (bản chỉnh 2026-10-13: giày `68`, nón `60`, phụ kiện `72`, phụ kiện phụ `70`, món "khác" `56`). Phụ kiện đặt ở **vùng trên** (cao hơn áo, thấp hơn nón), `y ≈ −150..−210`. Áo khoác và phụ kiện **luôn ở hai phía đối diện**, lấy quần áo làm cột giữa.
+- Giày/nón/phụ kiện dùng **kích thước cơ sở nhỏ hơn** nhóm quần áo chính nhưng đủ lớn để nhìn rõ (bản chỉnh 2026-10-13 lần 4: áo `112`, quần `112`, đầm `118`, nón `76`, giày `80`, phụ kiện `74`, món "khác" `56`). Phụ kiện đặt ở **vùng trên** (cao hơn áo, thấp hơn nón) và **nép sát cột giữa** ở phía đối diện áo khoác. Áo khoác và phụ kiện **luôn ở hai phía đối diện**, lấy cột quần áo làm mốc giữa.

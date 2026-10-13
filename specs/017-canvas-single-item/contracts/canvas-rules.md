@@ -31,10 +31,12 @@
 
 ### 4. Áo khoác không chồng lớp nền
 
-- Khi cùng canvas có `outerwear` và lớp nền (`top`/`fullbody`): áo khoác **rộng bằng lớp nền**,
-  đặt ở **phía đối diện phụ kiện** (nếu không có phụ kiện thì chọn phía nhiều chỗ), chồng lên lớp
-  nền **≤ 40%** bề rộng nền; khung hẹp thì **thu cùng tỉ lệ** (giữ bằng nhau, sàn `0.15`); lớp nền
-  giữ cột giữa (không dời); outerwear ở lớp trên.
+- Khi cùng canvas có `outerwear` và lớp nền (`top`/`fullbody`): áo khoác **rộng bằng, ngang hàng
+  (cùng `y`)** với lớp nền, đặt ở **phía đối diện phụ kiện** (nếu không có phụ kiện thì chọn phía
+  nhiều chỗ), chồng lên lớp nền **≤ 40%** bề rộng nền; khung hẹp thì **thu cùng tỉ lệ** (giữ bằng
+  nhau, sàn `0.15`); lớp nền giữ cột giữa (không dời); outerwear ở lớp trên.
+- **Phụ kiện** nép **sát cột giữa** (`top/bottom/fullbody/headwear/footwear`) ở **phía đối diện áo
+  khoác**, cách một khoảng `gap` nhỏ, **không chồng** lên cột.
 - Áp dụng ở cả 3 luồng đặt món (thêm tay / nạp set AI / khôi phục outfit), và khi thêm phụ kiện
   (để áo khoác luôn đối diện); không đụng món khác loại.
 
@@ -45,7 +47,8 @@
 | INV-1 | `count(role==r) ≤ 1` với `r` ∈ tập độc quyền |
 | INV-3 | thêm `fullbody` ⟹ không còn `top`; thêm `top` ⟹ không còn `fullbody`; `bottom` không đổi |
 | INV-5 | mọi món trong khung |
-| INV-6 | có outerwear + lớp nền ⟹ áo khoác bằng áo, chồng ≤40%, đối diện phụ kiện |
+| INV-6 | có outerwear + lớp nền ⟹ áo khoác bằng áo, ngang hàng, chồng ≤40%, đối diện phụ kiện |
+| INV-7 | phụ kiện nép sát cột giữa (đối diện áo khoác), không chồng lên cột |
 
 ## Ngoài phạm vi
 

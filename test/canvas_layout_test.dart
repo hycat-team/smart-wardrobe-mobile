@@ -64,18 +64,18 @@ void main() {
       final sepTop = roleCoordinatesSeparate[CanvasRole.top]!;
       expect(sepTop.x, 0.0);
       expect(sepTop.y, -140.0);
-      expect(sepTop.scale, 100.0);
+      expect(sepTop.scale, 112.0);
       expect(sepTop.zIndex, 5);
 
       final fb = roleCoordinatesFullbody[CanvasRole.fullbody]!;
       expect(fb.x, 0.0);
       expect(fb.y, -15.0);
-      expect(fb.scale, 105.0);
+      expect(fb.scale, 118.0);
       expect(fb.zIndex, 5);
 
       final outw = roleCoordinatesSeparate[CanvasRole.outerwear]!;
       expect(outw.x, -25.0);
-      expect(outw.y, -145.0);
+      expect(outw.y, -140.0);
       expect(outw.scale, 105.0);
       expect(outw.zIndex, 7);
     });

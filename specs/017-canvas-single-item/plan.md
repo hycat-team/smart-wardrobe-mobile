@@ -70,7 +70,7 @@ Chi tiết và phương án bị loại ở [research.md](./research.md).
 | R1 | Tập vai trò **độc quyền** = `{top, bottom, fullbody, outerwear, footwear}`. `{headwear, accessory, other, unknown}` cho phép nhiều món | R1 |
 | R2 | `addItemToCanvas`: sau khi dựng món mới, **gỡ mọi món xung đột** trong danh sách rồi mới thêm: cùng vai trò (nếu độc quyền) + quy tắc **đầm↔áo** (thêm `fullbody` gỡ `top`; thêm `top` gỡ `fullbody`; `bottom` độc lập) | R2 |
 | R3 | Khi thay món **cùng vai trò** → **thay tại chỗ** (giữ đúng `positionX/Y` + `scale` món cũ); thêm mới → toạ độ chuẩn; luôn kẹp trong khung | R3 |
-| R4 | **Áo khoác bằng áo, chồng ≤40%, đối diện phụ kiện**: giữ lớp nền làm cột giữa; áo khoác rộng bằng nền, đặt phía đối diện phụ kiện, chồng `0.40*baseW`, thu cùng tỉ lệ nếu khung hẹp; gọi khi thêm outerwear/top/fullbody/accessory + nạp set/khôi phục | R4 |
+| R4 | **Áo khoác bằng áo, ngang hàng, chồng ≤40%, đối diện phụ kiện** + **phụ kiện nép sát cột** (R6): giữ lớp nền làm cột giữa; áo khoác rộng bằng & cùng `y` với nền, phía đối diện phụ kiện, chồng `0.40*baseW`, thu cùng tỉ lệ nếu khung hẹp; phụ kiện nép sát mép cột (đối diện áo khoác) | R4/R6 |
 | R5 | Hồi tiếp thay thế: `addItemToCanvas` trả về `bool` (true khi có gỡ) → screen `ClosyToast.success` (không Dialog, không `successMessage`) | R5 |
 
 ### Phát hiện quan trọng ảnh hưởng thiết kế
@@ -121,7 +121,7 @@ test/
 | File | Loại | Hành vi |
 |---|---|---|
 | `studio_single_item_per_role_test.dart` | Mới | Thêm 2 áo → còn 1; thêm đầm khi có áo+quần → gỡ áo giữ quần; thêm áo khi có đầm → gỡ đầm; phụ kiện/mũ nhiều món vẫn giữ |
-| `canvas_outerwear_layout_test.dart` | Mới | Áo khoác rộng bằng áo, chồng ≤40%, nền không dời, đối diện phụ kiện; lặp với đầm; thay giày giữ đúng vị trí + kích thước |
+| `canvas_outerwear_layout_test.dart` | Mới | Áo khoác rộng bằng áo, ngang hàng, chồng ≤40%, nền không dời, đối diện phụ kiện; lặp với đầm; thay giày giữ đúng vị trí + kích thước |
 | `studio_canvas_placement_test.dart` | Regression | Chạy lại để chắc bước gỡ xung đột không phá kẹp-biên (spec 016) |
 | `canvas_layout_test.dart` | (không đổi trừ khi helper đặt trong file này) | — |
 
