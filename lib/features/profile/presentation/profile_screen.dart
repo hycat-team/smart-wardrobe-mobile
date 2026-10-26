@@ -588,12 +588,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           'Xem giá trị tủ đồ, tỷ lệ danh mục và các món đồ ít mặc',
           () => context.push('/wardrobe/insights'),
         ),
-        _buildMenuTile(
-          Icons.insights_rounded,
-          'Thống kê chi tiết',
-          'Mức sử dụng, giá trị, outfit và xu hướng 6 tháng',
-          () => context.push('/wardrobe/statistics'),
-        ),
         // HIDDEN (tạm ẩn theo yêu cầu — app chưa dùng outfits yêu thích/đã lưu).
         /*
         _buildMenuTile(

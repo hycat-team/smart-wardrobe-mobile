@@ -207,7 +207,14 @@ class ChatMessageModel {
   bool get hasOutfitRedirect => content.contains('[ACTION:REDIRECT_OUTFIT]');
 
   String get cleanContent {
-    return content.replaceAll('[ACTION:REDIRECT_OUTFIT]', '').trim();
+    var text = content.replaceAll('[ACTION:REDIRECT_OUTFIT]', '');
+    if (text.contains(r'\\n')) {
+      text = text.replaceAll(r'\\n', '\n');
+    }
+    if (text.contains(r'\\r')) {
+      text = text.replaceAll(r'\\r', '');
+    }
+    return text.trim();
   }
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {

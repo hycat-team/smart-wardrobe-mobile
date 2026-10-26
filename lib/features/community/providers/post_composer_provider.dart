@@ -141,7 +141,11 @@ class PostComposerNotifier extends StateNotifier<PostComposerState> {
 
   void setPostType(String type) {
     if (state.isEditMode) return; // Không cho phép đổi postType khi chỉnh sửa
-    state = state.copyWith(postType: type, clearError: true);
+    state = state.copyWith(
+      postType: type,
+      clearError: true,
+      media: type == 'outfit' ? const [] : null,
+    );
   }
 
   void setTitle(String title) {
@@ -366,7 +370,7 @@ class PostComposerNotifier extends StateNotifier<PostComposerState> {
           title: state.title.trim().isNotEmpty ? state.title.trim() : null,
           content: state.content.trim(),
           outfitId: state.selectedOutfit?.id,
-          media: uploadedMediaReqs.isNotEmpty ? uploadedMediaReqs : null,
+          media: (state.postType == 'outfit' || uploadedMediaReqs.isEmpty) ? null : uploadedMediaReqs,
         );
         final updatedPost = await _repository.updatePost(state.editPublicId!, updateReq);
         _ref?.read(communityFeedProvider.notifier).updatePost(updatedPost);

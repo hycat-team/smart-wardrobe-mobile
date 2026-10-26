@@ -22,6 +22,7 @@ Future<void> _pumpComposer(
   WidgetTester tester, {
   required double width,
   required double height,
+  bool selectMedia = true,
 }) async {
   tester.view.physicalSize = Size(width, height);
   tester.view.devicePixelRatio = 1.0;
@@ -38,6 +39,11 @@ Future<void> _pumpComposer(
     ),
   );
   await tester.pump();
+
+  if (selectMedia) {
+    await tester.tap(find.text('Hình ảnh / Video'));
+    await tester.pump();
+  }
 }
 
 /// `RenderFlex overflow` trong lúc paint sẽ bị FlutterError ghi nhận và làm test
@@ -94,6 +100,33 @@ void main() {
         (tester) async {
       await _pumpComposer(tester, width: 320, height: 900);
       expect(find.textContaining('HÌNH ẢNH & VIDEO'), findsOneWidget);
+    });
+  });
+
+  group('PostComposer — option đăng bộ phối (outfit)', () {
+    testWidgets(
+        'ở option bộ phối: gỡ nút thêm ảnh/video, đưa UI bộ phối xuống dưới nội dung',
+        (tester) async {
+      // Mặc định postType là outfit (selectMedia = false)
+      await _pumpComposer(tester, width: 360, height: 900, selectMedia: false);
+
+      _expectNoOverflow(tester);
+
+      // Nút thêm ảnh và thêm video không hiển thị
+      expect(find.text('Thêm ảnh'), findsNothing);
+      expect(find.text('Thêm video'), findsNothing);
+      expect(find.textContaining('HÌNH ẢNH & VIDEO'), findsNothing);
+
+      // UI chọn bộ phối hiển thị
+      expect(find.text('BỘ PHỐI ĐÍNH KÈM'), findsOneWidget);
+      expect(find.text('Chọn bộ phối từ tủ đồ của bạn'), findsOneWidget);
+
+      // Vị trí UI bộ phối nằm bên dưới trường Nội dung
+      final contentTop = tester.getTopLeft(find.text('NỘI DUNG')).dy;
+      final outfitSectionTop =
+          tester.getTopLeft(find.text('BỘ PHỐI ĐÍNH KÈM')).dy;
+      expect(outfitSectionTop, greaterThan(contentTop),
+          reason: 'BỘ PHỐI ĐÍNH KÈM phải nằm phía dưới trường NỘI DUNG');
     });
   });
 }

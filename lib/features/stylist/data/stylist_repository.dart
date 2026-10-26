@@ -172,11 +172,17 @@ class StylistRepository {
             final dataLines = <String>[];
 
             for (final line in frame.split('\n')) {
-              final trimmed = line.trim();
+              final rawLine = line.endsWith('\r') ? line.substring(0, line.length - 1) : line;
+              final trimmed = rawLine.trim();
               if (trimmed.startsWith('event:')) {
                 eventType = trimmed.substring(6).trim();
-              } else if (trimmed.startsWith('data:')) {
-                dataLines.add(trimmed.substring(5).trim());
+              } else if (rawLine.startsWith('data:')) {
+                // Chuẩn SSE: nếu bắt đầu bằng 'data: ', chỉ bỏ 1 khoảng trắng sau 'data:' để giữ nguyên thụt đầu dòng Markdown & khoảng trắng
+                if (rawLine.startsWith('data: ')) {
+                  dataLines.add(rawLine.substring(6));
+                } else {
+                  dataLines.add(rawLine.substring(5));
+                }
               }
             }
 
@@ -184,11 +190,41 @@ class StylistRepository {
             final rawData = dataLines.join('\n');
 
             if (eventType == 'chunk') {
-              accumulatedText += rawData;
-              onChunk(rawData);
+              String chunkText = rawData;
+              try {
+                final decoded = jsonDecode(rawData);
+                if (decoded is String) {
+                  chunkText = decoded;
+                } else if (decoded is Map) {
+                  chunkText = (decoded['chunk'] ?? decoded['content'] ?? decoded['text'] ?? decoded['data'] ?? rawData).toString();
+                }
+              } catch (_) {
+                if (chunkText.contains(r'\n')) {
+                  chunkText = chunkText.replaceAll(r'\n', '\n');
+                }
+              }
+              accumulatedText += chunkText;
+              onChunk(chunkText);
             } else if (eventType == 'done') {
               isDone = true;
-              final finalResult = rawData.isNotEmpty ? rawData : accumulatedText;
+              String finalResult = accumulatedText;
+              if (rawData.isNotEmpty && rawData != '[DONE]' && rawData != 'done') {
+                try {
+                  final decoded = jsonDecode(rawData);
+                  if (decoded is String && decoded.isNotEmpty) {
+                    finalResult = decoded;
+                  } else if (decoded is Map && (decoded['content'] != null || decoded['text'] != null)) {
+                    finalResult = (decoded['content'] ?? decoded['text']).toString();
+                  }
+                } catch (_) {
+                  if (rawData.length > accumulatedText.length) {
+                    finalResult = rawData;
+                  }
+                }
+              }
+              if (finalResult.contains(r'\n')) {
+                finalResult = finalResult.replaceAll(r'\n', '\n');
+              }
               onDone(finalResult);
               client.close();
               return;
@@ -203,7 +239,11 @@ class StylistRepository {
         onDone: () {
           if (!isDone) {
             isDone = true;
-            onDone(accumulatedText);
+            var finalResult = accumulatedText;
+            if (finalResult.contains(r'\n')) {
+              finalResult = finalResult.replaceAll(r'\n', '\n');
+            }
+            onDone(finalResult);
           }
           client.close();
         },

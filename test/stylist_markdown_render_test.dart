@@ -67,4 +67,23 @@ void main() {
     expect(find.byType(MarkdownBody), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+      'Chuỗi chứa escaped \\n từ SSE stream được render thành Markdown chuẩn',
+      (tester) async {
+    // Giả lập chuỗi nhận từ live chat có ký tự literal \n thay vì byte 0x0A
+    const rawStreamText =
+        '**Gợi ý phối đồ:**\\n- Áo sơ mi trắng\\n- Quần âu xếp ly';
+    await _pump(tester, rawStreamText);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(MarkdownBody), findsOneWidget);
+    final spans = _allSpans(tester).toList();
+    final bold = spans.firstWhere(
+      (s) => s.text == 'Gợi ý phối đồ:',
+      orElse: () => throw StateError('Không tìm thấy span đậm'),
+    );
+    expect(bold.style?.fontWeight, FontWeight.w700);
+    expect(spans.any((s) => (s.text ?? '').contains(r'\n')), isFalse);
+  });
 }

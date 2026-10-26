@@ -114,10 +114,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppColors.primary),
-          onPressed: () => context.pop(),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'Cộng đồng',
           style: GoogleFonts.playfairDisplay(

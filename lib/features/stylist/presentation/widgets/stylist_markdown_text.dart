@@ -18,12 +18,30 @@ class StylistMarkdownText extends StatelessWidget {
   final String data;
   final bool isUser;
 
+  static String normalizeMarkdownText(String text) {
+    if (text.isEmpty) return text;
+    var result = text;
+    // Unescape literal '\n' characters if received as escaped sequence from stream/JSON
+    if (result.contains(r'\n')) {
+      result = result.replaceAll(r'\n', '\n');
+    }
+    if (result.contains(r'\r')) {
+      result = result.replaceAll(r'\r', '');
+    }
+    if (result.contains(r'\"')) {
+      result = result.replaceAll(r'\"', '"');
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor =
         isUser ? const Color(0xFF1A1A1A) : AppColors.textPrimary;
+    final normalized = normalizeMarkdownText(data);
     return MarkdownBody(
-      data: data,
+      data: normalized,
+      softLineBreak: true,
       styleSheet: _styleSheet(textColor),
     );
   }

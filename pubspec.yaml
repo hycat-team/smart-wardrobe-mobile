@@ -3,7 +3,7 @@ description: "Smart Wardrobe Mobile App - Quiet Luxury AI Stylist & Fashion Ward
 publish_to: 'none'
 # versionCode (+N) PHẢI lớn hơn mọi bản đã upload Play. Play đã dùng vc=3
 # (bản 1.0.0) → bản này là vc=4, versionName 1.1.0.
-version: 1.1.0+4
+version: 1.1.4+5
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

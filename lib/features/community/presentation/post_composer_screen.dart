@@ -215,7 +215,82 @@ class _PostComposerScreenState extends ConsumerState<PostComposerScreen> {
               const SizedBox(height: 20),
             ],
 
-            // 2. Chọn Outfit (nếu là bài outfit)
+            // 2. Tiêu đề bài viết
+            Text(
+              'TIÊU ĐỀ (TÙY CHỌN)',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _titleController,
+              maxLength: 150,
+              decoration: InputDecoration(
+                hintText: 'Nhập tiêu đề ấn tượng cho bài viết...',
+                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.surface,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // 3. Nội dung bài viết
+            Text(
+              'NỘI DUNG',
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _contentController,
+              maxLines: 5,
+              maxLength: 5000,
+              decoration: InputDecoration(
+                hintText: 'Chia sẻ cảm hứng, cách phối phụ kiện hoặc mẹo phong cách...',
+                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.surface,
+                contentPadding: const EdgeInsets.all(16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // 4. Đính kèm (Bộ phối hoặc Hình ảnh/Video ở cuối màn hình)
             if (composerState.postType == 'outfit') ...[
               Text(
                 'BỘ PHỐI ĐÍNH KÈM',
@@ -343,84 +418,8 @@ class _PostComposerScreenState extends ConsumerState<PostComposerScreen> {
                     ),
                   ),
                 ),
-              const SizedBox(height: 20),
-            ],
-
-            // 3. Tiêu đề bài viết
-            Text(
-              'TIÊU ĐỀ (TÙY CHỌN)',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _titleController,
-              maxLength: 150,
-              decoration: InputDecoration(
-                hintText: 'Nhập tiêu đề ấn tượng cho bài viết...',
-                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // 4. Nội dung bài viết
-            Text(
-              'NỘI DUNG',
-              style: GoogleFonts.beVietnamPro(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _contentController,
-              maxLines: 5,
-              maxLength: 5000,
-              decoration: InputDecoration(
-                hintText: 'Chia sẻ cảm hứng, cách phối phụ kiện hoặc mẹo phong cách...',
-                hintStyle: GoogleFonts.beVietnamPro(color: AppColors.textSecondary),
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding: const EdgeInsets.all(16),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 1.2),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
+            ] else ...[
+              // Khi ở option đăng hình ảnh/video thì mới hiển thị khu vực chọn Media
             // 5. Media Attachments Section
             //
             // Spec 015 — FR-012/FR-013: trước đây đây là `Row` + `spaceBetween`
@@ -547,6 +546,7 @@ class _PostComposerScreenState extends ConsumerState<PostComposerScreen> {
                   },
                 ),
               ),
+            ],
 
             const SizedBox(height: 40),
           ],
