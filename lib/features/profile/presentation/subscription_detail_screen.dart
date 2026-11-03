@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/ai_quota_display.dart';
 import '../models/user_profile_models.dart';
 import '../providers/profile_provider.dart';
-import 'widgets/web_guidance_card.dart';
 
 class SubscriptionDetailScreen extends ConsumerStatefulWidget {
   const SubscriptionDetailScreen({super.key});
@@ -92,38 +90,29 @@ class _SubscriptionDetailScreenState
                     const SizedBox(height: 24),
 
                     // 2. Daily AI Quotas Section (widget dùng chung với Hồ sơ — US4)
-                    _buildQuotasSection(
-                      overviewState,
-                      onRetry: () => ref
-                          .read(subscriptionOverviewProvider.notifier)
-                          .loadOverview(),
-                    ),
+                    _buildUsageSection(overviewState),
                     const SizedBox(height: 28),
 
                     // 3. Upgrade Banner / Plans Section
+                    Text(
+                      'Các Gói Dịch Vụ',
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Các Gói Dịch Vụ',
-                          style: GoogleFonts.playfairDisplay(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primary,
+                      children: const [
+                        Icon(Icons.language_rounded, size: 14, color: AppColors.textSecondary),
+                        SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Thực hiện nâng cấp gói trên web',
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ),
-                        if (!overviewState.subscription.isPremium)
-                          GestureDetector(
-                            onTap: () => context.push('/profile/subscription/upgrade'),
-                            child: const Text(
-                              'Nâng cấp ngay →',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFD4AF37),
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -148,11 +137,6 @@ class _SubscriptionDetailScreenState
                       },
                     ),
                     const SizedBox(height: 24),
-                    // Thanh toán thực hiện trên website — hướng dẫn văn bản.
-                    if (!overviewState.subscription.isPremium) ...[
-                      const WebGuidanceCard(),
-                      const SizedBox(height: 24),
-                    ],
                   ],
                 ),
               ),
@@ -167,10 +151,8 @@ class _SubscriptionDetailScreenState
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isPremium
-              ? [const Color(0xFF1E1E1E), const Color(0xFF111111)]
-              : [AppColors.surface, AppColors.surfaceSubtle],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E1E1E), Color(0xFF111111)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -222,7 +204,7 @@ class _SubscriptionDetailScreenState
             style: GoogleFonts.playfairDisplay(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-              color: isPremium ? Colors.white : AppColors.primary,
+              color: Colors.white,
             ),
           ),
           const SizedBox(height: 4),
@@ -230,44 +212,18 @@ class _SubscriptionDetailScreenState
             isPremium
                 ? 'Tài khoản Premium thời thượng & đầy đủ đặc quyền'
                 : 'Bạn đang sử dụng gói trải nghiệm miễn phí',
-            style: TextStyle(
-              fontSize: 13,
-              color: isPremium ? const Color(0xFFB3B3B3) : AppColors.textSecondary,
-            ),
+            style: const TextStyle(fontSize: 13, color: Color(0xFFB3B3B3)),
           ),
           const SizedBox(height: 18),
           const Divider(height: 1, color: Color(0x22888888)),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMetricItem(
-                'Sức chứa tủ đồ',
-                '${sub.maxWardrobeItems} món',
-                isPremium: isPremium,
-              ),
-              _buildMetricItem(
-                'Lưu trữ Outfit',
-                '${sub.maxOutfits} bộ',
-                isPremium: isPremium,
-              ),
-              _buildMetricItem(
-                'Trạng thái',
-                sub.status.toUpperCase() == 'ACTIVE' ? 'Hoạt động' : sub.status,
-                isPremium: isPremium,
-              ),
-            ],
-          ),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Cá nhân hoá gu',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isPremium ? const Color(0xFFB3B3B3) : AppColors.textSecondary,
-                ),
+                style: const TextStyle(fontSize: 13, color: Color(0xFFB3B3B3)),
               ),
               Row(
                 children: [
@@ -281,69 +237,28 @@ class _SubscriptionDetailScreenState
                   const SizedBox(width: 6),
                   Text(
                     sub.personalizationEnabled ? 'Đã bật' : 'Chưa có',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: isPremium ? Colors.white : AppColors.textPrimary,
+                      color: Colors.white,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          if (!isPremium) ...[
-            const SizedBox(height: 18),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => context.push('/profile/subscription/upgrade'),
-                icon: Icon(Icons.flash_on_rounded, size: 18, color: goldColor),
-                label: const Text('Nâng cấp lên Premium ngay'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 13),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildMetricItem(String label, String value, {required bool isPremium}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: isPremium ? const Color(0xFF9E9E9E) : AppColors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: isPremium ? Colors.white : AppColors.primary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuotasSection(
-    SubscriptionOverviewState overview, {
-    VoidCallback? onRetry,
-  }) {
+  Widget _buildUsageSection(SubscriptionOverviewState overview) {
+    final sub = overview.subscription;
     final quota = overview.dailyQuota;
-    // Chỉ hiện skeleton/lỗi khi chưa từng có số liệu thật (US4, FR-014).
-    final firstLoad = !overview.quotaLoaded;
+    final stats = overview.wardrobeStats;
+    final statsReady = overview.statsLoaded;
+    final quotaReady = overview.quotaLoaded;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -354,43 +269,50 @@ class _SubscriptionDetailScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Hạn mức AI hôm nay',
-                style: GoogleFonts.playfairDisplay(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const Text(
-                'Tự động reset 00:00',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-
-          AiQuotaDisplay(
-            title: 'Gợi ý phối đồ AI',
-            used: quota.aiOutfitUsed,
-            limit: quota.aiOutfitLimit,
-            icon: Icons.auto_awesome_rounded,
-            isLoading: overview.isLoading && firstLoad,
-            errorMessage: firstLoad ? overview.errorMessage : null,
-            onRetry: onRetry,
-            showResetNote: false,
+          Text(
+            'HẠN MỨC & SỬ DỤNG',
+            style: GoogleFonts.beVietnamPro(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.8,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 16),
-
-          AiQuotaDisplay(
-            title: 'Tư vấn Stylist AI',
-            used: quota.aiChatUsed,
-            limit: quota.aiChatLimit,
-            icon: Icons.chat_bubble_outline_rounded,
-            isLoading: overview.isLoading && firstLoad,
-            errorMessage: firstLoad ? overview.errorMessage : null,
-            onRetry: onRetry,
-            showResetNote: false,
+          _QuotaRow(
+            icon: Icons.layers_outlined,
+            label: 'Sức chứa tủ đồ',
+            used: statsReady ? stats.activeItemsCount : null,
+            max: sub.maxWardrobeItems,
           ),
+          const SizedBox(height: 14),
+          _QuotaRow(
+            icon: Icons.checkroom_outlined,
+            label: 'Bộ phối đồ',
+            used: statsReady ? stats.outfitsCount : null,
+            max: sub.maxOutfits,
+          ),
+          const SizedBox(height: 14),
+          _QuotaRow(
+            icon: Icons.auto_awesome_outlined,
+            label: 'Tạo phối đồ AI (ngày)',
+            used: quotaReady ? quota.aiOutfitUsed : null,
+            max: quota.aiOutfitLimit,
+          ),
+          const SizedBox(height: 14),
+          _QuotaRow(
+            icon: Icons.chat_bubble_outline_rounded,
+            label: 'Chat với AI (ngày)',
+            used: quotaReady ? quota.aiChatUsed : null,
+            max: quota.aiChatLimit,
+          ),
+          if (overview.statsError != null && !statsReady) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Không tải được số liệu tủ đồ.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ],
         ],
       ),
     );
@@ -456,7 +378,7 @@ class _SubscriptionDetailScreenState
             ],
           ),
           const SizedBox(height: 14),
-          ...plan.features.map(
+          ..._buildPlanBenefits(plan).map(
             (f) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
@@ -470,44 +392,21 @@ class _SubscriptionDetailScreenState
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: isCurrent
-                  ? null
-                  : () {
-                      context.push('/profile/subscription/upgrade');
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isCurrent ? AppColors.surfaceSubtle : AppColors.primary,
-                foregroundColor: isCurrent ? AppColors.textSecondary : Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-              ),
-              child: Text(isCurrent ? 'Gói hiện tại của bạn' : 'Xem quyền lợi ${plan.name}'),
-            ),
-          ),
-          if (!isCurrent) ...[
-            const SizedBox(height: 10),
-            // Thanh toán chuyển lên website (spec 009): nâng cấp gói thực hiện
-            // trên web, không có nút/link trong app.
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.language_rounded, size: 14, color: AppColors.textSecondary),
-                SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'Thực hiện nâng cấp gói trên web',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );
+  }
+
+  /// Entitlements rendered exactly like the web pricing card so both surfaces agree.
+  List<String> _buildPlanBenefits(SubscriptionPlanModel plan) {
+    return [
+      'Tối đa ${plan.maxWardrobeItems} món đồ trong tủ',
+      'Tối đa ${plan.maxOutfits} bộ phối',
+      'Tạo phối đồ AI: ${plan.aiOutfitDailyQuota} lần/ngày',
+      'Chat với AI: ${plan.aiChatDailyQuota} lần/ngày',
+      if (plan.personalizationEnabled) 'Cá nhân hoá gu',
+      ...plan.features,
+    ];
   }
 
   Widget _buildDefaultPlansList(BuildContext context, UserSubscriptionModel currentSub) {
@@ -552,6 +451,74 @@ class _SubscriptionDetailScreenState
 
     return Column(
       children: defaultPlans.map((p) => _buildPlanCard(context, p, currentSub)).toList(),
+    );
+  }
+}
+
+/// One "used / max" line with a hairline progress bar, matching the web `CurrentPlanCard`.
+class _QuotaRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  /// null when the value has not been loaded yet — renders "—" instead of a fake 0.
+  final int? used;
+  final int max;
+
+  const _QuotaRow({
+    required this.icon,
+    required this.label,
+    required this.used,
+    required this.max,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isUnlimited = max <= 0;
+    final usedValue = used ?? 0;
+    final text = used == null
+        ? '—'
+        : (isUnlimited ? '$usedValue / ∞' : '$usedValue / $max');
+    final progress =
+        (used == null || isUnlimited || max <= 0) ? 0.0 : (usedValue / max).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 14, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Text(
+              text,
+              style: GoogleFonts.beVietnamPro(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(2),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 2,
+            backgroundColor: AppColors.border,
+            valueColor: const AlwaysStoppedAnimation(AppColors.accentSand),
+          ),
+        ),
+      ],
     );
   }
 }

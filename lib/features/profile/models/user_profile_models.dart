@@ -176,6 +176,7 @@ class SubscriptionPlanModel {
   final int maxOutfits;
   final int aiOutfitDailyQuota;
   final int aiChatDailyQuota;
+  final bool personalizationEnabled;
   final List<String> features;
   final bool isActive;
 
@@ -190,6 +191,7 @@ class SubscriptionPlanModel {
     this.maxOutfits = 100,
     this.aiOutfitDailyQuota = 5,
     this.aiChatDailyQuota = 3,
+    this.personalizationEnabled = false,
     this.features = const [],
     this.isActive = true,
   });
@@ -205,35 +207,12 @@ class SubscriptionPlanModel {
   }
 
   factory SubscriptionPlanModel.fromJson(Map<String, dynamic> json) {
+    // Only server-provided feature strings are kept: the local fallback list duplicated the numeric
+    // entitlements with different wording, which is what made the app disagree with the web pricing
+    // page. The card renders the numbers itself and appends these extra lines.
     final rawFeatures = json['features'];
-    List<String> featureList = [];
-    if (rawFeatures is List && rawFeatures.isNotEmpty) {
-      featureList = rawFeatures.map((f) => f.toString()).toList();
-    } else {
-      final items = json['maxWardrobeItems'] as int? ?? json['MaxWardrobeItems'] as int? ?? 100;
-      final outfits = json['maxOutfits'] as int? ?? json['MaxOutfits'] as int? ?? 100;
-      final aiOutfit = json['aiOutfitDailyQuota'] as int? ?? json['AiOutfitDailyQuota'] as int? ?? 5;
-      final aiChat = json['aiChatDailyQuota'] as int? ?? json['AiChatDailyQuota'] as int? ?? 3;
-      final slugStr = json['slug']?.toString() ?? json['Slug']?.toString() ?? '';
-
-      if (slugStr == 'premium-monthly') {
-        featureList = [
-          'Quản lý đến $items món đồ tủ đồ cá nhân',
-          'Lưu trữ đến $outfits set trang phục phong cách',
-          '$aiOutfit lượt gợi ý phối đồ AI thông minh / ngày',
-          '$aiChat lượt trò chuyện Stylist AI riêng biệt / ngày',
-          'Trải nghiệm không quảng cáo & ưu tiên xử lý AI',
-          'Đồng bộ hóa đám mây đa thiết bị tức thì',
-        ];
-      } else {
-        featureList = [
-          'Tủ đồ cơ bản tối đa $items món đồ',
-          'Lưu tối đa $outfits set đồ phong cách',
-          '$aiOutfit lượt phối đồ AI tự động / ngày',
-          '$aiChat lượt tư vấn Stylist AI / ngày',
-        ];
-      }
-    }
+    final featureList =
+        rawFeatures is List ? rawFeatures.map((f) => f.toString()).toList() : <String>[];
 
     return SubscriptionPlanModel(
       id: json['id']?.toString() ?? json['ID']?.toString() ?? '',
@@ -246,6 +225,7 @@ class SubscriptionPlanModel {
       maxOutfits: json['maxOutfits'] as int? ?? json['MaxOutfits'] as int? ?? 100,
       aiOutfitDailyQuota: json['aiOutfitDailyQuota'] as int? ?? json['AiOutfitDailyQuota'] as int? ?? 5,
       aiChatDailyQuota: json['aiChatDailyQuota'] as int? ?? json['AiChatDailyQuota'] as int? ?? 3,
+      personalizationEnabled: json['personalizationEnabled'] == true,
       features: featureList,
       isActive: json['isActive'] != false && json['IsActive'] != false,
     );

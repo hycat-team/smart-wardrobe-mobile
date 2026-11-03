@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../auth/models/auth_models.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../wardrobe/models/wardrobe_models.dart';
+import '../../wardrobe/providers/wardrobe_provider.dart';
 import '../data/profile_repository.dart';
 import '../models/body_profile_models.dart';
 import '../models/user_profile_models.dart';
@@ -166,14 +168,20 @@ class SubscriptionOverviewState {
   // true sau lần tải hạn mức thành công đầu tiên — dùng để phân biệt
   // "chưa có số liệu" (hiện skeleton/lỗi) với số 0 thật (US4, FR-014).
   final bool quotaLoaded;
+  final WardrobeStats wardrobeStats;
+  final bool statsLoaded;
   final String? errorMessage;
+  final String? statsError;
 
   const SubscriptionOverviewState({
     this.isLoading = false,
     this.subscription = const UserSubscriptionModel(),
     this.dailyQuota = const DailyQuotaModel(),
     this.quotaLoaded = false,
+    this.wardrobeStats = const WardrobeStats(),
+    this.statsLoaded = false,
     this.errorMessage,
+    this.statsError,
   });
 
   SubscriptionOverviewState copyWith({
@@ -181,14 +189,20 @@ class SubscriptionOverviewState {
     UserSubscriptionModel? subscription,
     DailyQuotaModel? dailyQuota,
     bool? quotaLoaded,
+    WardrobeStats? wardrobeStats,
+    bool? statsLoaded,
     String? errorMessage,
+    String? statsError,
   }) {
     return SubscriptionOverviewState(
       isLoading: isLoading ?? this.isLoading,
       subscription: subscription ?? this.subscription,
       dailyQuota: dailyQuota ?? this.dailyQuota,
       quotaLoaded: quotaLoaded ?? this.quotaLoaded,
+      wardrobeStats: wardrobeStats ?? this.wardrobeStats,
+      statsLoaded: statsLoaded ?? this.statsLoaded,
       errorMessage: errorMessage,
+      statsError: statsError,
     );
   }
 }
@@ -214,17 +228,32 @@ class SubscriptionOverviewNotifier extends StateNotifier<SubscriptionOverviewSta
   }
 
   Future<void> loadOverview() async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = state.copyWith(isLoading: true, errorMessage: null, statsError: null);
     try {
       final subFuture = _repository.getMySubscription();
       final quotaFuture = _repository.getDailyQuota();
       final results = await Future.wait([subFuture, quotaFuture]);
+
+      // Wardrobe stats back the two storage limits; a failure here must not block the quota card,
+      // so it degrades to "—" instead of failing the whole overview.
+      var stats = state.wardrobeStats;
+      var statsLoaded = state.statsLoaded;
+      String? statsError;
+      try {
+        stats = await _ref.read(wardrobeRepositoryProvider).getWardrobeStats();
+        statsLoaded = true;
+      } catch (e) {
+        statsError = e.toString().replaceAll('Exception: ', '');
+      }
 
       state = state.copyWith(
         isLoading: false,
         subscription: results[0] as UserSubscriptionModel,
         dailyQuota: results[1] as DailyQuotaModel,
         quotaLoaded: true,
+        wardrobeStats: stats,
+        statsLoaded: statsLoaded,
+        statsError: statsError,
       );
     } catch (e) {
       state = state.copyWith(
