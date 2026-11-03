@@ -108,7 +108,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
         title: Text(
           'Gu của tôi',
           style: GoogleFonts.playfairDisplay(
-            fontSize: 22,
+            fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
           ),
@@ -134,14 +134,14 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
           : RefreshIndicator(
               onRefresh: controller.load,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 48),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
                 children: [
                   _summary(state),
                   if (state.locked) ...[
                     const SizedBox(height: 20),
                     _paywall(state),
                   ],
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
                   _section(
                     title: 'TÔI MẶC',
                     liked: true,
@@ -155,7 +155,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
                     },
                     onAddCustom: () => _addCustom(true),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
                   _section(
                     title: 'TÔI TRÁNH',
                     liked: false,
@@ -170,11 +170,11 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
                     onAddCustom: () => _addCustom(false),
                   ),
                   if (!state.locked) ...[
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
                     Divider(color: AppColors.border, height: 1),
                     const SizedBox(height: 20),
                     _suggestions(state),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 20),
                     Center(
                       child: TextButton.icon(
                         onPressed: state.deleting ? null : _delete,
@@ -220,8 +220,8 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
         Text(
           summary,
           style: GoogleFonts.beVietnamPro(
-            fontSize: 14,
-            height: 1.5,
+            fontSize: 13,
+            height: 1.45,
             color: AppColors.textSecondary,
           ),
         ),
@@ -264,7 +264,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
       'Gợi ý bù món còn thiếu trong tủ',
     ];
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.border),
@@ -290,7 +290,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
           Text(
             state.hasExistingProfile ? 'Gu vẫn được giữ, chỉ chưa được áp dụng' : 'Gu của bạn, được nhớ mỗi lần phối',
             style: GoogleFonts.playfairDisplay(
-              fontSize: 22,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
               height: 1.2,
               color: AppColors.textPrimary,
@@ -319,7 +319,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
             ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 46,
+            height: 42,
             child: ElevatedButton(
               onPressed: () => context.push('/profile/subscription'),
               style: ElevatedButton.styleFrom(
@@ -368,7 +368,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 2.2,
+                letterSpacing: 1.8,
                 color: AppColors.textPrimary,
               ),
             ),
@@ -421,8 +421,8 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
           borderRadius: BorderRadius.circular(22),
           onTap: disabled ? null : onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            constraints: const BoxConstraints(minHeight: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
               border: Border.all(
@@ -439,7 +439,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
                 Text(
                   label,
                   style: GoogleFonts.beVietnamPro(
-                    fontSize: 13,
+                    fontSize: 12.5,
                     color: selected ? AppColors.textPrimary : AppColors.textSecondary,
                   ),
                 ),
@@ -465,7 +465,7 @@ class _StyleProfileScreenState extends ConsumerState<StyleProfileScreen> {
               style: GoogleFonts.beVietnamPro(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
-                letterSpacing: 2.2,
+                letterSpacing: 1.8,
                 color: AppColors.textPrimary,
               ),
             ),
