@@ -361,7 +361,7 @@ class _PaymentResultScreenState extends ConsumerState<PaymentResultScreen> {
                     if (widget.result.isTopUp) {
                       context.go('/profile/wallet');
                     } else {
-                      context.go('/profile/subscription/upgrade');
+                      context.go('/profile/subscription');
                     }
                   },
                   style: ElevatedButton.styleFrom(

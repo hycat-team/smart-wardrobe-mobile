@@ -26,7 +26,7 @@ import 'package:smart_wardrobe/features/profile/presentation/change_password_scr
 import 'package:smart_wardrobe/features/profile/presentation/privacy_policy_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/subscription_detail_screen.dart';
 import 'package:smart_wardrobe/features/style_profile/presentation/style_profile_screen.dart';
-import 'package:smart_wardrobe/features/profile/presentation/subscription_upgrade_screen.dart';
+
 import 'package:smart_wardrobe/features/profile/presentation/payment_waiting_screen.dart';
 import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
 import 'package:smart_wardrobe/core/config/release_flags.dart';
@@ -278,11 +278,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SubscriptionDetailScreen(),
       ),
       GoRoute(
-        // Bảng so sánh gói + hướng dẫn nâng cấp trên web: chỉ đọc.
-        path: '/profile/subscription/upgrade',
-        builder: (context, state) => const SubscriptionUpgradeScreen(),
-      ),
-      GoRoute(
         // Luồng thanh toán đã chuyển lên website (009-web-payment-redirect):
         // mọi đường vào màn hình chờ/kết quả cũ đều hiển thị thông báo
         // hết hiệu lực + hướng dẫn lên website, không mở checkout.
@@ -292,7 +287,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final pending = state.extra as PendingPayment?;
           if (pending == null) {
-            return const SubscriptionUpgradeScreen();
+            return const SubscriptionDetailScreen();
           }
           return PaymentWaitingScreen(pending: pending);
         },
