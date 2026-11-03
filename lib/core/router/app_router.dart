@@ -25,6 +25,7 @@ import 'package:smart_wardrobe/features/profile/presentation/profile_edit_screen
 import 'package:smart_wardrobe/features/profile/presentation/change_password_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/privacy_policy_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/subscription_detail_screen.dart';
+import 'package:smart_wardrobe/features/style_profile/presentation/style_profile_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/subscription_upgrade_screen.dart';
 import 'package:smart_wardrobe/features/profile/presentation/payment_waiting_screen.dart';
 import 'package:smart_wardrobe/features/profile/models/user_profile_models.dart';
@@ -246,6 +247,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/body',
         builder: (context, state) => const BodyProfileScreen(),
+      ),
+      GoRoute(
+        path: '/profile/style-profile',
+        builder: (context, state) => const StyleProfileScreen(),
       ),
       GoRoute(
         path: '/profile/edit',

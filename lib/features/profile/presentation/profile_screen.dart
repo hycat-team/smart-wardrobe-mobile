@@ -558,6 +558,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ),
         _buildMenuTile(
+          Icons.palette_outlined,
+          'Gu của tôi',
+          'Phong cách bạn mặc, phong cách muốn tránh và gợi ý từ tủ đồ',
+          () => context.push('/profile/style-profile'),
+        ),
+        _buildMenuTile(
           Icons.person_outline_rounded,
           'Chỉnh sửa thông tin cá nhân',
           'Cập nhật họ tên, ngày sinh, giới tính và địa chỉ',
