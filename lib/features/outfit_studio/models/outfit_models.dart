@@ -24,7 +24,7 @@ class AIOutfitRecommendationReq {
         if (weather != null && weather!.isNotEmpty) 'weather': weather,
         if (colorTone != null && colorTone!.isNotEmpty) 'colorTone': colorTone,
         if (details != null && details!.isNotEmpty) 'details': details,
-        if (includeBrandItems != null) 'include_brand_items': includeBrandItems,
+        if (includeBrandItems != null) 'includeBrandItems': includeBrandItems,
       };
 }
 
