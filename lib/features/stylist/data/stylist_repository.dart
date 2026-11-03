@@ -304,6 +304,7 @@ class StylistRepository {
 
       return OutfitRecommendationModel(
         id: 'rec_${DateTime.now().millisecondsSinceEpoch}',
+        recommendationId: parsed.recommendationId,
         title: parsed.title,
         occasion: occasion,
         explanation: parsed.explanation.isEmpty ? null : parsed.explanation,

@@ -120,6 +120,9 @@ class OutfitRecommendationItem {
 
 class OutfitRecommendationModel {
   final String id;
+
+  /// Feedback key returned by `POST /ai/outfit-recommendations`; empty when the server omitted it.
+  final String recommendationId;
   final String title;
   final String? occasion;
   final String? explanation;
@@ -140,6 +143,7 @@ class OutfitRecommendationModel {
 
   const OutfitRecommendationModel({
     required this.id,
+    this.recommendationId = '',
     required this.title,
     this.occasion,
     this.explanation,
@@ -171,6 +175,7 @@ class OutfitRecommendationModel {
 
     return OutfitRecommendationModel(
       id: json['id']?.toString() ?? '',
+      recommendationId: json['recommendationId']?.toString() ?? '',
       title: json['title'] ?? 'Gợi ý trang phục Closy',
       occasion: json['occasion'],
       explanation: json['explanation'] ?? json['stylingAdvice'],
