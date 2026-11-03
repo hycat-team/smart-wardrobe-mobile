@@ -2,100 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/closy_toast.dart';
-import '../providers/auth_provider.dart';
 
-class PreferencesScreen extends ConsumerStatefulWidget {
+import '../../../core/theme/app_theme.dart';
+
+/// Final onboarding step.
+///
+/// Style preferences are deliberately **not** collected here: personalization is a membership
+/// entitlement, so the style profile lives in its own screen (`/profile/style-profile`) and stays
+/// reachable from the Profile tab at any time. Keeping this step free of style pickers keeps signup
+/// short and avoids storing a palette the backend cannot use.
+class PreferencesScreen extends ConsumerWidget {
   const PreferencesScreen({super.key});
 
-  @override
-  ConsumerState<PreferencesScreen> createState() => _PreferencesScreenState();
-}
-
-class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
-  static const List<String> _stylePrefs = [
-    'Minimalist',
-    'Y2K',
-    'Streetwear',
-    'Vintage',
-    'Workwear',
-    'Boho',
-    'Casual',
-    'Formal',
-    'Academia',
-    'Gorpcore',
+  static const List<(IconData, String)> _comingLater = [
+    (Icons.palette_outlined, 'Khai gu để gợi ý sát ý bạn hơn'),
+    (Icons.block_outlined, 'Chọn phong cách muốn tránh'),
+    (Icons.auto_awesome_outlined, 'Xem gợi ý phong cách từ chính tủ đồ'),
   ];
 
-  // Nhãn hiển thị tiếng Việt; value tiếng Anh vẫn gửi BE (FR-017, FR-018).
-  static const Map<String, String> _styleLabels = {
-    'Minimalist': 'Tối giản',
-    'Y2K': 'Y2K',
-    'Streetwear': 'Đường phố',
-    'Vintage': 'Cổ điển',
-    'Workwear': 'Trang phục công sở',
-    'Boho': 'Boho',
-    'Casual': 'Thường ngày',
-    'Formal': 'Trang trọng',
-    'Academia': 'Học viện',
-    'Gorpcore': 'Dã ngoại',
-  };
-
-  static const List<Map<String, dynamic>> _colorPalettes = [
-    {
-      'name': 'Neutral',
-      'label': 'Trung tính',
-      'subtitle': 'Thanh lịch & Nhã nhặn',
-      'colors': [Color(0xFFFAF7F2), Color(0xFF1A1A1A), Color(0xFFB0A9A0)],
-    },
-    {
-      'name': 'Earth',
-      'label': 'Tông đất',
-      'subtitle': 'Tông đất & Thiên nhiên',
-      'colors': [Color(0xFF7A8C6E), Color(0xFFC9714A), Color(0xFFF0EBE1)],
-    },
-    {
-      'name': 'Monochrome',
-      'label': 'Đơn sắc',
-      'subtitle': 'Đen, Trắng & Xám',
-      'colors': [Color(0xFF000000), Color(0xFF666666), Color(0xFFCCCCCC)],
-    },
-    {
-      'name': 'Vibrant',
-      'label': 'Rực rỡ',
-      'subtitle': 'Nổi bật & Đầy năng lượng',
-      'colors': [Color(0xFFC9504A), Color(0xFF4A6E8C), Color(0xFFC9A44A)],
-    },
-  ];
-
-  final Set<String> _selectedStyles = {'Minimalist', 'Casual'};
-  String _selectedPalette = 'Neutral';
-
-  void _toggleStyle(String style) {
-    setState(() {
-      if (_selectedStyles.contains(style)) {
-        if (_selectedStyles.length > 1) {
-          _selectedStyles.remove(style);
-        }
-      } else {
-        _selectedStyles.add(style);
-      }
-    });
-  }
-
-  Future<void> _handleFinish() async {
-    await ref.read(authStateProvider.notifier).savePreferences(
-          _selectedStyles.toList(),
-          _selectedPalette,
-        );
-    if (mounted) {
-      ClosyToast.success(context, 'Hồ sơ phong cách của bạn đã được thiết lập!');
-      context.go('/wardrobe');
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -105,220 +31,126 @@ class _PreferencesScreenState extends ConsumerState<PreferencesScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: AppColors.primary),
           onPressed: () => context.go('/wardrobe'),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => context.go('/wardrobe'),
-            child: const Text(
-              'Bỏ qua',
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Badge & Step Indicator
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.accentSand.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.auto_awesome, size: 14, color: AppColors.primary),
-                        SizedBox(width: 6),
-                        Text(
-                          'Hồ sơ phong cách AI',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Text(
-                    'Bước 2/2',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-                  ),
-                ],
-              ),
               const SizedBox(height: 16),
-
-              Text(
-                'Định Hình Phong Cách',
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              Container(
+                width: 64,
+                height: 64,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSubtle,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Hãy cho AI biết gu thẩm mỹ để mang lại những gợi ý phối đồ và tủ đồ kỹ thuật số may đo riêng cho bạn.',
-                style: GoogleFonts.beVietnamPro(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                child: const Icon(Icons.auto_awesome, size: 26, color: AppColors.primary),
               ),
               const SizedBox(height: 28),
-
-              // Section 1: Styles
-              Row(
-                children: [
-                  const Text(
-                    'Phong cách yêu thích',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '(${_selectedStyles.length} đã chọn)',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  ),
-                ],
+              Text(
+                'Tủ đồ của bạn đã sẵn sàng',
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                  height: 1.15,
+                ),
               ),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 10,
-                children: _stylePrefs.map((style) {
-                  final isSelected = _selectedStyles.contains(style);
-                  return FilterChip(
-                    label: Text(_styleLabels[style] ?? style),
-                    selected: isSelected,
-                    onSelected: (_) => _toggleStyle(style),
-                    backgroundColor: AppColors.surface,
-                    selectedColor: AppColors.primary,
-                    labelStyle: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: isSelected ? Colors.white : AppColors.primary,
-                    ),
-                    shape: const StadiumBorder(
-                      side: BorderSide(color: AppColors.border, width: 0.8),
-                    ),
-                    showCheckmark: false,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  );
-                }).toList(),
+              Text(
+                'Bắt đầu bằng việc thêm vài món đồ yêu thích. Gu phong cách cá nhân là đặc quyền hội viên '
+                'và có thể khai bất cứ lúc nào trong mục “Gu của tôi”.',
+                style: GoogleFonts.beVietnamPro(
+                  fontSize: 14,
+                  height: 1.55,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 32),
-
-              // Section 2: Color Palette
-              const Text(
-                'Bảng màu chủ đạo',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primary),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Tông màu trang phục bạn thường tự tin nhất khi mặc',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 14),
-
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.45,
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.border),
                 ),
-                itemCount: _colorPalettes.length,
-                itemBuilder: (context, index) {
-                  final palette = _colorPalettes[index];
-                  final name = palette['name'] as String;
-                  final label = palette['label'] as String? ?? name;
-                  final colors = palette['colors'] as List<Color>;
-                  final isSelected = _selectedPalette == name;
-
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedPalette = name),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected ? AppColors.primary : AppColors.border,
-                          width: isSelected ? 1.8 : 0.8,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: AppColors.primary.withValues(alpha: 0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 3),
-                                )
-                              ]
-                            : null,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                label,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                                ),
-                              ),
-                              if (isSelected)
-                                const Icon(Icons.check_circle_rounded, size: 16, color: AppColors.primary),
-                            ],
-                          ),
-                          // Palette visual strips
-                          Container(
-                            height: 18,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.border, width: 0.5),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Row(
-                              children: colors
-                                  .map((c) => Expanded(child: Container(color: c)))
-                                  .toList(),
-                            ),
-                          ),
-                        ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BẠN CÓ THỂ LÀM SAU',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2,
+                        color: AppColors.textMuted,
                       ),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 36),
-
-              // CTA Button
-              ElevatedButton(
-                onPressed: _handleFinish,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: const StadiumBorder(),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Text('Bắt Đầu Trải Nghiệm', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward_rounded, size: 18),
+                    const SizedBox(height: 14),
+                    for (final item in _comingLater)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(item.$1, size: 16, color: AppColors.textSecondary),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                item.$2,
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 13,
+                                  height: 1.45,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: () => context.go('/wardrobe'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(27)),
+                  ),
+                  child: Text(
+                    'Bắt đầu trải nghiệm',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.go('/wardrobe'),
+                  child: Text(
+                    'Bỏ qua bước này',
+                    style: GoogleFonts.beVietnamPro(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
