@@ -21,7 +21,8 @@ class RegisterRequest {
   final String firstName;
   final String? lastName;
   final String dateOfBirth; // YYYY-MM-DD
-  final String address;
+  /// Optional on the backend (`omitempty`); registration no longer collects it.
+  final String? address;
   final int gender; // 1 = Male, 2 = Female, 3 = Other
 
   const RegisterRequest({
@@ -32,7 +33,7 @@ class RegisterRequest {
     required this.firstName,
     this.lastName,
     required this.dateOfBirth,
-    required this.address,
+    this.address,
     this.gender = 1,
   });
 
@@ -44,7 +45,7 @@ class RegisterRequest {
         'firstName': firstName,
         'lastName': (lastName != null && lastName!.isNotEmpty) ? lastName : null,
         'dateOfBirth': dateOfBirth,
-        'address': address,
+        if (address != null && address!.isNotEmpty) 'address': address,
         'gender': gender,
       };
 }

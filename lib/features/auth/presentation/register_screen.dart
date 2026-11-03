@@ -28,7 +28,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _dobController = TextEditingController();
-  final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -52,7 +51,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _usernameController.dispose();
     _emailController.dispose();
     _dobController.dispose();
-    _addressController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     for (final c in _otpControllers) {
@@ -118,7 +116,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),
       dateOfBirth: _dobController.text.trim(),
-      address: _addressController.text.trim(),
       gender: _selectedGender,
     );
 
@@ -362,16 +359,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 14),
-
-          // Địa chỉ
-          _buildTextField(
-            controller: _addressController,
-            label: 'Địa chỉ',
-            hint: 'Số nhà, Phường, Quận, Thành phố',
-            prefixIcon: Icons.location_on_outlined,
-            validator: (v) => v == null || v.trim().isEmpty ? 'Nhập địa chỉ' : null,
           ),
           const SizedBox(height: 14),
 
