@@ -258,6 +258,39 @@ class _SubscriptionDetailScreenState
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Cá nhân hoá gu',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isPremium ? const Color(0xFFB3B3B3) : AppColors.textSecondary,
+                ),
+              ),
+              Row(
+                children: [
+                  Icon(
+                    sub.personalizationEnabled
+                        ? Icons.check_circle_rounded
+                        : Icons.lock_outline_rounded,
+                    size: 16,
+                    color: sub.personalizationEnabled ? AppColors.accentSand : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    sub.personalizationEnabled ? 'Đã bật' : 'Chưa có',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isPremium ? Colors.white : AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
           if (!isPremium) ...[
             const SizedBox(height: 18),
             SizedBox(

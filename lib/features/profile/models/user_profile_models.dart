@@ -94,6 +94,7 @@ class UserSubscriptionModel {
   final int maxOutfits;
   final int aiOutfitDailyQuota;
   final int aiChatDailyQuota;
+  final bool personalizationEnabled;
   final String status;
 
   const UserSubscriptionModel({
@@ -106,6 +107,7 @@ class UserSubscriptionModel {
     this.maxOutfits = 100,
     this.aiOutfitDailyQuota = 5,
     this.aiChatDailyQuota = 3,
+    this.personalizationEnabled = false,
     this.status = 'ACTIVE',
   });
 
@@ -125,6 +127,7 @@ class UserSubscriptionModel {
       maxOutfits: json['maxOutfits'] as int? ?? json['MaxOutfits'] as int? ?? 100,
       aiOutfitDailyQuota: json['aiOutfitDailyQuota'] as int? ?? json['AiOutfitDailyQuota'] as int? ?? 5,
       aiChatDailyQuota: json['aiChatDailyQuota'] as int? ?? json['AiChatDailyQuota'] as int? ?? 3,
+      personalizationEnabled: json['personalizationEnabled'] == true,
       status: json['status']?.toString() ?? 'ACTIVE',
     );
   }
