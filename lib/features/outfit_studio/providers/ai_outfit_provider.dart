@@ -125,9 +125,11 @@ class AIOutfitNotifier extends StateNotifier<AIOutfitState> {
     );
 
     final updatedRecommendation = RecommendedOutfitRes(
+      recommendationId: state.recommendation!.recommendationId,
       title: state.recommendation!.title,
       explanation: state.recommendation!.explanation,
       items: currentItems,
+      suggestions: state.recommendation!.suggestions,
       isFallback: state.recommendation!.isFallback,
       remainingQuota: state.recommendation!.remainingQuota,
     );

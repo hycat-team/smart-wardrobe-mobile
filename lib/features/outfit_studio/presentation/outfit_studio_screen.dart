@@ -756,6 +756,21 @@ class _OutfitStudioScreenState extends ConsumerState<OutfitStudioScreen> with Si
       (prev, next) {
         if (next != null && next.isNotEmpty && next != prev && mounted) {
           ClosyToast.error(context, next);
+          final lower = next.toLowerCase();
+          final quotaBlocked = lower.contains('lượt') || lower.contains('hạn mức');
+          if (quotaBlocked) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: const Text('Nâng cấp gói để có thêm lượt phối đồ mỗi ngày.'),
+                  action: SnackBarAction(
+                    label: 'Nâng cấp',
+                    onPressed: () => context.push('/profile/subscription'),
+                  ),
+                ),
+              );
+          }
         }
       },
     );

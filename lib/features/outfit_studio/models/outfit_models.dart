@@ -228,10 +228,49 @@ class RecommendedItemGroup {
   }
 }
 
+/// One gap-fill suggestion returned by the recommendation endpoint.
+///
+/// Suggestions are catalog items, not owned wardrobe items: they are displayed as "your wardrobe is
+/// missing this role" and are NOT added to the canvas automatically.
+class OutfitSuggestion {
+  final String role;
+  final String reason;
+  final String? fashionItemId;
+  final String? imageUrl;
+  final String? color;
+  final String? style;
+
+  const OutfitSuggestion({
+    required this.role,
+    required this.reason,
+    this.fashionItemId,
+    this.imageUrl,
+    this.color,
+    this.style,
+  });
+
+  factory OutfitSuggestion.fromJson(Map<String, dynamic> json) {
+    final item = json['fashionItem'] is Map<String, dynamic>
+        ? json['fashionItem'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    return OutfitSuggestion(
+      role: json['role']?.toString() ?? '',
+      reason: json['reason']?.toString() ?? '',
+      fashionItemId: item['id']?.toString(),
+      imageUrl: item['imageUrl']?.toString(),
+      color: item['color']?.toString(),
+      style: item['style']?.toString(),
+    );
+  }
+}
+
 class RecommendedOutfitRes {
+  /// Key for the feedback endpoint; present even when `isFallback` is true.
+  final String recommendationId;
   final String title;
   final String explanation;
   final List<RecommendedItemGroup> items;
+  final List<OutfitSuggestion> suggestions;
 
   /// Máy chủ sinh sẵn bộ gợi ý này (thường khi hết hạn mức) — phải gắn nhãn
   /// dự phòng, không trình bày như gợi ý chuẩn.
@@ -239,9 +278,11 @@ class RecommendedOutfitRes {
   final int remainingQuota;
 
   const RecommendedOutfitRes({
+    this.recommendationId = '',
     required this.title,
     required this.explanation,
     required this.items,
+    this.suggestions = const [],
     this.isFallback = false,
     this.remainingQuota = 0,
   });
@@ -249,6 +290,7 @@ class RecommendedOutfitRes {
   factory RecommendedOutfitRes.fromJson(Map<String, dynamic> json) {
     final data = json['data'] is Map<String, dynamic> ? json['data'] : json;
     return RecommendedOutfitRes(
+      recommendationId: data['recommendationId']?.toString() ?? '',
       title: data['title']?.toString() ?? 'Set đồ gợi ý',
       explanation: data['explanation']?.toString() ?? '',
       items: data['items'] is List
@@ -256,6 +298,12 @@ class RecommendedOutfitRes {
               .map((g) => RecommendedItemGroup.fromJson(g as Map<String, dynamic>))
               .toList()
           : [],
+      suggestions: data['suggestions'] is List
+          ? (data['suggestions'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(OutfitSuggestion.fromJson)
+              .toList()
+          : const [],
       // Spec 015 — FR-029: chấp nhận CẢ `fallback` (tên trường máy chủ gửi, xem
       // `dto/recommendation.go`) lẫn `isFallback` (khoá cũ của ứng dụng).
       //
@@ -274,6 +322,7 @@ class RecommendedOutfitRes {
 
 class SaveOutfitItemReq {
   final String fashionItemId;
+  final String? itemContext;
   final double positionX;
   final double positionY;
   final double scale;
@@ -281,6 +330,7 @@ class SaveOutfitItemReq {
 
   const SaveOutfitItemReq({
     required this.fashionItemId,
+    this.itemContext,
     this.positionX = 0,
     this.positionY = 0,
     this.scale = 1.0,
@@ -289,6 +339,7 @@ class SaveOutfitItemReq {
 
   Map<String, dynamic> toJson() => {
         'fashionItemId': fashionItemId,
+        if (itemContext != null) 'itemContext': itemContext,
         'positionX': positionX,
         'positionY': positionY,
         'scale': scale,
@@ -394,6 +445,7 @@ class OutfitItemDetailModel {
   final double positionY;
   final double scale;
   final int layerOrder;
+  final bool isAvailable;
   final RecommendedFashionItemBrief? fashionItem;
 
   const OutfitItemDetailModel({
@@ -403,6 +455,7 @@ class OutfitItemDetailModel {
     this.positionY = 0,
     this.scale = 1.0,
     this.layerOrder = 1,
+    this.isAvailable = true,
     this.fashionItem,
   });
 
@@ -414,6 +467,7 @@ class OutfitItemDetailModel {
       positionY: json['positionY'] is num ? (json['positionY'] as num).toDouble() : 0,
       scale: json['scale'] is num ? (json['scale'] as num).toDouble() : 1.0,
       layerOrder: json['layerOrder'] is int ? json['layerOrder'] : 1,
+      isAvailable: json['isAvailable'] is bool ? json['isAvailable'] as bool : true,
       fashionItem: json['fashionItem'] != null
           ? RecommendedFashionItemBrief.fromJson(json['fashionItem'] as Map<String, dynamic>)
           : null,

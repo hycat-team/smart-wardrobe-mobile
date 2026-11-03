@@ -202,6 +202,41 @@ class OutfitRepository {
     }
   }
 
+  Future<Map<String, dynamic>> updateOutfit(String id, SaveOutfitReq req) async {
+    try {
+      final response = await _apiClient.dio.put(
+        '/outfits/$id',
+        data: req.toJson(),
+      );
+      final data = _parseResponseData(response.data);
+      return data?['data'] is Map<String, dynamic>
+          ? data!['data'] as Map<String, dynamic>
+          : data ?? {};
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e, 'Không thể cập nhật outfit'));
+    }
+  }
+
+  /// Records `like` / `dislike` / `saved` for a recommendation. A 404 (expired snapshot) is expected
+  /// and must not block the UI, so callers treat the thrown error as best-effort.
+  Future<bool> submitRecommendationFeedback({
+    required String recommendationId,
+    required String action,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/ai/outfit-recommendations/feedback',
+        data: {'recommendationId': recommendationId, 'action': action},
+      );
+      final data = _parseResponseData(response.data);
+      final payload =
+          data?['data'] is Map<String, dynamic> ? data!['data'] as Map<String, dynamic> : data;
+      return payload?['accepted'] == true;
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e, 'Không gửi được phản hồi'));
+    }
+  }
+
   String _extractErrorMessage(DioException e, String fallback) {
     final data = _parseResponseData(e.response?.data);
     if (data != null) {
