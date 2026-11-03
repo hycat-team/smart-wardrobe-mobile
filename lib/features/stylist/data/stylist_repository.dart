@@ -265,19 +265,22 @@ class StylistRepository {
     }
   }
 
-  /// Gợi ý phối đồ chuyên sâu qua endpoint /ai/outfit-recommendations
+  /// Gợi ý phối đồ chuyên sâu qua endpoint /ai/outfit-recommendations.
+  ///
+  /// The backend DTO has no `prompt`/`temperature` fields, so the chat text is sent as `details`
+  /// (free text, ≤ 1000 NFC characters — trimmed here); sending `prompt` silently dropped the user's
+  /// request and produced a recommendation unrelated to the conversation.
   Future<OutfitRecommendationModel> getOutfitRecommendation({
     required String prompt,
     String? occasion,
-    double? temperature,
   }) async {
     try {
+      final details = prompt.trim().length > 1000 ? prompt.trim().substring(0, 1000) : prompt.trim();
       final response = await _apiClient.dio.post(
         '/ai/outfit-recommendations',
         data: {
-          'prompt': prompt,
+          if (details.isNotEmpty) 'details': details,
           if (occasion != null) 'occasion': occasion,
-          if (temperature != null) 'temperature': temperature,
         },
         options: Options(
           connectTimeout: const Duration(seconds: 120),
